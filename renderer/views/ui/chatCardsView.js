@@ -3,6 +3,7 @@
 // Buttons call vm.choose(action, button), like the chips.
 import { strings } from '../../i18n/es.js';
 import { icon } from './icons.js';
+import { tourCard } from './tourCardView.js';
 
 const K = strings.chat.cards;
 const LEVELS = ['red', 'yellow', 'green'];
@@ -15,7 +16,7 @@ const el = (tag, className, text) => {
   return node;
 };
 
-export const CHIP_ICON = { ask: 'ask', repair: 'wrench', audit: 'audit', locate: 'locate', risks: 'alert', open: 'openExternal', reveal: 'folderOpen' };
+export const CHIP_ICON = { ask: 'ask', repair: 'wrench', audit: 'audit', locate: 'locate', risks: 'alert', open: 'openExternal', reveal: 'folderOpen', tour: 'route', tourNext: 'arrowRight', tourPrev: 'arrowLeft', tourExit: 'close', edit: 'improve' };
 
 export function actionButton(action, vm, className = 'card-action') {
   const b = el('button', `${className} ${action.kind ?? ''}`.trim());
@@ -117,10 +118,25 @@ function changesCard(card) {
   return [head];
 }
 
+// Where the robot landed (dragged or thrown onto a folder, or the plaza): what the place is in plain
+// words as the title, its path and size below, what lives there, its risks and what to do now
+function placeCard(card) {
+  const P = strings.robot.chat;
+  const head = el('header', 'card-head');
+  const badge = el('span', `card-badge place ${card.level}`);
+  badge.appendChild(icon('bot', { size: 18 }));
+  const title = el('div', 'card-title');
+  title.append(el('small', 'place-eyebrow', P.here), el('strong', '', card.title), el('span', 'place-where', card.where));
+  head.append(badge, title);
+  const status = el('span', `place-status ${card.level}`, card.risks || P.allGood);
+  head.appendChild(status);
+  return [head, el('p', 'card-hint', card.summary), el('p', 'place-question', card.question)];
+}
+
 // plain (Modo Vibe): an opened file is told in plain words with small buttons in one row
 export function renderChatCard(container, card, vm, { plain = false } = {}) {
   const simple = plain && card.kind === 'file' && card.fileKind;
-  const parts = card.kind === 'folder' ? folderCard(card, vm) : card.kind === 'changes' ? changesCard(card) : simple ? plainFileCard(card) : fileCard(card);
+  const parts = card.kind === 'folder' ? folderCard(card, vm) : card.kind === 'place' ? placeCard(card) : card.kind === 'tour' ? tourCard(card, vm) : card.kind === 'changes' ? changesCard(card) : simple ? plainFileCard(card) : fileCard(card);
   const actions = simple ? card.actions.filter((a) => a.kind !== 'reveal') : card.actions ?? [];
   if (actions.length) {
     const row = el('div', `card-actions${simple ? ' compact' : ''}`);

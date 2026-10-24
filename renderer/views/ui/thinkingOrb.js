@@ -63,7 +63,8 @@ export function thinkingOrb(state = 'working', { size = 20, label = '', classNam
   canvas.style.height = `${size}px`;
   if (label) { canvas.setAttribute('role', 'img'); canvas.setAttribute('aria-label', label); }
   else canvas.setAttribute('aria-hidden', 'true');
-  const preset = resolvePreset(state, size);
+  // the package draws 20, 32 and 64 px orbs: any other size uses the nearest one, scaled
+  const preset = resolvePreset(state, [20, 32, 64].reduce((best, s) => (Math.abs(s - size) < Math.abs(best - size) ? s : best), 20));
   const ctx = canvas.getContext('2d');
   if (!ctx) return canvas;
   const orb = { canvas, ctx, size, dpr, frame: MODE_FRAMES[preset.mode], opts: preset.opts, speed: preset.speed * speed };

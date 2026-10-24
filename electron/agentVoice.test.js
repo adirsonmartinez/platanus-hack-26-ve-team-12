@@ -1,7 +1,7 @@
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const path = require('node:path');
-const { loadVoice, composePrompt, composeRefinePrompt, styleHints } = require('./agentVoice');
+const { loadVoice, composePrompt, composeRefinePrompt, composeTourPrompt, styleHints } = require('./agentVoice');
 
 const voice = loadVoice(path.join(__dirname, '..', 'agent'));
 
@@ -65,4 +65,12 @@ test('the chat format teaches the agent to work a spec task by task, test first'
   const prompt = composePrompt(voice, { mode: 'vibe' });
   assert.ok(prompt.includes('T1'));
   assert.ok(/prueba/i.test(voice.config.format.join(' ')));
+});
+
+test('tour: narrates the analyzer facts as JSON only, in the voice of the mode, without the chat voice', () => {
+  const vibe = composeTourPrompt(voice, { mode: 'vibe' });
+  assert.ok(vibe.includes('"steps"') && vibe.includes('"usecases"') && vibe.includes('"start"'));
+  assert.ok(vibe.includes(voice.config.tour.modes.vibe));
+  assert.ok(composeTourPrompt(voice, { mode: 'dev' }).includes(voice.config.tour.modes.dev));
+  assert.ok(!vibe.includes(voice.config.base[0]), 'not the chat rules');
 });

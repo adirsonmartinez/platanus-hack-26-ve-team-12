@@ -77,3 +77,32 @@ test('an unknown tag falls back to the review; a repair prompt gets the repair s
   const repair = await runScenario('Repara el archivo `tests/a.js` del proyecto', handlers);
   assert.ok(repair.calls.some(([k, a]) => k === 'platanus_read_file' && a.path === 'tests/a.js'));
 });
+
+test('the tour of the sample project: its narration matches what the analyzer finds there', async () => {
+  const { pickScenario, TOUR_FERIA } = require('./scenarios');
+  assert.equal(pickScenario('{}', 'Eres el guía de Platanus. …').name, 'tour');
+  const { analyzeProject, pickFilesToRead, planSteps } = await import('../../renderer/models/projectAnalyzer.js');
+  const { parseTour } = await import('../../renderer/models/tourSpec.js');
+  const root = path.join(__dirname, '..', 'demo', 'sample-project');
+  const walk = (dir) => fs.readdirSync(dir, { withFileTypes: true }).map((e) => {
+    const full = path.join(dir, e.name);
+    const rel = path.relative(root, full).split(path.sep).join('/');
+    return e.isDirectory() ? { type: 'dir', path: rel, children: walk(full) } : { type: 'file', path: rel, size: fs.statSync(full).size };
+  });
+  const tree = walk(root);
+  const facts = analyzeProject(tree, new Map(pickFilesToRead(tree).map((p) => [p, fs.readFileSync(path.join(root, p), 'utf8')])));
+  const slots = planSteps(facts);
+  const tour = parseTour(JSON.stringify(TOUR_FERIA), facts, slots);
+  assert.ok(tour, 'accepted');
+  assert.deepEqual(Object.keys(tour.steps).sort(), slots.filter((s) => !['usecase', 'start'].includes(s.kind)).map((s) => s.id).sort(), 'one text per stop');
+  assert.equal(tour.usecases[0].flow.length, 4, 'every file of the purchase is real');
+  assert.equal(tour.start.open, 'README.md');
+  assert.equal(tour.start.folder, 'apps/api');
+});
+
+test('a default scenario can be chosen for messages with no tag (the video)', () => {
+  const { pickScenario } = require('./scenarios');
+  assert.equal(pickScenario('¿Es seguro cómo se guardan los pedidos?', '', 'feria').name, 'feria');
+  assert.equal(pickScenario('¿Es seguro?', '', '').name, 'revision');
+  assert.equal(pickScenario('[sim:error] x', '', 'feria').name, 'error', 'a tag still wins');
+});

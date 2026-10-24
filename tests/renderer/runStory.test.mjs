@@ -47,3 +47,20 @@ test('when it ends, a recap counts what it did', () => {
 test('waiting for the person to approve a change has its own headline', () => {
   assert.equal(runHeadline({ status: 'running', awaiting: 'src/db.js', steps: [step({ status: 'running', name: 'write_file', target: 'src/db.js' })] }, ''), 'Esperando tu aprobación para guardar db.js…');
 });
+
+test('a change the agent was not allowed to make while explaining is told calmly, not as a failure', () => {
+  const line = stepLine({ kind: 'tool', name: 'set_file_score', target: 'apps/api/src/routes/orders.ts', status: 'skipped' });
+  assert.equal(line.status, 'skipped');
+  assert.match(line.text, /No cambié nada/);
+  assert.match(line.text, /orders\.ts/);
+});
+
+test('a new file is told as created, not as a fix; the recap counts both and starts with a capital', () => {
+  const created = { kind: 'tool', name: 'write_file', target: 'src/index.js', status: 'done', diff: { created: true, added: 2, removed: 0 } };
+  const edited = { kind: 'tool', name: 'write_file', target: 'README.md', status: 'done', diff: { created: false, added: 1, removed: 1 } };
+  assert.match(stepLine(created).text, /^Creé index\.js/);
+  assert.match(stepLine(edited).text, /^Guardé el arreglo en README\.md/);
+  assert.equal(runRecap([created, { ...created, target: 'src/a.js' }]), 'Creé 2 archivos');
+  assert.equal(runRecap([created, edited]), 'Creé 1 archivo · guardé 1 arreglo');
+  assert.equal(runRecap([edited]), 'Guardé 1 arreglo');
+});

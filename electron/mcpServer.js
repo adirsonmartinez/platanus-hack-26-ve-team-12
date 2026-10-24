@@ -101,12 +101,21 @@ const text = (value, isError = false) => ({
   isError,
 });
 
+// Tools a read-only run may use (the tour of a project: it explains, it never changes anything)
+const READ_ONLY_TOOLS = ['platanus_get_project', 'platanus_list_risks', 'platanus_read_file'];
+
 // `handlers` implement the tools (they live in main.js, next to the workspace and the window).
 // Every call is reported through `onCall({ tool, args, ok, error })` for the audit log.
-function createMcpHandler({ handlers, onCall = () => {} }) {
+// readOnly: only READ_ONLY_TOOLS are listed, and any other call is refused.
+function createMcpHandler({ handlers, onCall = () => {}, readOnly = false }) {
+  const tools = readOnly ? TOOLS.filter((t) => READ_ONLY_TOOLS.includes(t.name)) : TOOLS;
   async function callTool(name, args) {
     const tool = TOOLS.find((t) => t.name === name);
     if (!tool) throw { code: -32602, message: `Unknown tool: ${name}` };
+    if (!tools.includes(tool)) {
+      onCall({ tool: name, args, ok: false, error: 'read-only' });
+      return text('Refused: this run is read-only (project tour). Explain, do not change anything.', true);
+    }
     for (const key of tool.inputSchema.required ?? []) {
       if (typeof args?.[key] !== 'string') return text(`Missing "${key}".`, true);
     }
@@ -140,7 +149,7 @@ function createMcpHandler({ handlers, onCall = () => {} }) {
       case 'ping':
         return {};
       case 'tools/list':
-        return { tools: TOOLS };
+        return { tools };
       case 'tools/call':
         return callTool(String(msg.params?.name ?? ''), msg.params?.arguments ?? {});
       default:
@@ -174,21 +183,25 @@ function isAllowedRequest(req, port) {
 }
 
 // `token`: private key in the address (/mcp/<token>), so other programs or users on this computer
-// cannot use the server. Compared in constant time.
+// cannot use the server. Compared in constant time. /mcp/<token>/ro is the same server, read-only.
 function startMcpServer({ port = 7811, handlers, onCall, token }) {
-  const respond = createMcpHandler({ handlers, onCall });
-  const expected = Buffer.from(`/mcp/${token ?? ''}`);
-  const isOurPath = (url) => {
+  const full = createMcpHandler({ handlers, onCall });
+  const readOnly = createMcpHandler({ handlers, onCall, readOnly: true });
+  const same = (url, path) => {
     const got = Buffer.from(String(url));
+    const expected = Buffer.from(path);
     return Boolean(token) && got.length === expected.length && crypto.timingSafeEqual(got, expected);
   };
+  // the handler for this address, or null when it is not ours
+  const handlerFor = (url) => (same(url, `/mcp/${token ?? ''}`) ? full : same(url, `/mcp/${token ?? ''}/ro`) ? readOnly : null);
   const server = http.createServer((req, res) => {
     const actualPort = server.address()?.port;
     if (!isAllowedRequest(req, actualPort)) {
       res.writeHead(403).end();
       return;
     }
-    if (!isOurPath(req.url)) return void res.writeHead(404).end();
+    const respond = handlerFor(req.url);
+    if (!respond) return void res.writeHead(404).end();
     if (req.method === 'GET') return void res.writeHead(405, { Allow: 'POST' }).end(); // no server stream
     if (req.method !== 'POST') return void res.writeHead(405).end();
 

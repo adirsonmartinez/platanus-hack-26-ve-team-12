@@ -1,0 +1,7 @@
+{
+  "name": "api",
+  "private": true,
+  "main": "src/server.ts",
+  "scripts": { "dev": "tsx watch src/server.ts", "start": "node dist/server.js" },
+  "dependencies": { "express": "^4.21.0", "pg": "^8.13.0" }
+}

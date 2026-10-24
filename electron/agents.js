@@ -121,7 +121,7 @@ function login(id) {
   return true;
 }
 
-const resumeIds = {}; // conversation continuity per agent and session ("chat" | "repair" | "refine")
+const resumeIds = {}; // conversation continuity per agent and session ("chat" | "repair" | "refine" | "tour")
 
 // Grok's built-in tools (terminal, file edits, subagents, media…) are removed: it only acts through
 // Platanus' MCP tools (use_tool). Verified: with these flags `touch` from a prompt is not possible.
@@ -228,7 +228,7 @@ const running = new Map();
 // One run per agent and session at a time (the window serializes its requests; this is a safety net).
 function run(id, opts, emit) {
   if (!AGENTS[id]) return emit({ type: "error", message: t.agents.unknown }), emit({ type: "done" }), null;
-  const session = ["repair", "refine"].includes(opts.session) ? opts.session : "chat";
+  const session = ["repair", "refine", "tour"].includes(opts.session) ? opts.session : "chat";
   const key = `${id}:${session}`;
   running.get(key)?.kill("SIGTERM");
   const agent = AGENTS[id];

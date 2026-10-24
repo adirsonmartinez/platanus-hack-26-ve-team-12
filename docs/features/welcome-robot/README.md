@@ -53,7 +53,7 @@ El robot se queda y reacciona al proyecto real. En orden de prioridad:
 
 - Un robot flotante y redondeado, sin aristas: cabeza grande de perla con una cara de vidrio oscuro donde se encienden dos ojos de cápsula y una sonrisa, orejas con anillos de luz, antena curva con un orbe, cuerpo de huevo con un corazón de luz, manos flotantes y un propulsor con un anillo de luz en el suelo.
 - Tiene expresiones: sonríe y saluda; ante un riesgo pone cara de preocupación (ojos inclinados y boca de "¡oh!"); mueve la boca y mira su globo mientras "habla"; parpadea; el corazón late y el anillo respira con el vaivén.
-- Está abajo a la izquierda de la etiqueta del proyecto, lejos del árbol de carpetas (que crece hacia abajo a la derecha). Escala `SCALE = 1.6` en `robotView.js`.
+- Está abajo a la izquierda de la etiqueta del proyecto, lejos del árbol de carpetas (que crece hacia abajo a la derecha). Escala `SCALE = 1.6` en `welcomeRobotView.js`.
 
 ### El globo
 
@@ -92,7 +92,7 @@ Si el robot le pasa un pedido al agente y no hay ningún agente conectado, se ab
 
 - `renderer/viewmodels/robotDialogViewModel.js`: las dos fases (entrevista y guía), la recomendación, los consejos y deshacer. No toca el DOM.
 - `renderer/views/scene/builders/robotBuilder.js`: la forma del robot (y `setFace` para su expresión). Sus materiales (`robotShell`, `robotTrim`, `robotFace`, `robotGlow`, `glowLines.accent`) están en `renderer/views/scene/materials.js`.
-- `renderer/views/scene/robotView.js`: la animación del robot, el globo, la escritura animada y la pastilla. Estilos en el bloque "Welcome robot" de `renderer/styles/main.css` (clases `rb-*`).
+- `renderer/views/scene/welcomeRobotView.js`: la animación del robot, el globo, la escritura animada y la pastilla. Se aparta mientras corre el recorrido o una construcción (el robot de `robotView.js` usa el mapa), y ese otro robot se aparta mientras el diálogo de bienvenida está abierto: nunca hay dos robots a la vez. Estilos en el bloque "Welcome robot" de `renderer/styles/main.css` (clases `rb-*`).
 - `renderer/i18n/es.js` → `map.welcome`: preguntas, recomendaciones (`stacks`), analogías, consejos (`tips`) y los pedidos al agente (`scaffoldPrompt`, `talkPrompt`). **Para cambiar lo que dice el robot o qué recomienda, se edita solo este archivo.**
 - `renderer/main.js`: acciones `openChat`, `askAgent` (con el pedido en espera) y `saveProgress`.
 - `renderer/models/agentModel.js`: `isGitCommand`.

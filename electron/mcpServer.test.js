@@ -105,3 +105,35 @@ test('symlinks: a harmless-looking path that lands in .git/ or a secret is refus
   assert.equal(await isBlockedRealPath(root, path.join(root, 'src/new/app.js')), false);
   fs.rmSync(root, { recursive: true, force: true });
 });
+
+test('read-only (the tour): only the reading tools are listed and nothing can be changed', async () => {
+  const seen = [];
+  const ro = createMcpHandler({ handlers, readOnly: true, onCall: (c) => seen.push(c) });
+  const list = await ro({ jsonrpc: '2.0', id: 1, method: 'tools/list' });
+  assert.deepEqual(list.result.tools.map((t) => t.name), ['platanus_get_project', 'platanus_list_risks', 'platanus_read_file']);
+  for (const name of ['platanus_write_file', 'platanus_set_file_score', 'platanus_show_folder']) {
+    const r = await ro({ jsonrpc: '2.0', id: 2, method: 'tools/call', params: { name, arguments: { path: 'a.js', content: 'x', reason: 'r', level: 'red' } } });
+    assert.equal(r.result.isError, true, name);
+    assert.match(r.result.content[0].text, /read-only/);
+  }
+  assert.ok(seen.every((c) => c.ok === false && c.error === 'read-only'));
+  const read = await ro({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'platanus_read_file', arguments: { path: 'src/app.ts' } } });
+  assert.equal(read.result.isError, false);
+});
+
+test('HTTP: the read-only address needs the same private key', async () => {
+  const token = 'c'.repeat(48);
+  const server = await startMcpServer({ port: 0, handlers, token });
+  const { port } = server.address();
+  const list = (path) => fetch(`http://127.0.0.1:${port}${path}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list' }) });
+  try {
+    const ro = await (await list(`/mcp/${token}/ro`)).json();
+    assert.equal(ro.result.tools.length, 3);
+    const full = await (await list(`/mcp/${token}`)).json();
+    assert.equal(full.result.tools.length, TOOLS.length);
+    assert.equal((await list(`/mcp/${'d'.repeat(48)}/ro`)).status, 404);
+    assert.equal((await list(`/mcp/${token}/rw`)).status, 404);
+  } finally {
+    server.close();
+  }
+});

@@ -177,6 +177,21 @@ seguridad y la ruta solo cuenta la carpeta actual.
   Cursor, Codex y Gemini. La dirección del servidor lleva una llave privada: en pantalla sale tapada y
   "Copiar" la incluye.
 
+## El robot del mapa
+
+Arrástralo o lánzalo a una carpeta: vuela hasta ella y pregunta si te explica qué hay o si quieres cambiar algo. Mientras el agente trabaja, su globo muestra el mismo orbe que el chat. Detalle: `docs/features/robot/README.md`.
+
+Los agentes se muestran con sus logos reales (`renderer/icons/brands.js`, de `@lobehub/icons-static-svg`, MIT; `npm run icons`).
+
+## Recorrido del proyecto
+
+Para quien llega a un proyecto que no conoce: «Recorrido del proyecto» (chip al abrir un proyecto, o «+» → Recorrido).
+- El robot guía camina por el mapa, parada por parada: cómo está armado, la documentación, las partes, dónde arranca, las pruebas, un caso de uso y por dónde empezar.
+- El chat lleva una sola tarjeta con Anterior / Siguiente / Salir.
+- Los hechos los decide un analizador fijo; el agente solo los narra, en modo de solo lectura.
+
+Detalle: `docs/features/recorrido/README.md`. Grabación para el video del producto: `scripts/demo/README.md` y `video/README.md`.
+
 ## La voz del agente (`agent/`)
 
 | Archivo | Para qué |

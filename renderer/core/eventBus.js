@@ -17,6 +17,10 @@ export const EVENTS = Object.freeze({
   repairChanged: 'repair:changed',     // { path, change } the agent wrote a file (approved)
   repairFinished: 'repair:finished',   // { entry } history entry with its final status
   agentAwaiting: 'agent:awaiting',     // { path, waiting, diff? } the agent waits for the person to approve a change
+  robotLanded: 'robot:landed',         // { path, kind: 'folder'|'project', name, files?, red, yellow } the person dropped the robot there
+  tourStarted: 'tour:started',         // {} the tour of the open project is being prepared
+  tourStep: 'tour:step',               // { index, total, step, writing, source, agent, architecture }
+  tourEnded: 'tour:ended',
   agentChanged: 'agent:changed',       // { path, reason, diff, … } the agent saved a change (approved or by the permissions mode)
 });
 

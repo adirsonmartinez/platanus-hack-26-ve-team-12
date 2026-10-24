@@ -13,6 +13,26 @@ const FIXTURE = {
   after: 'Nota de prueba de Platanus\nversion: 2\nclave: (vacía)\nautor: simulador\nrevisado: sí\n',
 };
 
+const TOUR_FERIA = {
+  summary: 'Feria Online es la tienda de una feria de productores: la gente elige frutas, verduras y quesos y paga desde su casa.',
+  steps: {
+    place: { title: 'Una feria, tres partes', say: 'Todo vive en un mismo lugar: la tienda que ve la gente, el servicio que guarda pedidos y unas piezas de diseño que ambas comparten.', bubble: '¡Hola! Te muestro la feria' },
+    doc1: { title: 'Empieza por el README', say: 'Es la portada: cuenta qué es la feria, cómo se enciende todo con un solo comando y qué hace cada parte.', bubble: 'Aquí está la portada' },
+    part1: { title: 'Donde se anotan los pedidos', say: 'Recibe cada compra, la cobra y la guarda junto con los productos de cada productor.', bubble: 'Aquí se guardan los pedidos' },
+    part2: { title: 'La tienda que ve la gente', say: 'Las páginas para mirar productos, llenar el carrito y pagar. Usa las piezas de diseño compartidas.', bubble: 'Esto es lo que ve quien compra' },
+    entry: { title: 'Aquí se enciende el servicio', say: 'Este archivo arranca el servicio de pedidos y le dice qué hacer con cada pedido que llega.', bubble: 'La puerta de entrada' },
+    tests: { title: 'Pruebas de la compra', say: 'Revisan solas que cobrar y comprar sigan funcionando. Córrelas antes de cambiar algo.', bubble: 'Esto cuida que nada se rompa' },
+  },
+  usecases: [{
+    candidate: 'uc3',
+    title: 'Caso de uso: Comprar en la feria',
+    say: 'La persona paga en la página de pago, la tienda envía el pedido al servicio, que lo cobra y lo guarda.',
+    flow: ['apps/web/app/checkout/page.tsx', 'apps/web/lib/api.ts', 'apps/api/src/routes/orders.ts', 'apps/api/src/services/payments.ts'],
+  }],
+  start: { say: 'Lee el README, enciende la feria con un comando y sigue una compra desde la página de pago. Si algo no se entiende, pregúntame.', open: 'README.md', folder: 'apps/api', ask: '¿Cómo se guarda un pedido en Feria Online?' },
+  skip: [],
+};
+
 const SUGGEST = (lines) => `\n\n\`\`\`sugerencias\n${lines.map((l) => `- ${l}`).join('\n')}\n\`\`\``;
 
 const scenarios = {
@@ -62,6 +82,31 @@ const scenarios = {
     { say: 'No guardé el cambio porque no lo aprobaste. Tu archivo quedó igual.' },
   ],
 
+  // The video's question about scripts/demo/sample-project: the agent reads how an order is saved, finds
+  // the order built into the SQL text and marks it yellow (its folder rises on the map)
+  feria: () => [
+    { think: 'Quiere saber si los pedidos se guardan de forma segura. Miro la ruta de pedidos.' },
+    { tool: 'read_file', input: { path: 'apps/api/src/routes/orders.ts' } },
+    { say: 'Revisé cómo se guarda cada pedido.' },
+    { tool: 'read_file', input: { path: 'apps/api/src/services/payments.ts' } },
+    { tool: 'set_file_score', input: { path: 'apps/api/src/routes/orders.ts', level: 'yellow', reason: 'Arma la consulta pegando lo que manda la persona' } },
+    { say: '\n\n> [!riesgo] El pedido se pega tal cual en la base de datos\n> Si alguien manda un pedido raro, podría colar órdenes propias. Lo marqué en amarillo.\n\n> [!paso] Cómo se arregla\n> Pasar los datos aparte de la consulta, así la base de datos nunca los confunde con órdenes.' },
+    { say: SUGGEST(['reparar: apps/api/src/routes/orders.ts', 'abrir: apps/api/src/routes/orders.ts', '¿Qué más reviso?']) },
+  ],
+
+  // Building a small project from scratch (several new files, in different folders): the robot carries
+  // each one to its folder (building live). Use it with permissions on Auto.
+  obra: () => [
+    { think: 'Armo la base: una portada, el servidor, una ruta y su prueba.' },
+    { say: 'Voy a armar la base de tu página de saludos.' },
+    { tool: 'write_file', input: { path: 'README.md', content: '# Saludos\n\nUna página que saluda a quien la visita.\n', reason: 'La portada del proyecto' } },
+    { tool: 'write_file', input: { path: 'src/index.js', content: "import { saludo } from './rutas/saludo.js';\nconsole.log(saludo('mundo'));\n", reason: 'El punto de entrada' } },
+    { tool: 'write_file', input: { path: 'src/rutas/saludo.js', content: 'export const saludo = (nombre) => `Hola, ${nombre}`;\n', reason: 'La ruta que saluda' } },
+    { tool: 'write_file', input: { path: 'pruebas/saludo.test.js', content: "import { saludo } from '../src/rutas/saludo.js';\nif (saludo('Ana') !== 'Hola, Ana') throw new Error('falla');\n", reason: 'Una prueba del saludo' } },
+    { say: '\n\n> [!ok] Listo\n> Hay una portada, el servidor, una ruta que saluda y su prueba.' },
+    { say: SUGGEST(['abrir: README.md', '¿Cómo lo pruebo?']) },
+  ],
+
   // Dev, with permissions on Auto: the change is saved on its own and shows as applied
   cambio: () => [
     { think: 'Leo la nota, subo la versión y la marco como revisada.' },
@@ -97,6 +142,14 @@ const scenarios = {
     ];
   },
 
+  // "Recorrido" of scripts/demo/sample-project (feria-online): reads the README, then narrates the stops
+  // as JSON (agent/voice.json -> tour). Ids and paths match what the analyzer finds in that project.
+  tour: () => [
+    { think: 'Leo el README para contar la feria con sus palabras.' },
+    { tool: 'read_file', input: { path: 'README.md' } },
+    { say: JSON.stringify(TOUR_FERIA) },
+  ],
+
   // "Mejorar mi mensaje": answers only with the spec as JSON (agent/voice.json -> refine)
   refine: (prompt) => [
     { say: JSON.stringify({
@@ -110,12 +163,15 @@ const scenarios = {
   ],
 };
 
-function pickScenario(prompt, systemPrompt = '') {
+// fallback: the scenario for messages with no tag (PLATANUS_SIM_DEFAULT, e.g. "feria" for the video)
+function pickScenario(prompt, systemPrompt = '', fallback = process.env.PLATANUS_SIM_DEFAULT) {
   const tag = /\[sim:([a-z]+)\]/i.exec(prompt)?.[1]?.toLowerCase();
   if (tag && scenarios[tag]) return { name: tag, steps: scenarios[tag](prompt) };
   if (/asistente de escritura/i.test(systemPrompt)) return { name: 'refine', steps: scenarios.refine(prompt) };
+  if (/guía de Platanus/i.test(systemPrompt)) return { name: 'tour', steps: scenarios.tour(prompt) };
   if (/^\s*repara/i.test(prompt) || /repara(r)? el archivo/i.test(prompt)) return { name: 'repair', steps: scenarios.repair(prompt) };
+  if (fallback && scenarios[fallback]) return { name: fallback, steps: scenarios[fallback](prompt) };
   return { name: 'revision', steps: scenarios.revision(prompt) };
 }
 
-module.exports = { scenarios, pickScenario, FIXTURE };
+module.exports = { scenarios, pickScenario, FIXTURE, TOUR_FERIA };

@@ -1,0 +1,21 @@
+{
+  "name": "platanus-video",
+  "private": true,
+  "description": "Video del producto de Platanus (Remotion): intro y cierre en 3D, la app real grabada en el medio",
+  "scripts": {
+    "take": "node ../scripts/demo/recordTour.mjs 9223 public/takes/raw && npm run encode",
+    "encode": "node scripts/encode.mjs",
+    "studio": "remotion studio",
+    "render": "remotion render PlatanusLaunch out/platanus.mp4"
+  },
+  "dependencies": {
+    "@react-three/fiber": "9.8.1",
+    "@remotion/cli": "4.0.534",
+    "@remotion/motion-blur": "4.0.534",
+    "@remotion/three": "4.0.534",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "remotion": "4.0.534",
+    "three": "0.160.0"
+  }
+}

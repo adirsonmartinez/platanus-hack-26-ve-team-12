@@ -4,6 +4,7 @@
 // --mcp-config, so the whole chat runs as with a real agent (events, the map, approvals) without a
 // subscription. Scenarios: scripts/sim/scenarios.js. Started by electron/agents.js only when
 // PLATANUS_SIM=1 ("Simulador" in the agent picker). PLATANUS_SIM_SPEED: pause multiplier (0 = none).
+// PLATANUS_SIM_DEFAULT: the scenario for messages with no [sim:…] tag (the video uses "feria").
 const fs = require('node:fs');
 const { pickScenario } = require('./scenarios');
 

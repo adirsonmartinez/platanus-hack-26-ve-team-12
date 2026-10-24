@@ -456,3 +456,201 @@ test('an agent that reports a write only after it ends (OpenCode) still shows it
   finish();
   await sending;
 });
+
+test('the tour is one card that follows it: analyzing, each stop with its buttons, the start chips, done', () => {
+  const bus = createEventBus();
+  const calls = [];
+  const actions = { tourNext: () => calls.push('next'), tourPrev: () => calls.push('prev'), tourExit: () => calls.push('exit'), startTour: () => calls.push('start'), openFile: async () => ({ ok: true }), entryOf: async () => null, locate: (p) => calls.push(`locate:${p}`) };
+  const vm = new ChatViewModel({ agentModel: { reply: async () => ({ text: '' }) }, bus, actions });
+  bus.emit(EVENTS.tourStarted, {});
+  const card = () => vm.store.state.messages.filter((m) => m.card?.kind === 'tour');
+  assert.equal(card().length, 1);
+  assert.equal(card()[0].card.status, 'analyzing');
+  const step = { id: 'place', kind: 'place', target: '', title: 'Así está armado', say: 'Una sola app', bubble: 'Hola' };
+  bus.emit(EVENTS.tourStep, { index: 0, total: 3, step, writing: true, source: 'script', agent: '', architecture: 'monolith' });
+  assert.equal(card().length, 1, 'updated in place');
+  const c = card()[0].card;
+  assert.equal(c.status, 'playing');
+  assert.equal(c.step.title, 'Así está armado');
+  assert.deepEqual(c.actions.map((a) => a.kind), ['tourNext', 'tourExit'], 'no "Anterior" on the first stop');
+  vm.choose(c.actions[0]);
+  assert.deepEqual(calls, ['next']);
+  assert.ok(!vm.store.state.messages.some((m) => m.role === 'user'), 'the buttons say nothing in the chat');
+
+  const start = { id: 'start', kind: 'start', target: 'README.md', title: 'Por dónde empezar', say: 'Lee el README', bubble: 'Listo', open: 'README.md', folder: 'src', ask: '¿Qué entiendo primero?' };
+  bus.emit(EVENTS.tourStep, { index: 2, total: 3, step: start, writing: false, source: 'agent', agent: 'Claude', architecture: 'monolith' });
+  const last = card()[0].card;
+  assert.deepEqual(last.actions.map((a) => a.kind), ['open', 'locate', 'ask', 'tourPrev', 'tourExit']);
+  assert.equal(last.actions[2].prompt, '¿Qué entiendo primero?');
+  last.actions[1].run();
+  assert.ok(calls.includes('locate:src'));
+
+  bus.emit(EVENTS.tourEnded, {});
+  const done = card()[0].card;
+  assert.equal(done.status, 'done');
+  assert.deepEqual(done.actions.map((a) => a.kind), ['tour']);
+  bus.emit(EVENTS.tourStarted, {});
+  assert.equal(card().length, 2, 'a new tour is a new card');
+});
+
+test('the tour is offered first when a project opens', () => {
+  const bus = createEventBus();
+  const vm = new ChatViewModel({ agentModel: { reply: async () => ({ text: '' }) }, bus, actions: { startTour: () => {} } });
+  bus.emit(EVENTS.projectOpened, { name: 'tienda' });
+  assert.equal(vm.store.state.chips[0].kind, 'tour');
+});
+
+test('the robot dropped on a folder asks in the chat: explain it, change something, see its risks', () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const bus = createEventBus();
+    const calls = [];
+    const actions = { draft: (t) => calls.push(['draft', t]), locate: (p) => calls.push(['locate', p]), startTour: () => calls.push(['tour']) };
+    const vm = new ChatViewModel({ agentModel: { reply: async () => ({ text: '' }) }, bus, actions });
+    bus.emit(EVENTS.robotLanded, { path: 'apps/api', kind: 'folder', name: 'api', files: 5, red: 0, yellow: 1 });
+    mock.timers.tick(5000);
+    // a card with a clear title: what the place is (plain words), where it is, what it holds, its risks
+    const card = vm.store.state.messages.at(-1).card;
+    assert.equal(card.kind, 'place');
+    assert.equal(card.title, 'Servidor');
+    assert.equal(card.path, 'apps/api/');
+    assert.match(card.where, /5 archivos/);
+    assert.ok(card.summary.length > 10);
+    assert.equal(card.level, 'yellow');
+    assert.match(card.risks, /1 por revisar/);
+    const chips = card.actions;
+    assert.deepEqual(chips.map((c) => c.kind), ['ask', 'edit', 'locate']);
+    assert.match(chips[0].prompt, /api\//);
+    vm.choose(chips[1]);
+    assert.deepEqual(calls.at(-1), ['draft', 'En «api/» quiero ']);
+    vm.choose(chips[2]);
+    assert.deepEqual(calls.at(-1), ['locate', 'apps/api']);
+
+    bus.emit(EVENTS.robotLanded, { path: '', kind: 'project', name: 'tienda', red: 0, yellow: 0 });
+    mock.timers.tick(5000);
+    const project = vm.store.state.messages.at(-1).card;
+    assert.equal(project.title, 'tienda');
+    assert.equal(project.level, 'green');
+    assert.deepEqual(project.actions.map((c) => c.kind), ['ask', 'edit', 'tour']);
+  } finally { mock.timers.reset(); }
+});
+
+test('after the robot lands, the place stays as the chat context: on the question, its answer and for the agent', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const bus = createEventBus();
+    let asked = '';
+    const agentModel = { reply: async (text, { onStart }) => { asked = text; onStart?.(); return { text: 'En db/ están las tablas.' }; } };
+    const vm = new ChatViewModel({ agentModel, bus, actions: { draft: () => {} }, connection: { live: true, agentLabel: 'Claude', store: { state: { selected: 'claude', model: '', effort: 'low' } } } });
+    bus.emit(EVENTS.robotLanded, { path: 'db', kind: 'folder', name: 'db', files: 1, red: 0, yellow: 1 });
+    mock.timers.tick(5000);
+    const focus = vm.store.state.focus;
+    assert.deepEqual({ title: focus.title, path: focus.path, level: focus.level }, { title: 'Base de datos', path: 'db/', level: 'yellow' });
+
+    const explain = vm.store.state.messages.at(-1).card.actions[0];
+    mock.timers.reset();
+    await vm.choose(explain);
+    const question = vm.store.state.messages.find((m) => m.role === 'user');
+    assert.equal(question.context.title, 'Base de datos', 'the question shows where it is about');
+    const answer = vm.store.state.messages.find((m) => m.run);
+    assert.equal(answer.run.about.path, 'db/', 'its answer too');
+    assert.match(asked, /db\//, 'the agent knows what "aquí" is');
+    assert.ok(asked.endsWith(explain.prompt), 'the question itself is unchanged');
+
+    vm.clearFocus();
+    assert.equal(vm.store.state.focus, null);
+    await vm.send('hola');
+    assert.equal(vm.store.state.messages.at(-1).run?.about ?? vm.store.state.messages.findLast((m) => m.role === 'user').context, undefined);
+  } finally { mock.timers.reset(); }
+});
+
+test('a new chat or another project drops the place', () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const bus = createEventBus();
+    const vm = new ChatViewModel({ agentModel: { reply: async () => ({ text: '' }) }, bus });
+    bus.emit(EVENTS.robotLanded, { path: '', kind: 'project', name: 'tienda', red: 0, yellow: 0 });
+    mock.timers.tick(5000);
+    assert.equal(vm.store.state.focus.title, 'tienda');
+    vm.newChat();
+    assert.equal(vm.store.state.focus, null);
+    bus.emit(EVENTS.robotLanded, { path: '', kind: 'project', name: 'tienda', red: 0, yellow: 0 });
+    mock.timers.tick(5000);
+    bus.emit(EVENTS.projectOpened, { name: 'otro' });
+    assert.equal(vm.store.state.focus, null);
+  } finally { mock.timers.reset(); }
+});
+
+test('a question to understand: the agent only reads, is told not to change anything, and no repair is offered after', async () => {
+  const bus = createEventBus();
+  const calls = [];
+  const agentModel = { reply: async (text, opts) => { calls.push({ text, readOnly: opts.readOnly }); opts.onStart?.(); return { text: 'Aquí van las tablas.\n\n```sugerencias\n- reparar: db/schema.sql\n- auditar: db/schema.sql\n- abrir: db/schema.sql\n- ¿Qué tabla miro primero?\n```' }; } };
+  const actions = { repair: () => {}, openFile: async () => ({ ok: true }), entryOf: async () => ({ type: 'file' }) };
+  const vm = new ChatViewModel({ agentModel, bus, actions, connection: { live: true, agentLabel: 'Claude', store: { state: { selected: 'claude', model: '', effort: 'low' } } } });
+  await vm.choose({ kind: 'ask', label: 'Explícame qué hay aquí', prompt: 'Explícame qué hay en «db/»', intent: 'explain' });
+  assert.equal(calls[0].readOnly, true);
+  assert.match(calls[0].text, /solo quiere entender/i);
+  assert.equal(vm.store.state.messages.find((m) => m.role === 'user').text, 'Explícame qué hay en «db/»', 'the bubble keeps the plain question');
+  assert.deepEqual(vm.store.state.chips.map((c) => c.kind), ['open', 'ask'], 'no repair, no audit');
+
+  await vm.send('Arregla schema.sql');
+  assert.equal(calls[1].readOnly, false, 'asking for a change uses the normal tools');
+  assert.ok(vm.store.state.chips.some((c) => c.kind === 'repair'));
+});
+
+test('in Vibe, files saved by another program are not posted in the conversation (the map updates by itself)', () => {
+  const bus = createEventBus();
+  let tech = false;
+  const vm = new ChatViewModel({ agentModel: { reply: async () => ({ text: '' }) }, bus, actions: { entryOf: async () => null }, isTech: () => tech });
+  bus.emit(EVENTS.diskChanged, { paths: ['scripts/build-icons.mjs', 'renderer/styles/main.css'] });
+  assert.equal(vm.store.state.messages.filter((m) => m.card?.kind === 'changes').length, 0);
+  tech = true;
+  bus.emit(EVENTS.diskChanged, { paths: ['renderer/styles/main.css'] });
+  assert.equal(vm.store.state.messages.filter((m) => m.card?.kind === 'changes').length, 1, 'Dev still shows them');
+});
+
+test('while explaining, a refused change shows as skipped (not as an error)', async () => {
+  const bus = createEventBus();
+  const agentModel = { reply: async (_t, { onEvent, onStart }) => {
+    onStart?.();
+    onEvent({ type: 'tool', id: 't1', name: 'read_file', target: 'db/a.sql', parent: null });
+    onEvent({ type: 'tool_done', id: 't1', error: false });
+    onEvent({ type: 'tool', id: 't2', name: 'set_file_score', target: 'db/a.sql', parent: null });
+    onEvent({ type: 'tool_done', id: 't2', error: true });
+    return { text: 'Aquí están las tablas.' };
+  } };
+  const vm = new ChatViewModel({ agentModel, bus, connection: { live: true, agentLabel: 'Claude', store: { state: { selected: 'claude', model: '', effort: 'low' } } } });
+  await vm.send('Explícame qué hay en db/');
+  const steps = vm.store.state.messages.find((m) => m.run).run.steps;
+  assert.deepEqual(steps.map((s) => s.status), ['done', 'skipped']);
+  await vm.send('Arregla db/a.sql'); // asking for a change, a refused tool is a real error
+});
+
+test('review: a repair write that was never saved (rejected) ends as not saved, not as done', () => {
+  const bus = createEventBus();
+  const vm = new ChatViewModel({ agentModel: { reply: async () => ({ text: '' }) }, bus });
+  bus.emit(EVENTS.repairStarted, { path: 'a.js', agent: 'Claude' });
+  bus.emit(EVENTS.repairTool, { path: 'a.js', name: 'write_file', target: 'a.js' });
+  bus.emit(EVENTS.repairText, { path: 'a.js', delta: 'No guardé el cambio.' }); // the next text settles the steps
+  const step = vm.store.state.messages.find((m) => m.run?.kind === 'repair').run.steps[0];
+  assert.equal(step.status, 'error');
+});
+
+test('review: a repair change reported before its tool is one write step', () => {
+  const bus = createEventBus();
+  const vm = new ChatViewModel({ agentModel: { reply: async () => ({ text: '' }) }, bus });
+  bus.emit(EVENTS.repairStarted, { path: 'a.js', agent: 'Claude' });
+  bus.emit(EVENTS.repairChanged, { path: 'a.js', change: { path: 'a.js', reason: 'x', diff: { created: false, added: 1, removed: 0, hunks: [] } } });
+  bus.emit(EVENTS.repairTool, { path: 'a.js', name: 'write_file', target: 'a.js' });
+  const steps = vm.store.state.messages.find((m) => m.run?.kind === 'repair').run.steps;
+  assert.equal(steps.filter((s) => s.name === 'write_file').length, 1);
+  assert.equal(steps[0].status, 'done');
+});
+
+test('the robot offers the same choices on the map as its chat card (placeActions)', () => {
+  const vm = new ChatViewModel({ agentModel: { reply: async () => ({ text: '' }) }, bus: createEventBus(), actions: { draft: () => {}, locate: () => {}, startTour: () => {} } });
+  const folder = vm.placeActions({ path: 'apps/api', kind: 'folder', name: 'api', files: 2, red: 1, yellow: 0 });
+  assert.deepEqual(folder.map((a) => a.kind), ['ask', 'edit', 'locate']);
+  assert.equal(folder[0].intent, 'explain');
+  assert.deepEqual(vm.placeActions({ path: '', kind: 'project', name: 't', red: 0, yellow: 0 }).map((a) => a.kind), ['ask', 'edit', 'tour']);
+});

@@ -33,6 +33,9 @@ import { GitViewModel } from './viewmodels/gitViewModel.js';
 import { AppViewModel } from './viewmodels/appViewModel.js';
 import { ShellViewModel } from './viewmodels/shellViewModel.js';
 import { RepairViewModel } from './viewmodels/repairViewModel.js';
+import { TourViewModel } from './viewmodels/tourViewModel.js';
+import { RobotViewModel } from './viewmodels/robotViewModel.js';
+import { BuildViewModel } from './viewmodels/buildViewModel.js';
 import { HandControlViewModel } from './viewmodels/handControlViewModel.js';
 import { EditorViewModel } from './viewmodels/editorViewModel.js';
 
@@ -43,7 +46,12 @@ import { createInputController } from './views/scene/inputController.js';
 import { createGitView } from './views/scene/gitView.js';
 import { createRemiView } from './views/scene/remiView.js';
 import { createRobotView } from './views/scene/robotView.js';
+import { createTourView } from './views/scene/tourView.js';
+import { createBuildSiteView } from './views/scene/buildSiteView.js';
+import { createDemoCursor } from './views/ui/demoCursorView.js';
+import { isDemo } from './core/demoMode.js';
 import { RobotDialogViewModel } from './viewmodels/robotDialogViewModel.js';
+import { createWelcomeRobotView } from './views/scene/welcomeRobotView.js';
 import { createHudView } from './views/ui/hudView.js';
 import { createLabelLayer } from './views/ui/labelLayer.js';
 import { createControlsView } from './views/ui/controlsView.js';
@@ -95,6 +103,8 @@ const repairViewModel = new RepairViewModel({ securityModel, mapViewModel, camer
 const serversViewModel = new ServersViewModel({ serversModel });
 const editorViewModel = new EditorViewModel({ workspace, bus }); // files clicked on the map open as tabs
 const handTracking = createHandTrackingService();
+// The tour of the open project ("Recorrido"): the analyzer decides the stops, the agent narrates them
+const tourViewModel = new TourViewModel({ projectModel, workspace, connection, modeModel, camera: cameraViewModel, mapViewModel, repairViewModel, bus });
 const handControlViewModel = new HandControlViewModel({ tracking: handTracking, camera: cameraViewModel });
 // The server list only refreshes while its side view is on screen
 shellViewModel.store.subscribe(({ side, sidebarOpen }) => serversViewModel.setVisible(sidebarOpen && side === 'servers'), { immediate: true });
@@ -104,6 +114,7 @@ const stage = document.getElementById('stage');
 const actions = {
   // Remi hops from the button to the map, then walks to the file's folder
   repair(path, from = null) {
+    tourViewModel.exit({ restore: false }); // Remi takes the map
     shellViewModel.setStage('map');
     if (repairViewModel.busy || !from) return repairViewModel.start(path);
     remiJump(from, stage).then(() => repairViewModel.start(path));
@@ -132,6 +143,26 @@ const actions = {
     shellViewModel.setStage('map');
     if (!mapViewModel.show(path)) chatViewModel.sayFromMap({ text: strings.chat.notInProject(path) });
   },
+  async startTour() {
+    shellViewModel.setStage('map');
+    if (!shellViewModel.store.state.chatOpen) shellViewModel.toggleChat();
+    const result = await tourViewModel.start();
+    if (result.reason === 'busy') chatViewModel.sayFromMap({ text: strings.tour.busy });
+  },
+  // Starts a message in the chat box (the person finishes it)
+  draft(text) {
+    if (!shellViewModel.store.state.chatOpen) shellViewModel.toggleChat();
+    if (chatViewModel.store.state.minimized) chatViewModel.toggleMinimized();
+    composerViewModel.setDraft(text);
+    requestAnimationFrame(() => {
+      const box = document.getElementById('chat-text');
+      box?.focus();
+      box?.setSelectionRange(box.value.length, box.value.length);
+    });
+  },
+  tourNext: () => tourViewModel.next(),
+  tourPrev: () => tourViewModel.prev(),
+  tourExit: () => tourViewModel.exit(),
   showConnect: () => (shellViewModel.store.state.side === 'agent' && shellViewModel.store.state.sidebarOpen) || shellViewModel.setSide('agent'),
   showRepairs: () => (shellViewModel.store.state.side === 'repairs' && shellViewModel.store.state.sidebarOpen) || shellViewModel.setSide('repairs'),
   openChat() {
@@ -164,7 +195,7 @@ connection.store.subscribe(() => {
   pendingAgentPrompt = null;
   chatViewModel.send(prompt);
 });
-const chatViewModel = new ChatViewModel({ agentModel, bus, actions, connection });
+const chatViewModel = new ChatViewModel({ agentModel, bus, actions, connection, isTech: () => modeModel.tech });
 
 // The person's level (the welcome robot adapts to it) and the app's Vibe / Dev mode move together:
 // a programmer gets Dev; switching by hand moves the level. Someone already on Dev counts as a programmer.
@@ -179,7 +210,12 @@ chatViewModel.store.subscribe(({ messages }, previous) => {
     .filter((m) => m.role === 'user' && !robotTexts.has(m.text))
     .forEach((m) => userLevel.learnFromText(m.text));
 });
+// The welcome robot interviews the person on a new project (Desire's dialog, welcomeRobotView.js)
 const robotDialogViewModel = new RobotDialogViewModel({ mapViewModel, projectModel, securityModel, actions, userLevel });
+// Building live: the robot carries each file an agent saves to its folder (it reads the chat's run cards)
+const buildViewModel = new BuildViewModel({ chatViewModel, mapViewModel, projectModel, tourViewModel, bus });
+// The robot companion: drag or throw it onto a folder and it asks what to do there
+const robotViewModel = new RobotViewModel({ projectModel, mapViewModel, tourViewModel, buildViewModel, bus });
 // The agent waits for the person to approve a change (main process dialog): the chat says so
 agentService.onAwaiting((detail) => bus.emit(EVENTS.agentAwaiting, detail));
 agentService.onChanged((change) => bus.emit(EVENTS.agentChanged, change)); // its diff, live in the chat
@@ -196,7 +232,24 @@ const mapView = createMapView({ sceneView, labels, mapViewModel });
 const supabaseView = createSupabaseView({ sceneView, labels, supabaseViewModel, supabaseModel });
 const gitView = createGitView({ sceneView, labels, gitViewModel });
 createRemiView({ sceneView, labels, repairViewModel });
-createRobotView({ sceneView, labels, mapViewModel, robotDialogViewModel });
+createTourView({ sceneView, labels, tourViewModel });
+const robotView = createRobotView({
+  sceneView, labels, mapViewModel, tourViewModel, buildViewModel, robotViewModel, robotDialogViewModel, chatViewModel, cameraViewModel,
+  openChat: () => {
+    if (!shellViewModel.store.state.chatOpen) shellViewModel.toggleChat();
+    if (chatViewModel.store.state.minimized) chatViewModel.toggleMinimized();
+  },
+});
+createBuildSiteView({ sceneView, labels, buildViewModel, hands: () => robotView.hands });
+createWelcomeRobotView({ sceneView, labels, mapViewModel, robotDialogViewModel, tourViewModel, buildViewModel });
+if (isDemo) {
+  createDemoCursor(); // recording the product video (scripts/demo/)
+  // the recorder (and checks) can drive the robot and find 3D things on screen
+  window.__platanus = {
+    robotViewModel, robotDialogViewModel, tourViewModel, mapViewModel, buildViewModel, chatViewModel, cameraViewModel,
+    screenOf: (point) => { const r = stage.getBoundingClientRect(); const s = sceneView.toScreen(point); return { x: r.left + s.x, y: r.top + s.y }; },
+  };
+}
 sceneView.onFrame(labels.update); // last: after every view moved its anchors
 appViewModel.store.subscribe(({ view }) => {
   sceneView.setActiveLayer(view);
@@ -221,6 +274,7 @@ createInputController({
   onEscape: () => (appViewModel.view === 'git' ? gitViewModel.escape() : mapViewModel.escape()),
   onToggleView: () => shellViewModel.setStage(appViewModel.view === 'git' ? 'map' : 'git'),
   onHover: (pick, x, y) => hoverCard.show(appViewModel.view === 'map' ? pick : null, x, y),
+  grabber: () => (appViewModel.view === 'map' ? robotView.grabber : null), // the robot is dragged, not the map
 });
 createControlsView({ cameraViewModel, onReset: () => (appViewModel.view === 'map' ? mapViewModel.home() : cameraViewModel.reset()) });
 createHandControlView({ handControlViewModel, video: handTracking.video });
@@ -261,6 +315,8 @@ const menuInfo = () => {
     worst: worst && { path: worst.path, level: worst.level },
     counts: shell.counts,
     pending: repairHistory.store.state.entries.filter((e) => e.status === 'fixed' || e.status === 'planned').length,
+    projectOpen: projectModel.store.state.open,
+    empty: !projectModel.store.state.tree.length,
   };
 };
 attachMenu($id('chat-more'), $id('chat-more-menu'), () => chatMenuItems({ actions, modeModel, chatViewModel, info: menuInfo }));

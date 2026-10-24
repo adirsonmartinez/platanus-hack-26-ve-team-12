@@ -1,5 +1,7 @@
 # AGENTS.md — Platanus (team-12)
 
+> Before working, read `MEMORY.md` (the project's live state) and the skill `.claude/skills/platanus-ade/`. At the end of every task, update `MEMORY.md` with what changed and what you learned.
+
 Instructions for AI coding agents working on this repo (Claude Code, Codex, Cursor, Pi…).
 The full conventions are in [`CLAUDE.md`](CLAUDE.md); read it first. Key points:
 

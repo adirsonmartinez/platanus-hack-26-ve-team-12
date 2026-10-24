@@ -101,3 +101,12 @@ export function fitView(points) {
   const zoom = clamp(Math.min(VISIBLE.across / span(across), VISIBLE.down / (span(depth) * Math.sin(CAMERA.elevation))), 0.4, 1.2);
   return { x: r * c + d * s, z: -r * s + d * c, zoom };
 }
+
+// Places for folders the map does not show yet (a folder an agent just created, a tour stop): a row under
+// the whole tree, after everything else, so they never land on a folder. points: what the map draws.
+export function ghostSlots(points, count) {
+  const { pitch, cols, rowGap } = TREE.top;
+  const below = points.length ? Math.max(...points.map((p) => screenOf(p.x, p.z).v)) : 0;
+  const left = -((Math.min(count, cols) - 1) * pitch) / 2;
+  return Array.from({ length: count }, (_, i) => toWorld(left + (i % cols) * pitch, below + rowGap + Math.floor(i / cols) * rowGap));
+}

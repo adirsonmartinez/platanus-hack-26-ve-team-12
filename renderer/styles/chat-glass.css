@@ -407,6 +407,9 @@
 }
 .chat-launcher .metal-fx-content .chat-launcher-button { background: transparent; box-shadow: none; } /* the metal draws the ring and the dark center */
 .chat-launcher-button:hover { transform: translateY(-1px); }
+/* the agent's mark exactly in the middle (no padding inherited from other buttons) */
+.chat-launcher-button { padding: 0; display: grid; place-items: center; }
+.chat-launcher-button svg.icon { width: 22px; height: 22px; margin: 0; padding: 0; }
 .chat-launcher-button[data-agent="claude"] svg.icon { color: #d97757; }
 #chat-launcher .chat-menu-item.primary, #chat .chat-menu-item.primary { color: var(--lg-text, #fff); font-weight: 600; }
 #chat-launcher .chat-menu-item, #chat .chat-menu-item { font-family: var(--lg-font); }
@@ -446,3 +449,86 @@
 .chat-menu-foot { display: flex; gap: 6px; padding-top: 6px; border-top: 1px solid rgba(255, 255, 255, .08); }
 .chat-menu-link { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; height: 32px; padding: 0 8px; border: 0; border-radius: 10px; background: transparent; color: rgba(222, 222, 222, .8); font: 500 12px var(--lg-font); cursor: pointer; white-space: nowrap; }
 .chat-menu-link:hover { background: rgba(255, 255, 255, .07); color: #fff; }
+
+/* Tour ("Recorrido") card: progress dots, the stop's words, the files of a use case */
+#chat .card-badge.tour { display: grid; place-items: center; overflow: hidden; color: #b8b3ff; background: rgba(139, 131, 255, .14); }
+#chat .card-badge.tour canvas.orb { width: 32px; height: 32px; }
+#chat .tour-dots { display: flex; gap: 5px; margin: 12px 0 10px; }
+#chat .tour-dots i { flex: 1; height: 3px; border-radius: 2px; background: rgba(255, 255, 255, .1); transition: background .3s ease; }
+#chat .tour-dots i.seen { background: rgba(139, 131, 255, .45); }
+#chat .tour-dots i.now { background: #8b83ff; }
+#chat .tour-step { display: flex; flex-direction: column; gap: 4px; animation: tour-in .35s ease both; }
+#chat .tour-title { font: 600 14px/1.3 var(--lg-font); color: var(--lg-text); letter-spacing: -.01em; }
+#chat .tour-say { margin: 0; color: var(--lg-text-2); font: 13px/1.5 var(--lg-font); }
+#chat .tour-flow { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; }
+#chat .tour-flow-label { width: 100%; color: var(--lg-muted); font-size: 11.5px; }
+#chat .tour-flow-arrow { color: var(--lg-muted); font-size: 12px; }
+#chat .tour-file { height: 26px; padding: 0 9px; border: 0; border-radius: var(--lg-r-sm); background: var(--lg-chip); box-shadow: var(--lg-rim); color: var(--lg-text-2); font: 11.5px var(--lg-mono); cursor: pointer; }
+#chat .tour-file:hover { color: var(--lg-text); background: rgba(255, 255, 255, .1); }
+@keyframes tour-in { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { #chat .tour-step { animation: none; } }
+
+/* Where the robot landed: a clear title (what the place is), where it is, and its status */
+#chat .card-badge.place { display: grid; place-items: center; color: #b8b3ff; background: rgba(139, 131, 255, .14); }
+#chat .card-badge.place.yellow { color: var(--warn); background: rgba(255, 194, 74, .12); }
+#chat .card-badge.place.red { color: var(--danger); background: rgba(255, 90, 106, .12); }
+#chat .msg.card-msg.place .card-title { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+#chat .place-eyebrow { color: var(--lg-muted); font: 500 11px/1.2 var(--lg-font); letter-spacing: .02em; text-transform: uppercase; }
+#chat .msg.card-msg.place .card-title strong { font: 600 16px/1.25 var(--lg-font); }
+#chat .place-where { color: var(--lg-text-2); font: 12px/1.3 var(--lg-mono); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#chat .place-status { align-self: flex-start; flex: none; padding: 3px 9px; border-radius: 999px; font: 600 11px/1.4 var(--lg-font); color: var(--ok); background: rgba(61, 220, 151, .1); }
+#chat .place-status.yellow { color: var(--warn); background: rgba(255, 194, 74, .12); }
+#chat .place-status.red { color: var(--danger); background: rgba(255, 90, 106, .12); }
+#chat .place-question { margin: 8px 0 0; color: var(--lg-text); font: 500 13px/1.45 var(--lg-font); }
+
+/* The place the robot is on, stuck on top of the conversation (ChatViewModel.focus) */
+#chat .chat-focus {
+  position: sticky; top: 0; z-index: 3; display: flex; align-items: center; gap: 10px;
+  margin: 0 0 10px; padding: 8px 8px 8px 10px; border-radius: 14px;
+  background: #18181c; -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px);
+  box-shadow: var(--lg-rim), 0 8px 24px rgba(0, 0, 0, .35);
+  animation: tour-in .3s ease both;
+}
+#chat .chat-focus[hidden] { display: none; }
+#chat .chat-focus-badge { display: grid; place-items: center; flex: none; width: 30px; height: 30px; border-radius: 9px; color: #b8b3ff; background: rgba(139, 131, 255, .14); }
+#chat .chat-focus-badge.yellow { color: var(--warn); background: rgba(255, 194, 74, .12); }
+#chat .chat-focus-badge.red { color: var(--danger); background: rgba(255, 90, 106, .12); }
+#chat .chat-focus-text { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+#chat .chat-focus-text small { color: var(--lg-muted); font: 500 10.5px/1.2 var(--lg-font); letter-spacing: .02em; text-transform: uppercase; }
+#chat .chat-focus-text strong { color: var(--lg-text); font: 600 14px/1.3 var(--lg-font); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#chat .chat-focus > code { flex: none; max-width: 40%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding: 3px 8px; border-radius: 8px; background: var(--lg-chip); color: var(--lg-text-2); font: 11.5px var(--lg-mono); box-shadow: none; }
+#chat .chat-focus-close { display: grid; place-items: center; flex: none; width: 26px; height: 26px; border: 0; border-radius: 8px; background: transparent; color: var(--lg-muted); cursor: pointer; }
+#chat .chat-focus-close:hover { background: var(--lg-chip); color: var(--lg-text); }
+/* the place a question was about: on the question and on its answer */
+#chat .msg.user .msg-context { display: flex; align-items: center; gap: 5px; width: fit-content; margin: 0 0 6px auto; padding: 2px 8px; border-radius: 999px; background: rgba(139, 131, 255, .14); color: #c9c5ff; font: 500 11px/1.5 var(--lg-mono); }
+#chat .run-about { display: flex; align-items: center; gap: 5px; margin-top: 2px; color: #c9c5ff; font: 500 11.5px/1.4 var(--lg-font); }
+#chat .run-about code { padding: 0 5px; border-radius: 5px; background: rgba(139, 131, 255, .12); box-shadow: none; color: #c9c5ff; font: 11px var(--lg-mono); }
+
+/* ---------- The agent's mark in the header: a small liquid-glass tile, the logo centered in it ---------- */
+#chat { --agent-tint: #8b83ff; }
+#chat[data-agent="claude"] { --agent-tint: #d97757; }
+#chat[data-agent="codex"] { --agent-tint: #7b7cff; }
+#chat[data-agent="grok"], #chat[data-agent="opencode"] { --agent-tint: #e8e8ee; }
+#chat .chat-avatar {
+  position: relative; display: grid; place-items: center; flex: none; width: 36px; height: 36px; border-radius: 12px; overflow: hidden;
+  background:
+    radial-gradient(70% 70% at 50% 58%, color-mix(in srgb, var(--agent-tint) 24%, transparent), transparent 72%),
+    linear-gradient(160deg, rgba(255, 255, 255, .17), rgba(255, 255, 255, .04) 46%, rgba(255, 255, 255, .09));
+  -webkit-backdrop-filter: url(#liquid-glass) blur(10px) saturate(180%);
+  backdrop-filter: url(#liquid-glass) blur(10px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .38), inset 0 -1px 1px rgba(0, 0, 0, .35), inset 0 0 14px rgba(255, 255, 255, .05), 0 6px 18px rgba(0, 0, 0, .35);
+}
+/* the light that sits on the top half of the glass */
+#chat .chat-avatar::before {
+  content: ""; position: absolute; inset: 1px 1px 52% 1px; border-radius: 11px 11px 45% 45% / 11px 11px 30% 30%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, .24), rgba(255, 255, 255, 0)); pointer-events: none; z-index: 2;
+}
+/* the glass edge (same gradient rim as the panel) */
+#chat .chat-avatar::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none; z-index: 2;
+  background: linear-gradient(150deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, .08) 35%, rgba(255, 255, 255, .03) 60%, rgba(255, 255, 255, .22));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+#chat .chat-avatar > svg.icon { position: relative; z-index: 1; width: 20px; height: 20px; margin: 0; padding: 0; filter: drop-shadow(0 1px 2px rgba(0, 0, 0, .45)); }
+#chat .chat-avatar.busy { background: radial-gradient(70% 70% at 50% 55%, rgba(139, 131, 255, .22), transparent 72%), rgba(10, 10, 14, .55); }

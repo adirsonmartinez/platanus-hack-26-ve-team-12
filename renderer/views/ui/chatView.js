@@ -37,6 +37,55 @@ export function createChatView({ chatViewModel: vm, composerViewModel = null, co
   thinking.append(thinkingOrb('breathing', { size: 20 }), document.createTextNode(strings.chat.thinking));
   typing.append(thinking);
 
+  // The place the robot is on (ChatViewModel.focus): stuck on top of the conversation while it lasts,
+  // so the person always sees what "aquí" is
+  const focusBar = document.createElement('div');
+  focusBar.className = 'chat-focus';
+  focusBar.hidden = true;
+  const F = strings.chat.focus;
+  function paintFocus(focus) {
+    focusBar.hidden = !focus;
+    if (!focus) return;
+    const close = document.createElement('button');
+    close.type = 'button';
+    close.className = 'chat-focus-close';
+    close.title = F.close;
+    close.setAttribute('aria-label', F.close);
+    close.appendChild(icon('close', { size: 14 }));
+    close.addEventListener('click', () => vm.clearFocus());
+    const text = document.createElement('span');
+    text.className = 'chat-focus-text';
+    const label = document.createElement('small');
+    label.textContent = F.label;
+    const title = document.createElement('strong');
+    title.textContent = focus.title;
+    text.append(label, title);
+    const where = document.createElement('code');
+    where.textContent = focus.path || F.project;
+    const badge = document.createElement('span');
+    badge.className = `chat-focus-badge ${focus.level}`;
+    badge.appendChild(icon('bot', { size: 16 }));
+    focusBar.replaceChildren(badge, text, where, close);
+  }
+
+  // Where a question is about (asked while the robot was on a place): a small tag over the bubble
+  const contextTag = (context) => {
+    const tag = document.createElement('span');
+    tag.className = 'msg-context';
+    tag.append(icon('bot', { size: 12 }), document.createTextNode(context.path || context.title));
+    tag.title = `${F.about} ${context.title}`;
+    return tag;
+  };
+
+  // The question just sent stays at the top while its answer comes below (instead of jumping to the end);
+  // the person scrolling takes over
+  let anchorId = null;
+  const letGo = () => { anchorId = null; };
+  body.addEventListener('wheel', letGo, { passive: true });
+  body.addEventListener('touchmove', letGo, { passive: true });
+  body.addEventListener('pointerdown', letGo); // the scrollbar, a selection
+  body.addEventListener('keydown', letGo);
+
   const chips = document.createElement('div');
   chips.className = 'chips';
 
@@ -98,6 +147,7 @@ export function createChatView({ chatViewModel: vm, composerViewModel = null, co
     else if (m.step) renderStep(el, m);
     else if (m.result) renderResult(el, m);
     else fill(el, m);
+    if (m.role === 'user' && m.context) el.prepend(contextTag(m.context));
     // Modo Vibe: file links show the file's name; the full path is on hover
     for (const ref of el.querySelectorAll('code.file-ref')) {
       ref.title = ref.dataset.path;
@@ -156,7 +206,22 @@ export function createChatView({ chatViewModel: vm, composerViewModel = null, co
     for (const node of [typing, chips]) if (!tail.includes(node)) node.remove();
     const last = [...body.children].slice(-tail.length);
     if (tail.length && tail.some((node, i) => last[i] !== node)) body.append(...tail);
-    if (atBottom || state.messages.length !== previous?.messages.length) body.scrollTop = body.scrollHeight;
+    if (state.focus !== previous?.focus) paintFocus(state.focus);
+    if (body.firstElementChild !== focusBar) body.prepend(focusBar);
+    const added = previous ? state.messages.slice(previous.messages.length) : [];
+    const asked = added.findLast((m) => m.role === 'user');
+    if (asked) anchorId = asked.id;
+    const busy = state.typing || state.messages.at(-1)?.run?.status === 'running';
+    const anchor = anchorId !== null && rendered.get(anchorId)?.el;
+    // it stays there after the answer too (its chips appear below); something new from the map lets go
+    if (anchor && (busy || asked || !added.length)) {
+      // the question at the top, under the place bar
+      const top = anchor.getBoundingClientRect().top - body.getBoundingClientRect().top + body.scrollTop;
+      body.scrollTop = Math.max(0, top - (focusBar.hidden ? 0 : focusBar.offsetHeight) - 12);
+    } else {
+      anchorId = null;
+      if (atBottom || state.messages.length !== previous?.messages.length) body.scrollTop = body.scrollHeight;
+    }
 
     sendButton.disabled = state.typing;
     root.classList.toggle('min', state.minimized);

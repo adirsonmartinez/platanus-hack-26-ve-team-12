@@ -357,3 +357,57 @@ body::after {
 }
 #breadcrumb .crumbs button:hover { color: var(--accent); background: var(--accent-soft); }
 .crumbs .sep { color: var(--faint); }
+/* Tour: folders with no problems, shown only while the tour lasts */
+.map-label.ghost { border-style: dashed; border-color: rgba(230, 233, 236, 0.35); background: rgba(28, 31, 35, 0.72); }
+.map-label.ghost strong::before { background: #c9ced4; }
+/* Recording mode (core/demoMode.js): the cursor is drawn in the page */
+html.demo, html.demo * { cursor: none !important; }
+.demo-cursor { position: fixed; left: 0; top: 0; z-index: 100000; pointer-events: none; margin: -3.5px 0 0 -3.5px; /* the arrow's tip on the real click point */ color: #fff; filter: drop-shadow(0 2px 6px rgba(0, 0, 0, .55)); transition: scale .12s ease; }
+.demo-cursor svg.icon { fill: #141414; stroke: #fff; stroke-width: 1.6; }
+.demo-cursor.down { scale: .86; }
+.demo-click { position: fixed; z-index: 99999; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; pointer-events: none; border: 2px solid rgba(139, 131, 255, .9); background: rgba(139, 131, 255, .18); animation: demo-click .5s ease-out forwards; }
+@keyframes demo-click { from { transform: scale(.3); opacity: 1; } to { transform: scale(1.4); opacity: 0; } }
+/* The agents' own logos (icons/brands.js): filled shapes in their brand colors, never outlined */
+svg.icon.agent-logo, svg.icon.agent-logo * { stroke: none !important; }
+svg.icon.agent-logo { flex: none; fill: currentColor !important; }
+canvas.grabbing { cursor: grabbing; }
+/* The robot's bubble while an agent works: the same thinking orb as the chat, then what it is doing */
+.map-label.robot-bubble strong[hidden] { display: none; }
+/* Building live (buildSiteView.js): a folder the agent is saving files into */
+.map-label.build-site { border-style: dashed; border-color: rgba(230, 233, 236, 0.35); background: rgba(28, 31, 35, 0.8); }
+.map-label.build-site strong::before { background: #c9ced4; }
+.map-label.build-site.current { border-style: solid; border-color: rgba(139, 131, 255, 0.6); }
+.map-label.build-site.current strong::before { background: var(--accent); }
+.map-label.build-site.counter { padding: 2px 8px; border-radius: 999px; }
+.map-label.build-site.counter span { font-size: 10.5px; color: #c9c5ff; }
+/* The robot's choices where it landed: buttons right in its bubble */
+
+/* ---------- The robot's bubble: a compact, opaque speech bubble with a tail toward the robot ---------- */
+.map-label.robot-bubble {
+  z-index: 6; max-width: 240px; padding: 9px 12px 10px; margin-top: -10px; white-space: normal;
+  border: 1px solid rgba(139, 131, 255, 0.45); border-radius: 14px;
+  background: #17171c; box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.map-label.robot-bubble::after {
+  content: ""; position: absolute; left: 50%; bottom: -6px; width: 10px; height: 10px; transform: translateX(-50%) rotate(45deg);
+  background: #17171c; border-right: 1px solid rgba(139, 131, 255, 0.45); border-bottom: 1px solid rgba(139, 131, 255, 0.45);
+}
+.map-label.robot-bubble strong { font: 600 13px/1.3 var(--sans); color: var(--text); }
+.map-label.robot-bubble strong::before { display: none; }
+.map-label.robot-bubble span { font-size: 12px; line-height: 1.35; color: var(--muted); }
+/* working: one line, the thinking orb at its real size next to what it does */
+.map-label.robot-bubble.busy { flex-direction: row; align-items: center; gap: 7px; padding: 6px 12px 6px 8px; border-radius: 999px; white-space: nowrap; }
+.map-label.robot-bubble.busy::after { bottom: -6px; }
+.map-label.robot-bubble .robot-orb { display: grid; place-items: center; flex: none; width: 20px; height: 20px; }
+#stage .map-label canvas.orb { position: static; inset: auto; width: 20px !important; height: 20px !important; } /* not the 3D canvas rule */
+/* its choices: short buttons with an icon (the full wording on hover) */
+.map-label.robot-bubble.has-actions { pointer-events: auto; }
+.map-label.robot-bubble .robot-actions { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+.map-label.robot-bubble .robot-action {
+  display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 10px; border: 0; border-radius: 999px;
+  background: rgba(255, 255, 255, 0.07); box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1); color: var(--text);
+  font: 500 11.5px var(--sans); cursor: pointer; white-space: nowrap;
+}
+.map-label.robot-bubble .robot-action:first-child { background: rgba(139, 131, 255, 0.2); }
+.map-label.robot-bubble .robot-action:hover { background: rgba(139, 131, 255, 0.3); }
+.map-label.robot-bubble .robot-action svg.icon { flex: none; }

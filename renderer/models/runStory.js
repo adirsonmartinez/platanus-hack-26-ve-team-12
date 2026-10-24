@@ -23,6 +23,9 @@ export function stepLine(step) {
   if (!known) text = status === 'error' ? S.failed(S.unknown.what) : S.unknown[status === 'running' ? 'running' : 'done'];
   else if (status === 'running') text = S.running[step.name](name);
   else if (status === 'error') text = S.failed(S.what[step.name](name));
+  // a change it was not allowed to make while the person only wanted to understand
+  else if (status === 'skipped') text = S.skipped(S.what[step.name](name));
+  else if (step.name === 'write_file' && step.diff?.created) text = S.created(name); // a new file, not a fix
   else text = S.done[step.name](name, S.levels[level]);
   return { text, name: path ? name : '', path, level, status };
 }
@@ -40,13 +43,17 @@ export function runRecap(steps = []) {
   if (!steps.length) return '';
   const tools = steps.filter((s) => s.kind === 'tool' && s.status === 'done');
   const read = new Set(tools.filter((s) => s.name === 'read_file').map((s) => s.target)).size;
-  const fixes = tools.filter((s) => s.name === 'write_file').length;
+  const writes = tools.filter((s) => s.name === 'write_file');
+  const created = writes.filter((s) => s.diff?.created).length;
+  const fixes = writes.length - created;
   const parts = [];
   if (read) parts.push(S.recap.files(read));
   for (const level of LEVEL_ORDER) {
     const n = tools.filter((s) => s.name === 'set_file_score' && s.level === level).length;
     if (n) parts.push(S.recap.level(n, S.levels[level]));
   }
+  if (created) parts.push(S.recap.created(created));
   if (fixes) parts.push(S.recap.fixes(fixes));
-  return parts.length ? parts.join(' · ') : S.recap.steps(steps.length);
+  const line = parts.length ? parts.join(' · ') : S.recap.steps(steps.length);
+  return line.charAt(0).toUpperCase() + line.slice(1);
 }

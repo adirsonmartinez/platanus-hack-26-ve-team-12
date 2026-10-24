@@ -598,6 +598,158 @@ export const strings = {
     },
   },
 
+  // The robot on the map: the person drags or throws it onto a folder and it asks what to do there
+  robot: {
+    hint: 'Arrástrame o lánzame a una carpeta',
+    dropHere: (name) => `Suéltame aquí: ${name}`,
+    nowhere: 'Aquí no hay nada. Suéltame sobre una carpeta y te cuento qué hay.',
+    at: (name) => `Estoy en ${name}`,
+    ask: '¿Te explico qué hay aquí o quieres cambiar algo?',
+    // its choices on the map, short (the chat card has the full wording)
+    short: { ask: 'Explícame', edit: 'Cambiar algo', locate: 'Riesgos', tour: 'Recorrido' },
+    chat: {
+      here: 'El robot está aquí',
+      where: (name, n) => `${name} · ${n === 1 ? '1 archivo' : `${n} archivos`}`,
+      wholeProject: 'Todo el proyecto',
+      projectSummary: 'La plaza: aquí se ve el proyecto completo y sus archivos sueltos.',
+      allGood: 'Sin problemas',
+      risks: (red, yellow) => [red && `${red} en riesgo`, yellow && `${yellow} por revisar`].filter(Boolean).join(' · '),
+      explain: 'Explícame qué hay aquí',
+      explainPrompt: (name) => `Explícame con palabras simples qué hay en «${name}», para qué sirve y qué archivo debería mirar primero.`,
+      explainProject: 'Explícame el proyecto',
+      explainProjectPrompt: 'Explícame con palabras simples cómo está armado este proyecto y por dónde debería empezar.',
+      change: 'Quiero cambiar algo aquí',
+      changeDraft: (name) => `En «${name}» quiero `,
+      risks2: 'Ver sus riesgos',
+      tour: 'Recorrido desde aquí',
+    },
+  },
+
+  // Building live: the robot carries each file the agent saves to its folder (viewmodels/buildViewModel.js)
+  build: {
+    title: 'Construyendo',
+    finished: 'Obra terminada',
+    saving: (name) => `Llevo «${name}» a su carpeta`,
+    waiting: (name) => `Espero tu permiso para guardar «${name}»`,
+    saved: (name) => `«${name}» guardado`,
+    edited: (name) => `Actualicé «${name}»`,
+    notSaved: (name) => `«${name}» no se guardó`,
+    done: (n, edits) => `Listo: ${[n && `${n} ${n === 1 ? 'archivo nuevo' : 'archivos nuevos'}`, edits && `${edits} ${edits === 1 ? 'cambio' : 'cambios'}`].filter(Boolean).join(' y ') || 'nada nuevo'}`,
+    root: 'Archivos sueltos',
+    papers: (n, edits) => [n && `+${n} ${n === 1 ? 'archivo nuevo' : 'archivos nuevos'}`, edits && `${edits} ${edits === 1 ? 'cambio' : 'cambios'}`].filter(Boolean).join(' · ') || 'En obra',
+  },
+
+  // "Recorrido": a guided walk through a project the person does not know yet (models/tourSpec.js)
+  tour: {
+    chip: 'Recorrido del proyecto',
+    menu: 'Recorrido',
+    title: 'Recorrido del proyecto',
+    analyzing: 'Mirando cómo está armado tu proyecto…',
+    writing: 'Preparando la explicación…',
+    stepOf: (n, total) => `Paso ${n} de ${total}`,
+    prev: 'Anterior',
+    next: 'Siguiente',
+    exit: 'Salir',
+    finish: 'Terminar',
+    again: 'Repetir',
+    ended: 'Recorrido terminado',
+    narratedBy: (agent) => `Narrado por ${agent}`,
+    automatic: 'Recorrido automático',
+    flow: 'Por dónde pasa',
+    ghost: 'Sin problemas',
+    busy: 'Espera a que Remi termine la reparación para hacer el recorrido.',
+    empty: 'Este proyecto todavía está vacío. Cuando tenga archivos, te lo recorro.',
+    chips: {
+      open: (name) => `Abrir ${name}`,
+      folder: (name) => `Ver ${name}`,
+      ask: 'Preguntar',
+    },
+    askPrompt: (name) => `Acabo de llegar a este proyecto. ¿Qué debería entender primero de ${name}?`,
+    // Architecture kinds (projectAnalyzer.js)
+    kinds: {
+      monolith: 'Una sola aplicación',
+      monorepo: 'Varias partes en un mismo lugar',
+      services: 'Varios servicios',
+      library: 'Una librería',
+      unknown: 'Proyecto',
+    },
+    unitKinds: { app: 'aplicación', package: 'pieza compartida', service: 'servicio' },
+    // What a part is, by its first tag (folderTags.js)
+    parts: {
+      ui: 'Lo que la gente ve y toca: pantallas, botones y estilos.',
+      scene3d: 'Lo que se dibuja en 3D.',
+      logic: 'Las reglas: lo que pasa cuando alguien hace algo.',
+      agent: 'Lo que habla con la inteligencia artificial.',
+      desktop: 'La app de escritorio: la ventana y el acceso a la computadora.',
+      server: 'El servidor: recibe pedidos y responde.',
+      data: 'Donde se guarda y se ordena la información.',
+      other: 'Una parte del proyecto.',
+    },
+    // Text when no agent narrates (or what it did not write). ctx comes from tourSpec.js
+    script: {
+      place: {
+        title: 'Así está armado',
+        bubble: '¡Hola! Te muestro el proyecto',
+        vibe: {
+          monolith: () => 'Es una sola aplicación: todo vive junto y se arranca de una vez. Eso la hace fácil de seguir.',
+          monorepo: ({ count }) => `Es un monorepo: ${count} partes que viven en el mismo lugar y comparten piezas entre sí.`,
+          services: ({ count }) => `Son ${count} servicios separados que trabajan juntos; cada uno se arranca por su cuenta.`,
+          library: () => 'Es una librería: código pensado para que otras aplicaciones lo usen.',
+          unknown: () => 'No encontré una forma conocida, así que te muestro lo más importante que hay.',
+          empty: () => 'Este proyecto todavía está vacío.',
+        },
+        dev: {
+          monolith: ({ stack, run }) => `Monolito${stack ? ` (${stack})` : ''}: una sola app${run ? `; se arranca con «${run}»` : ''}.`,
+          monorepo: ({ count, units, manager }) => `Monorepo${manager ? ` con ${manager}` : ''}: ${count} paquetes (${units}).`,
+          services: ({ count, units }) => `${count} servicios independientes: ${units}.`,
+          library: ({ stack }) => `Librería${stack ? ` (${stack})` : ''}: exporta código, no tiene servidor propio.`,
+          unknown: () => 'Sin una estructura conocida: recorro las carpetas principales.',
+          empty: () => 'Proyecto vacío.',
+        },
+      },
+      readme: {
+        title: 'Empieza por el README',
+        bubble: 'Aquí está la portada',
+        say: ({ sections }) => `Es la portada del proyecto: dice qué hace y cómo arrancarlo.${sections ? ` Tiene secciones como ${sections}.` : ''}`,
+      },
+      guide: {
+        title: ({ name }) => `Guía: ${name}`,
+        bubble: 'Aquí explican cómo pensaron todo',
+        say: () => 'El equipo escribió aquí cómo está pensado el proyecto. Vale la pena leerla después del README.',
+      },
+      part: {
+        title: ({ name }) => name,
+        bubble: ({ label }) => label,
+        vibe: ({ what }) => what,
+        dev: ({ what, path, kind }) => `${kind ? `${kind[0].toUpperCase()}${kind.slice(1)}` : 'Carpeta'} ${path}/: ${what.charAt(0).toLowerCase()}${what.slice(1)}`,
+      },
+      entry: {
+        title: 'Aquí arranca todo',
+        bubble: 'Esta es la puerta de entrada',
+        vibe: ({ name }) => `«${name}» es lo primero que se ejecuta: desde aquí se enciende el resto.`,
+        dev: ({ path, why }) => `Punto de entrada: ${path}${why ? ` (${why})` : ''}.`,
+        why: { pkgMain: 'según package.json', pkgBin: 'comando de package.json', framework: 'página principal', name: 'por su nombre' },
+      },
+      tests: {
+        title: 'Las pruebas',
+        bubble: 'Esto revisa que nada se rompa',
+        say: ({ count, runner }) => `${count === 1 ? 'Hay 1 prueba' : `Hay ${count} pruebas`} que revisan solas que todo funcione${runner ? ` (se corren con ${runner})` : ''}. Si cambias algo, córrelas.`,
+      },
+      usecase: {
+        title: ({ label }) => `Caso de uso: ${label}`,
+        bubble: ({ label }) => `Así funciona «${label}»`,
+        say: ({ label, path, from }) => `${{ route: 'Cuando alguien pide', page: 'Cuando alguien abre la página de', command: 'Cuando alguien ejecuta' }[from] ?? 'Para'} «${label}», todo empieza en ${path}.`,
+      },
+      start: {
+        title: 'Por dónde empezar',
+        bubble: '¡Listo! Empieza por aquí',
+        say: ({ doc, entry }) => [doc && `Lee primero ${doc}`, entry && `luego abre ${entry}`].filter(Boolean).join(' y ').replace(/^./, (c) => c.toUpperCase())
+          .concat(doc || entry ? '. ' : '', 'Cuando algo no se entienda, pregúntame: te lo explico con tus palabras.'),
+      },
+      emptyStart: 'Cuando tenga archivos, vuelve a pedirme el recorrido.',
+    },
+  },
+
   shell: {
     brand: 'Platanus',
     search: 'Buscar o hacer algo…',
@@ -844,6 +996,8 @@ export const strings = {
         set_file_score: (n, color) => (color ? `Marqué ${n} en ${color}` : `Puse el semáforo de ${n}`),
         show_folder: (n) => `Te mostré ${n} en el mapa`,
       },
+      // write_file of a file that did not exist
+      created: (n) => `Creé ${n}`,
       // What the step was, for "No pude terminar: …"
       what: {
         get_project: () => 'mirar el proyecto',
@@ -854,6 +1008,7 @@ export const strings = {
         show_folder: (n) => `mostrar ${n}`,
       },
       failed: (what) => `No pude terminar: ${what}`,
+      skipped: (what) => `No cambié nada (${what}): solo me pediste entender`,
       unknown: { running: 'Usando una herramienta de Platanus…', done: 'Usé una herramienta de Platanus', what: 'un paso' },
       helper: (description) => `Un ayudante: ${description}`,
       aFile: 'un archivo',
@@ -862,7 +1017,7 @@ export const strings = {
       thinking: 'Pensando qué hacer…',
       writing: 'Escribiendo la respuesta…',
       awaiting: (name) => `Esperando tu aprobación para guardar ${name}…`,
-      recap: { files: (n) => `Leí ${n === 1 ? '1 archivo' : `${n} archivos`}`, level: (n, color) => `${n} en ${color}`, fixes: (n) => `guardé ${n === 1 ? '1 arreglo' : `${n} arreglos`}`, steps: (n) => (n === 1 ? '1 paso' : `${n} pasos`) },
+      recap: { files: (n) => `Leí ${n === 1 ? '1 archivo' : `${n} archivos`}`, level: (n, color) => `${n} en ${color}`, fixes: (n) => `guardé ${n === 1 ? '1 arreglo' : `${n} arreglos`}`, created: (n) => `creé ${n === 1 ? '1 archivo' : `${n} archivos`}`, steps: (n) => (n === 1 ? '1 paso' : `${n} pasos`) },
       doneIn: (time) => `Listo en ${time}`,
       failedRun: 'No pudo terminar',
       // The same change, in plain words
@@ -1034,6 +1189,12 @@ export const strings = {
     projectReady: 'Listo, ya veo tu proyecto en el mapa. ¿Qué hacemos?',
     projectOpened: (name) => `Proyecto abierto: ${name}`,
     projectClosed: (name) => `Proyecto cerrado: ${name}`,
+    // Sent to the agent before a question asked while the robot is on a place (the person does not see it)
+    contextNote: ({ title, path }) => `(La persona tiene al robot de Platanus en ${path ? `«${path}» (${title})` : `la plaza del proyecto «${title}»`}; si dice "aquí", se refiere a ese lugar.)`,
+    // Sent to the agent before a question to understand (the person does not see it)
+    explainNote: '(La persona solo quiere entender: explícalo con palabras simples. No cambies archivos ni propongas reparaciones, salvo que lo pida.)',
+    // The place on top of the chat, on the question and on its answer
+    focus: { label: 'El robot está en', about: 'Sobre', close: 'Dejar de hablar de este lugar', project: 'Todo el proyecto' },
     projectCreated: (name) => `Listo, creé «${name}» y está vacío 🌱\nCuéntame qué quieres construir y lo armamos juntos, de forma segura desde el primer archivo.`,
     projectCreateFailed: (error) => `No pude crear el proyecto: ${error}`,
     diskChanged: (paths) => `Cambios en disco: ${paths.slice(0, 3).join(', ')}${paths.length > 3 ? ` y ${paths.length - 3} más` : ''}`,

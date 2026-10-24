@@ -119,13 +119,16 @@ export function createMapView({ sceneView, labels, mapViewModel }) {
     group = new THREE.Group();
     sceneView.layers.map.add(group);
 
-    // The integrations band across the top, with its name next to the first node (the band's ends can be off screen)
+    // The integrations band across the top, with its name next to the first node (the band's ends can be off
+    // screen); a project with no integrations has none
     const { band } = state;
-    box(group, M.band, band.width, 0.03, band.depth, band.x, 0, band.z, SCREEN_ANGLE).castShadow = false;
-    const b0 = screenOf(band.x, band.z);
-    const edge = toWorld(b0.u, b0.v + band.depth / 2);
-    box(group, M.slabEdge, band.width, 0.05, 0.08, edge.x, 0, edge.z, SCREEN_ANGLE).castShadow = false;
-    ownLabels.push(labels.add({ html: `<span>${strings.map.integrations}</span>`, anchor: { ...toWorld(-9, b0.v - band.depth / 2 + 1.5), y: 0.2 }, className: 'band', align: 'below' }));
+    if (band) {
+      box(group, M.band, band.width, 0.03, band.depth, band.x, 0, band.z, SCREEN_ANGLE).castShadow = false;
+      const b0 = screenOf(band.x, band.z);
+      const edge = toWorld(b0.u, b0.v + band.depth / 2);
+      box(group, M.slabEdge, band.width, 0.05, 0.08, edge.x, 0, edge.z, SCREEN_ANGLE).castShadow = false;
+      ownLabels.push(labels.add({ html: `<span>${strings.map.integrations}</span>`, anchor: { ...toWorld(-9, b0.v - band.depth / 2 + 1.5), y: 0.2 }, className: 'band', align: 'below' }));
+    }
 
     // The integrations' nodes (Supabase draws itself), turned like it
     state.integrations.forEach((integration) => {
@@ -163,12 +166,15 @@ export function createMapView({ sceneView, labels, mapViewModel }) {
     addFiles(rootIcons, state.rootFiles.files, animate);
     const lastRoot = state.rootFiles.files.at(-1);
     if (lastRoot) addMore(state.rootFiles.more, lastRoot.x + 1.2, lastRoot.z + 1.2);
+    // The project's name card; a new, empty project has none (the welcome robot talks there instead)
     const summary = root.red + root.yellow ? strings.map.watched(root.total) : strings.map.allClear;
-    ownLabels.push(labels.add({
-      html: `<strong>${escapeHtml(plaza.name)}</strong><span>${summary}</span>${riskLine(root.counts)}`,
-      anchor: { x: 0, y: 2.3, z: 0 },
-      className: 'root',
-    }));
+    if (!plaza.empty) {
+      ownLabels.push(labels.add({
+        html: `<strong>${escapeHtml(plaza.name)}</strong><span>${summary}</span>${riskLine(root.counts)}`,
+        anchor: { x: 0, y: 2.3, z: 0 },
+        className: 'root',
+      }));
+    }
 
     // The row of top-level folders
     state.buildings.forEach((b) => {

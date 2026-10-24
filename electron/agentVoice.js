@@ -69,4 +69,10 @@ function composeRefinePrompt({ config }, { mode } = {}) {
   return [config.refine.base.join('\n'), config.refine.modes[m]].filter(Boolean).join('\n\n');
 }
 
-module.exports = { loadVoice, composePrompt, composeRefinePrompt, styleHints, MODES };
+// "Recorrido": the tour rules and the mode's line (the answer is JSON that narrates the analyzer's facts)
+function composeTourPrompt({ config }, { mode } = {}) {
+  const m = MODES.includes(mode) ? mode : (config.defaultMode ?? 'vibe');
+  return [config.tour.base.join('\n'), config.tour.modes[m]].filter(Boolean).join('\n\n');
+}
+
+module.exports = { loadVoice, composePrompt, composeRefinePrompt, composeTourPrompt, styleHints, MODES };

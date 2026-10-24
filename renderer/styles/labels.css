@@ -41,3 +41,14 @@
 /* "+N" more files */
 #map-labels .map-label.more { padding: 4px 10px; border-radius: 999px; }
 #map-labels .map-label.more span { font: 500 11px var(--lg-mono); color: var(--lg-text-2); }
+
+/* The map robot's bubble (robotView.js): the chat's neutral look instead of the purple edge; its first
+   choice is the chat's white pill, the others glass chips */
+#map-labels .map-label.robot-bubble { border-color: rgba(255, 255, 255, .16); font-family: var(--lg-font); }
+#map-labels .map-label.robot-bubble::after { border-right-color: rgba(255, 255, 255, .16); border-bottom-color: rgba(255, 255, 255, .16); }
+#map-labels .map-label.robot-bubble strong { font-family: var(--lg-font); color: var(--lg-text); }
+#map-labels .map-label.robot-bubble span { color: var(--lg-muted); }
+#map-labels .map-label.robot-bubble .robot-action { background: var(--lg-chip); box-shadow: var(--lg-rim); font-family: var(--lg-font); }
+#map-labels .map-label.robot-bubble .robot-action:hover { background: var(--lg-chip-hover); }
+#map-labels .map-label.robot-bubble .robot-action:first-child { background: #fff; box-shadow: none; color: #121212; }
+#map-labels .map-label.robot-bubble .robot-action:first-child:hover { background: rgba(255, 255, 255, .88); }

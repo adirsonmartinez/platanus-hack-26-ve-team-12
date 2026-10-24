@@ -1029,11 +1029,35 @@ export const ICONS = {
    }
   ]
  ],
- "claude": [
+ "route": [
+  [
+   "circle",
+   {
+    "cx": "18",
+    "cy": "5",
+    "r": "3",
+    "stroke": "currentColor",
+    "strokeLinecap": "round",
+    "strokeLinejoin": "round",
+    "strokeWidth": "1.5"
+   }
+  ],
+  [
+   "circle",
+   {
+    "cx": "6",
+    "cy": "19",
+    "r": "3",
+    "stroke": "currentColor",
+    "strokeLinecap": "round",
+    "strokeLinejoin": "round",
+    "strokeWidth": "1.5"
+   }
+  ],
   [
    "path",
    {
-    "d": "M13 12L18.5 5M7.63965 3L12.5 12L13.6865 3M4.48381 6.71679L11.9872 12M3 12L11.9872 12.473M12.2244 13.177L7 20M4.84194 16.8682L11.2824 12.9758M11.5 21L12.665 13.177M21 14L13.1846 12.668M21 10.5788L13 12.3223M16.779 19.646L12.8876 13.3772M19.3566 18.207L13.313 12.9893",
+    "d": "M12 5H8.5C6.567 5 5 6.567 5 8.5C5 10.433 6.567 12 8.5 12H15.5C17.433 12 19 13.567 19 15.5C19 17.433 17.433 19 15.5 19H12",
     "stroke": "currentColor",
     "strokeLinecap": "round",
     "strokeLinejoin": "round",
@@ -1041,211 +1065,12 @@ export const ICONS = {
    }
   ]
  ],
- "codex": [
+ "cursor": [
   [
    "path",
    {
-    "d": "M11.7453 14.85L6.90436 12V7C6.90436 4.79086 8.72949 3 10.9809 3C12.3782 3 13.6113 3.6898 14.3458 4.74128",
+    "d": "M9.80282 4.62973L15.8364 6.99069C19.3164 8.35243 21.0564 9.03329 20.9987 10.1133C20.941 11.1934 19.1251 11.6886 15.4933 12.6791C14.412 12.974 13.8713 13.1215 13.4964 13.4963C13.1215 13.8712 12.9741 14.4119 12.6791 15.4933C11.6887 19.125 11.1934 20.9409 10.1134 20.9986C9.03335 21.0563 8.35249 19.3163 6.99075 15.8363L4.62979 9.80276C3.20411 6.15934 2.49127 4.33764 3.41448 3.41442C4.3377 2.49121 6.15941 3.20405 9.80282 4.62973Z",
     "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ],
-  [
-   "path",
-   {
-    "d": "M9.59961 19.1791C10.3266 20.2757 11.5866 21.0008 13.0192 21.0008C15.2707 21.0008 17.0958 19.21 17.0958 17.0008V12.0008L12.1612 9.0957",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ],
-  [
-   "path",
-   {
-    "d": "M9.45166 13.5L9.45123 7.66938L13.8642 5.16938C15.814 4.06481 18.3072 4.72031 19.4329 6.63348C20.1593 7.86806 20.1388 9.32466 19.5089 10.4995",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ],
-  [
-   "path",
-   {
-    "d": "M4.48963 13.4993C3.8595 14.6742 3.83887 16.131 4.56539 17.3657C5.6911 19.2789 8.18428 19.9344 10.1341 18.8298L14.5471 16.3298L14.643 10.7344",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ],
-  [
-   "path",
-   {
-    "d": "M17.0959 17.6309C18.4415 17.5734 19.7295 16.8634 20.4529 15.634C21.5786 13.7209 20.9106 11.2745 18.9608 10.1699L14.5478 7.66992L9.48907 10.4255",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ],
-  [
-   "path",
-   {
-    "d": "M6.90454 6.36938C5.55865 6.42662 4.27032 7.13672 3.54684 8.3663C2.42113 10.2795 3.08917 12.7258 5.03896 13.8304L9.45196 16.3304L14.5 13.5807",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ]
- ],
- "grok": [
-  [
-   "path",
-   {
-    "d": "M2.5 12C2.5 7.77027 2.5 5.6554 3.69797 4.25276C3.86808 4.05358 4.05358 3.86808 4.25276 3.69797C5.6554 2.5 7.77027 2.5 12 2.5C16.2297 2.5 18.3446 2.5 19.7472 3.69797C19.9464 3.86808 20.1319 4.05358 20.302 4.25276C21.5 5.6554 21.5 7.77027 21.5 12C21.5 16.2297 21.5 18.3446 20.302 19.7472C20.1319 19.9464 19.9464 20.1319 19.7472 20.302C18.3446 21.5 16.2297 21.5 12 21.5C7.77027 21.5 5.6554 21.5 4.25276 20.302C4.05358 20.1319 3.86808 19.9464 3.69797 19.7472C2.5 18.3446 2.5 16.2297 2.5 12Z",
-    "stroke": "currentColor",
-    "strokeWidth": "1.5"
-   }
-  ],
-  [
-   "path",
-   {
-    "d": "M8 17.5L16 7.5",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeWidth": "1.5"
-   }
-  ]
- ],
- "opencode": [
-  [
-   "path",
-   {
-    "d": "M14 4H10C6.22876 4 4.34315 4 3.17157 5.17157C2 6.34315 2 8.22876 2 12C2 15.7712 2 17.6569 3.17157 18.8284C4.34315 20 6.22876 20 10 20H14C17.7712 20 19.6569 20 20.8284 18.8284C22 17.6569 22 15.7712 22 12C22 8.22876 22 6.34315 20.8284 5.17157C19.6569 4 17.7712 4 14 4Z",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ],
-  [
-   "path",
-   {
-    "d": "M7 9L8.83981 10.5858C9.61327 11.2525 10 11.5858 10 12C10 12.4142 9.61327 12.7475 8.83981 13.4142L7 15",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ],
-  [
-   "path",
-   {
-    "d": "M13 16H17",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ]
- ],
- "cursorApp": [
-  [
-   "path",
-   {
-    "d": "M2.5 12C2.5 7.52166 2.5 5.28249 3.89124 3.89124C5.28249 2.5 7.52166 2.5 12 2.5C16.4783 2.5 18.7175 2.5 20.1088 3.89124C21.5 5.28249 21.5 7.52166 21.5 12C21.5 16.4783 21.5 18.7175 20.1088 20.1088C18.7175 21.5 16.4783 21.5 12 21.5C7.52166 21.5 5.28249 21.5 3.89124 20.1088C2.5 18.7175 2.5 16.4783 2.5 12Z",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ],
-  [
-   "path",
-   {
-    "d": "M9.5 9.5L7.96682 10.8215C7.32228 11.377 7 11.6548 7 12C7 12.3452 7.32227 12.623 7.96682 13.1785L9.5 14.5",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ],
-  [
-   "path",
-   {
-    "d": "M14.5 9.5L16.0332 10.8215C16.6777 11.377 17 11.6548 17 12C17 12.3452 16.6777 12.623 16.0332 13.1785L14.5 14.5",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ]
- ],
- "kimi": [
-  [
-   "path",
-   {
-    "d": "M19.5 4.5H20.5M21 4.5C21 5.05228 20.5523 5.5 20 5.5H19V4.5C19 3.94772 19.4477 3.5 20 3.5C20.5523 3.5 21 3.94772 21 4.5Z",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ],
-  [
-   "path",
-   {
-    "d": "M5.5 6H3V20.5H5.5V17L7.75574 14.7443L13.8256 19.5669C14.586 20.1711 15.5287 20.5 16.5 20.5V17.5C15.8521 17.5 15.2228 17.283 14.7126 16.8836L9.61064 12.8894L16.5 6H13L5.5 13.5V6Z",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ]
- ],
- "gemini": [
-  [
-   "path",
-   {
-    "d": "M3 12C7.97056 12 12 7.97056 12 3C12 7.97056 16.0294 12 21 12C16.0294 12 12 16.0294 12 21C12 16.0294 7.97056 12 3 12Z",
-    "stroke": "currentColor",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ]
- ],
- "qwen": [
-  [
-   "path",
-   {
-    "d": "M9 2H12.5L14 4.5H19.13L20.5 7M22 14.5L20.3545 17.163H17.8782L15.0001 22H11.7825M5 20L3.5 17.5L4.5 14.5L2 9.5L4 7",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ],
-  [
-   "path",
-   {
-    "d": "M19.1901 9.66219L20.5001 7.0008H9.99996L11 5.0004L8.99996 2.0004L6.74874 7.0008H4.00006L8.99996 17.0004H5.99996L4.99996 20.0004H10.5L11.7516 22.0004L17.4017 12.0659L18.9401 14.5004H22L19.1901 9.66219Z",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
-    "strokeLinejoin": "round",
-    "strokeWidth": "1.5"
-   }
-  ],
-  [
-   "path",
-   {
-    "d": "M12.0001 15.5L9.00006 10H15.0001L12.0001 15.5Z",
-    "stroke": "currentColor",
-    "strokeLinecap": "round",
     "strokeLinejoin": "round",
     "strokeWidth": "1.5"
    }
@@ -1288,6 +1113,18 @@ export const ICONS = {
    "path",
    {
     "d": "M9.00005 6C9.00005 6 15 10.4189 15 12C15 13.5812 9 18 9 18",
+    "stroke": "currentColor",
+    "strokeLinecap": "round",
+    "strokeLinejoin": "round",
+    "strokeWidth": "1.5"
+   }
+  ]
+ ],
+ "arrowLeft": [
+  [
+   "path",
+   {
+    "d": "M15 6C15 6 9.00001 10.4189 9 12C8.99999 13.5812 15 18 15 18",
     "stroke": "currentColor",
     "strokeLinecap": "round",
     "strokeLinejoin": "round",

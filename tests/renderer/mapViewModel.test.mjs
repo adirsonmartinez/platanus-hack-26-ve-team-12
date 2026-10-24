@@ -261,8 +261,21 @@ test('opening another top-level folder folds the previous branch: one path at a 
   assert.deepEqual(state().buildings.filter((b) => b.open).map((b) => b.path), ['docs']);
 });
 
-test('the integrations band runs across the top, above the plaza and as wide as the tree', () => {
+test('with no integrations there is no band (nothing to hold)', () => {
   const { state } = setup();
+  assert.equal(state().band, null);
+  assert.deepEqual(state().integrations, []);
+});
+
+test('an empty project (a new one) has no name card; one with files does', () => {
+  assert.equal(setup([]).state().plaza.empty, true);
+  assert.equal(setup().state().plaza.empty, false);
+  assert.equal(setup([file('README.md')]).state().plaza.empty, false);
+});
+
+test('the integrations band runs across the top, above the plaza and as wide as the tree', () => {
+  const { state, projectModel } = setup();
+  projectModel.store.set({ integrations: ['vercel'] });
   const { band, buildings } = state();
   const c = screenOf(band.x, band.z);
   assert.ok(c.v + band.depth / 2 < -state().plaza.size / 2);

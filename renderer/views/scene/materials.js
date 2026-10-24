@@ -7,6 +7,7 @@ export const PALETTE = {
   ground: 0x23262b,
   grid: 0x33373d,
   accent: 0x8b83ff, // team purple
+  marker: 0xe6e9ec, // rings that point at a place (tour stop, robot target, build site): neutral, like the UI's white
   warn: 0xffc24a,
   danger: 0xff5a6a,
   ok: 0x3ddc97, // healthy integrations (the same green as the UI's --ok)

@@ -1,13 +1,15 @@
-// Icons (Hugeicons, see icons/iconNames.js). The color follows the text color and the stroke
+// Icons (Hugeicons, see icons/iconNames.js; the agents' logos come from icons/brands.js). The color follows the text color and the stroke
 // keeps Hugeicons' own width, so every icon looks the same wherever it is placed.
 //   icon('folder')                  -> '<svg …>…</svg>' for templates
 //   <i data-icon="folder"></i>      -> replaced by the svg in static HTML (applyIcons)
 import { ICONS } from '../icons/hugeicons.js';
+import { BRANDS } from '../icons/brands.js';
 
 const kebab = (key) => key.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
 const escapeAttr = (value) => String(value).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 
 export function icon(name) {
+  if (BRANDS[name]) return BRANDS[name]; // an agent's own logo, in its colors
   const nodes = ICONS[name];
   if (!nodes) throw new Error(`Unknown icon: ${name}`);
   const inner = nodes.map(([tag, attrs]) => {

@@ -227,8 +227,9 @@ export class MapViewModel {
     const total = countFiles(tree);
     if (this.#welcomeSession !== session || total > 0) this.#welcomeSession = null;
 
-    // The project's root has no platform: one trunk runs from the integrations' road down to the first row
-    // of folders (`grid` only keeps the spacing where the project's name floats)
+    // The project's root has no platform: one trunk runs from the integrations' road (or, with no
+    // integrations, from the project's root) down to the first row of folders (`grid` only keeps the
+    // spacing where the project's name floats)
     const grid = plazaGrid(0);
 
     // Links of the tree, in world coordinates [x1, z1, x2, z2, kind]
@@ -241,7 +242,7 @@ export class MapViewModel {
     // Every top-level folder, problems first, in rows below the plaza
     const dirs = this.#sortFolders(tree.filter((c) => c.type === 'dir').map((dir) => ({ ...this.#describeFolder(dir), node: dir })));
     const top = path ? topFolderOf(path) : '';
-    const topOptions = { parentU: 0, parentV: INTEGRATION_ROW.busV, startV: grid.size * Math.SQRT1_2 + TREE.gap + TREE.itemHalf.top, ...TREE.top };
+    const topOptions = { parentU: 0, parentV: integrations.length ? INTEGRATION_ROW.busV : 0, startV: grid.size * Math.SQRT1_2 + TREE.gap + TREE.itemHalf.top, ...TREE.top };
     const topIndex = dirs.findIndex((d) => d.path === top);
 
     // The open path: each folder on it unfolds its direct contents (subfolders first, then files) right
@@ -336,11 +337,11 @@ export class MapViewModel {
     const trunk = strongest(integrations.map(statusOf));
     if (trunk) integrationLines.push(line(0, INTEGRATION_ROW.busV, 0, trunkEnd, trunk));
 
-    // The integrations band, across the top, as wide as the tree
+    // The integrations band, across the top, as wide as the tree; none when there is nothing to hold
     const treeU = [0, ...links.flatMap(([x1, z1, x2, z2]) => [screenOf(x1, z1).u, screenOf(x2, z2).u])];
     const halfWidth = Math.max(INTEGRATIONS.minWidth / 2, ...treeU.map(Math.abs)) + INTEGRATIONS.margin;
     const bandCenter = toWorld(0, (INTEGRATIONS.bandTop + INTEGRATIONS.bandBottom) / 2);
-    const band = { ...bandCenter, width: halfWidth * 2, depth: INTEGRATIONS.bandBottom - INTEGRATIONS.bandTop };
+    const band = integrations.length ? { ...bandCenter, width: halfWidth * 2, depth: INTEGRATIONS.bandBottom - INTEGRATIONS.bandTop } : null;
 
     // Project, then each folder down to the open one
     const crumbs = [{ name: projectName, path: '' }];
@@ -364,6 +365,7 @@ export class MapViewModel {
       // The project's plaza; counts are the open folder's (at any depth), or the whole project's
       plaza: {
         name: projectName,
+        empty: tree.length === 0, // a new project: no name card on the map (the welcome robot talks instead)
         files: [],
         cols: grid.cols,
         size: grid.size,

@@ -15,7 +15,7 @@
     "build:web": "node scripts/build-web.js",
     "dist:mac": "electron-builder --mac --publish never",
     "dist:win": "electron-builder --win --publish never",
-    "test": "node --test electron/mcpServer.test.js electron/agentEvents.test.js electron/agentVoice.test.js electron/servers.test.js electron/git.test.js electron/approval.test.js electron/fileOpen.test.js electron/lineDiff.test.js electron/keyStore.test.js electron/opencode.test.js electron/agents.test.js scripts/sim/fakeAgent.test.js tests/renderer/*.test.mjs tests/secrets.test.mjs"
+    "test": "node --test electron/mcpServer.test.js electron/agentEvents.test.js electron/agentVoice.test.js electron/servers.test.js electron/git.test.js electron/approval.test.js electron/fileOpen.test.js electron/lineDiff.test.js electron/keyStore.test.js electron/opencode.test.js electron/agents.test.js scripts/sim/fakeAgent.test.js scripts/demo/path.test.mjs tests/renderer/*.test.mjs tests/secrets.test.mjs"
   },
   "build": {
     "appId": "us.platan.hack26.team12.ide",
@@ -82,6 +82,7 @@
     "@fontsource/roboto-mono": "^5.3.0",
     "@hugeicons/core-free-icons": "^4.3.5",
     "@lezer/highlight": "^1.2.5",
+    "@lobehub/icons-static-svg": "1.95.1",
     "border-beam": "^1.4.1",
     "codemirror": "^6.0.2",
     "electron": "^45.0.0",

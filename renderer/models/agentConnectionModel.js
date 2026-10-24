@@ -180,7 +180,8 @@ export class AgentConnectionModel {
   // agent / model / effort: another agent than the selected one (compare, "Probar")
   // voice: { mode: 'vibe'|'dev', recent: [the person's last messages] } -> the main process builds the
   // prompt from agent/voice.json and the mode's skill (systemPrompt then only replaces the base rules)
-  ask(prompt, systemPrompt, { onTool, onText, onThinking, onEvent, onStart, signal, session = 'chat', voice = null, ...choice } = {}) {
+  // readOnly: this run gets the read-only MCP address (explaining, the tour): it can look, not change
+  ask(prompt, systemPrompt, { onTool, onText, onThinking, onEvent, onStart, signal, session = 'chat', voice = null, readOnly = false, ...choice } = {}) {
     // The choice is taken now: a question waiting in line keeps the agent it was asked to
     const state = this.store.state;
     const agent = choice.agent ?? state.selected;
@@ -188,14 +189,14 @@ export class AgentConnectionModel {
     const catalog = CATALOG[agent];
     const model = choice.model ?? (own ? state.model : '');
     const effort = choice.effort ?? (own ? state.effort : catalog?.efforts.includes(state.effort) ? state.effort : catalog?.defaultEffort ?? 'low');
-    const run = () => this.#run(prompt, systemPrompt, { onTool, onText, onThinking, onEvent, onStart, signal, session, agent, model, effort, voice });
+    const run = () => this.#run(prompt, systemPrompt, { onTool, onText, onThinking, onEvent, onStart, signal, session, agent, model, effort, voice, readOnly });
     const queue = this.#queues.get(agent) ?? Promise.resolve();
     const result = queue.then(run, run);
     this.#queues.set(agent, result.catch(() => {}));
     return result;
   }
 
-  async #run(prompt, systemPrompt, { onTool, onText, onThinking, onEvent, onStart, signal, session, agent, model, effort, voice }) {
+  async #run(prompt, systemPrompt, { onTool, onText, onThinking, onEvent, onStart, signal, session, agent, model, effort, voice, readOnly }) {
     if (signal?.aborted) return { text: '', error: 'cancelled' };
     const key = `${agent}:${session}`;
     const turns = this.#turns.get(key) ?? 0;
@@ -220,7 +221,7 @@ export class AgentConnectionModel {
         if (!runId) return void early.push(e);
         if (e.runId === runId) handle(e);
       });
-      this.#service.run({ agent, prompt, systemPrompt, model, effort, session, continued: session === 'chat' && turns > 0, ...(voice ? { voice } : {}) }).then((r) => {
+      this.#service.run({ agent, prompt, systemPrompt, model, effort, session, continued: session === 'chat' && turns > 0, ...(voice ? { voice } : {}), ...(readOnly ? { readOnly: true } : {}) }).then((r) => {
         if (!r.ok) { off(); return resolve(finish({ text: '', error: r.error })); }
         runId = r.data;
         onStart?.(runId);

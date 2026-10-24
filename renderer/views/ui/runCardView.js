@@ -138,6 +138,13 @@ function orbPill(message, label) {
 
 // "Agente" (who answers is in the composer's picker); comparing two agents, each card says which
 const agentTitle = (run) => (run.compare ? (run.agent ?? '').split(' (')[0] : R.agentTitle);
+// The place the question was about (the robot was there): "Sobre Base de datos · db/"
+function aboutLine(about) {
+  const line = el('span', 'run-about');
+  line.append(icon('bot', { size: 13 }), el('span', '', `${strings.chat.focus.about} ${about.title}`));
+  if (about.path) line.appendChild(el('code', '', about.path));
+  return line;
+}
 const agentShort = (run) => (run.agent ?? '').split(' (')[0];
 
 // Done or failed: an icon on the right (while it works the avatar's orb says it)
@@ -242,6 +249,7 @@ function renderPlainRunCard(el0, message) {
   const who = el('div', 'run-who');
   const now = running ? agentShort(run) : run.status === 'error' ? S.failedRun : S.doneIn(R.seconds((run.endedAt ?? Date.now()) - run.startedAt));
   who.append(el('strong', '', agentTitle(run)), el('span', `story-now ${run.status}`, now));
+  if (run.about) who.appendChild(aboutLine(run.about));
   head.append(orbAvatar('breathing', message), who, doneState(run));
   if (running) {
     const timer = el('span', 'run-time', R.seconds(Date.now() - run.startedAt));
@@ -333,6 +341,7 @@ export function renderRunCard(el0, message, { plain = false } = {}) {
   const who = el('div', 'run-who');
   // Dev keeps the detail one line below: which agent, model and effort
   who.append(el('strong', '', agentTitle(run)), el('span', 'run-model', `${agentShort(run)} · ${modelLabel(run.agentId, run.model) ?? C.planDefault} · ${C.efforts[run.effort] ?? ''}`));
+  if (run.about) who.appendChild(aboutLine(run.about));
   const state = doneState(run);
   if (!running) state.appendChild(el('span', '', run.status === 'error' ? R.failed : R.done));
   const timer = el('span', 'run-time', R.seconds((run.endedAt ?? Date.now()) - run.startedAt));

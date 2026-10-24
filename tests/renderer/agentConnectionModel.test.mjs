@@ -258,3 +258,21 @@ test('a choice made in this session is not undone by the automatic pick on the n
   assert.equal(m.store.state.selected, null);
   localStorage.clear();
 });
+
+test('a read-only question reaches the main process as readOnly (its agent gets the read-only tools)', async () => {
+  localStorage.clear();
+  const svc = fakeService();
+  const m = new AgentConnectionModel(svc);
+  await m.refresh();
+  const asking = m.ask('Explícame db/', '', { readOnly: true });
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(svc.runs.at(-1).req.readOnly, true);
+  svc.finish(svc.runs.at(-1).runId, 'ok');
+  await asking;
+  const normal = m.ask('Arregla db/', '');
+  await new Promise((r) => setTimeout(r, 0));
+  assert.equal(svc.runs.at(-1).req.readOnly, undefined);
+  svc.finish(svc.runs.at(-1).runId, 'ok');
+  await normal;
+  localStorage.clear();
+});

@@ -39,3 +39,12 @@ test('the "+" menu has no header; connecting and the Vibe / Dev switch are at th
   foot[1].run();
   assert.deepEqual(calls.at(-1), ['toggle']);
 });
+
+test('"Recorrido" is offered when a project with files is open', () => {
+  const has = (info) => chatMenuItems(ctx({ ...base, ...info })).some((i) => i.id === 'tour');
+  assert.equal(has({ projectOpen: true, empty: false }), true);
+  assert.equal(has({ projectOpen: true, empty: true }), false);
+  assert.equal(has({ projectOpen: false }), false);
+  chatMenuItems(ctx({ ...base, projectOpen: true })).find((i) => i.id === 'tour').run();
+  assert.deepEqual(calls.at(-1), ['startTour']);
+});
