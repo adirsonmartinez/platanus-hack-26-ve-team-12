@@ -30,6 +30,12 @@ En el chat:
 - `listar archivos`, `borra src/app.js` (pide confirmación)
 - `simular ataque` / `corregir`: demo de Supabase con RLS desactivado
 
+## Despliegue
+
+- **Demo web (Vercel)**: `npm run build:web` genera `dist/` con el mapa y el proyecto de demo. Vercel lo construye solo con `vercel.json`, desde el repo personal (las plataformas de deploy no pueden conectarse al repo de la organización).
+- **App de escritorio**: `npm run dist:mac` / `npm run dist:win` generan los instaladores en `dist-electron/`. Al subir un tag `vX.Y.Z` (lo crea `git flow release finish`), GitHub Actions construye el `.dmg` y el `.exe` y los publica en *Releases*.
+- **Remotos**: `origin` empuja a la vez al repo del equipo y al personal (`git remote -v`), así un solo `git push` actualiza los dos.
+
 ## Reglas del código
 
 - **Todo el código en inglés**: variables, comentarios, nombres de archivo y commits.

@@ -1,0 +1,51 @@
+# Builds the desktop installers (macOS .dmg, Windows .exe) and attaches them to a GitHub Release.
+# Runs when a version tag is pushed (git flow release finish creates vX.Y.Z), or manually.
+name: Release desktop app
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v0.1.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            script: dist:mac
+            files: dist-electron/*.dmg
+          - os: windows-latest
+            script: dist:win
+            files: dist-electron/*.exe
+    runs-on: ${{ matrix.os }}
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm run ${{ matrix.script }}
+
+      # Both jobs race to create the release; whichever loses just uploads to the existing one
+      - name: Upload to the release
+        shell: bash
+        run: |
+          gh release view "$TAG" >/dev/null 2>&1 || \
+            gh release create "$TAG" --title "Platanus $TAG" --notes-file .github/release-notes.md || true
+          gh release upload "$TAG" ${{ matrix.files }} --clobber

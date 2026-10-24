@@ -55,3 +55,10 @@ npm start      # npm run dev opens DevTools
 ```
 
 Opening `renderer/index.html` in a browser serves a demo project (no disk access).
+
+## Deploy
+
+- Web demo: `npm run build:web` -> `dist/` (static, three.js vendored). Vercel uses `vercel.json`; it must be connected to the personal mirror repo, not the org repo.
+- Desktop: `npm run dist:mac` / `npm run dist:win` -> `dist-electron/` (electron-builder config in `package.json`, unsigned).
+- Pushing a `v*` tag runs `.github/workflows/release.yml`, which builds both installers and attaches them to the GitHub Release.
+- `origin` has two push URLs (org repo + personal mirror); one `git push` updates both.

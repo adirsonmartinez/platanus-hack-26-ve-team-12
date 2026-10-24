@@ -2,15 +2,41 @@
   "name": "platanus-ide",
   "version": "0.1.0",
   "private": true,
-  "description": "IDE visual: tu sistema como un mapa isométrico, con un agente de IA que crea y protege tu código.",
+  "description": "Visual IDE: your project as an isometric map, with an AI agent that builds and secures your code.",
+  "author": "Platanus Hack 26 · team-12",
   "main": "electron/main.js",
   "type": "commonjs",
   "scripts": {
     "start": "electron .",
-    "dev": "electron . --dev"
+    "dev": "electron . --dev",
+    "build:web": "node scripts/build-web.js",
+    "dist:mac": "electron-builder --mac --publish never",
+    "dist:win": "electron-builder --win --publish never"
+  },
+  "build": {
+    "appId": "us.platan.hack26.team12.ide",
+    "productName": "Platanus",
+    "icon": "project-logo.png",
+    "directories": { "output": "dist-electron" },
+    "files": ["electron/**", "renderer/**", "package.json"],
+    "artifactName": "Platanus-${version}-${os}-${arch}.${ext}",
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["universal"] }],
+      "category": "public.app-category.developer-tools",
+      "identity": null
+    },
+    "win": {
+      "target": [{ "target": "nsis", "arch": ["x64"] }],
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   },
   "devDependencies": {
-    "electron": "^45.0.0"
+    "electron": "^45.0.0",
+    "electron-builder": "^26.18.0"
   },
   "dependencies": {
     "three": "^0.160.0"
