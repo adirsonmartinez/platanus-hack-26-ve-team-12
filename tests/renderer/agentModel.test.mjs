@@ -48,12 +48,13 @@ test('with an agent connected, everyday requests that only sound like git go to 
 test('the robot\'s requests to the agent are never mistaken for git commands', async () => {
   const { model, asked, commits } = setup();
   const answers = [{ question: '¿Qué te gustaría crear?', chosen: '🛍️ Vender algo' }];
-  for (const text of [
-    W.scaffoldPrompt(answers, W.stacks.shop), W.talkPrompt(answers, W.stacks.shop),
-    W.tips.gitignore.prompt, W.tips.readme.prompt,
-  ]) await model.reply(text);
+  const texts = [
+    ...Object.values(W.voice).flatMap((voice) => [W.scaffoldPrompt(answers, W.stacks.shop, voice), W.talkPrompt(answers, W.stacks.shop, voice)]),
+    W.tips.gitignore.prompt, W.tips.readme.prompt, W.tips.gitignore.pro.prompt, W.tips.readme.pro.prompt,
+  ];
+  for (const text of texts) await model.reply(text);
   assert.deepEqual(commits, []);
-  assert.equal(asked.length, 4);
+  assert.equal(asked.length, texts.length);
 });
 
 test('without an agent, the scripted chat keeps understanding git as before', async () => {

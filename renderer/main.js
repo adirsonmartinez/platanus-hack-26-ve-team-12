@@ -20,6 +20,7 @@ import { AgentModel } from './models/agentModel.js';
 import { GitModel } from './models/gitModel.js';
 import { AgentConnectionModel } from './models/agentConnectionModel.js';
 import { ModeModel } from './models/modeModel.js';
+import { UserLevelModel } from './models/userLevelModel.js';
 import { RepairHistoryModel } from './models/repairHistoryModel.js';
 
 import { CameraViewModel } from './viewmodels/cameraViewModel.js';
@@ -142,6 +143,7 @@ const actions = {
   // waits until the person picks one
   askAgent(prompt) {
     actions.openChat();
+    robotTexts.add(prompt);
     if (connection.live) return chatViewModel.send(prompt);
     pendingAgentPrompt = prompt;
     actions.showConnect();
@@ -150,10 +152,12 @@ const actions = {
   // The robot's "save my progress": a commit understood by the chat itself (git asks before writing)
   saveProgress() {
     actions.openChat();
+    robotTexts.add(strings.map.welcome.saveProgressPhrase);
     chatViewModel.send(strings.map.welcome.saveProgressPhrase);
   },
 };
 let pendingAgentPrompt = null;
+const robotTexts = new Set(); // messages the robot sent for the person: not something to learn from
 connection.store.subscribe(() => {
   if (!connection.live || !pendingAgentPrompt) return;
   const prompt = pendingAgentPrompt;
@@ -161,7 +165,21 @@ connection.store.subscribe(() => {
   chatViewModel.send(prompt);
 });
 const chatViewModel = new ChatViewModel({ agentModel, bus, actions, connection });
-const robotDialogViewModel = new RobotDialogViewModel({ mapViewModel, projectModel, securityModel, actions });
+
+// The person's level (the welcome robot adapts to it) and the app's Vibe / Dev mode move together:
+// a programmer gets Dev; switching by hand moves the level. Someone already on Dev counts as a programmer.
+const userLevel = new UserLevelModel();
+if (modeModel.tech && !userLevel.store.state.confirmed) userLevel.followMode('tech');
+userLevel.store.subscribe(({ level }, previous) => { if (previous && level !== previous.level) modeModel.set(level === 'pro' ? 'tech' : 'vibe'); });
+modeModel.store.subscribe(({ mode }, previous) => { if (previous && mode !== previous.mode) userLevel.followMode(mode); });
+// It also learns from what the person writes in the chat (technical words, or "no entiendo")
+chatViewModel.store.subscribe(({ messages }, previous) => {
+  if (!previous || messages.length <= previous.messages.length) return;
+  messages.slice(previous.messages.length)
+    .filter((m) => m.role === 'user' && !robotTexts.has(m.text))
+    .forEach((m) => userLevel.learnFromText(m.text));
+});
+const robotDialogViewModel = new RobotDialogViewModel({ mapViewModel, projectModel, securityModel, actions, userLevel });
 // The agent waits for the person to approve a change (main process dialog): the chat says so
 agentService.onAwaiting((detail) => bus.emit(EVENTS.agentAwaiting, detail));
 agentService.onChanged((change) => bus.emit(EVENTS.agentChanged, change)); // its diff, live in the chat

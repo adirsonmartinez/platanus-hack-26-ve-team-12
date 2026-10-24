@@ -236,6 +236,16 @@ body::after {
 .rb-back svg { width: 13px; height: 13px; transform: scaleX(-1); }
 .rb-back:hover { border-color: var(--rb); background: var(--rb-soft); }
 
+/* Footer: how the robot talks to this person (their level); tap to change it */
+.rb-level {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%;
+  margin-top: 10px; padding: 7px 2px 0; border: 0; border-top: 1px solid var(--line);
+  background: transparent; color: var(--muted); font: 11px var(--sans); cursor: pointer; text-align: left;
+}
+#map-labels .map-label.robot-speech .rb-level em { font-style: normal; font-weight: 600; color: var(--rb); }
+.rb-level:hover { color: var(--text); }
+.rb-level:focus-visible { outline: 2px solid var(--rb); outline-offset: 2px; border-radius: 4px; }
+
 /* Minimized: a pill above the robot; it pulses when a new tip is waiting */
 .rb-pill {
   display: inline-flex; align-items: center; gap: 6px; padding: 5px 11px 5px 8px;

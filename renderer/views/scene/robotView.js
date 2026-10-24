@@ -10,6 +10,7 @@ import { icon } from '../icons.js';
 import { CAMERA } from '../../viewmodels/cameraViewModel.js';
 
 const UI = strings.map.welcome.ui;
+const LEVELS = strings.map.welcome.levels;
 // Below and to the left of the project's label (the camera looks from +z): clear of the label and of the folder
 // tree (it grows down-right from the plaza), with room at its right for the bubble
 const SPOT = { x: -9, z: 7.4 };
@@ -41,6 +42,11 @@ function bubbleHtml(b) {
   const back = b.canBack
     ? `<button type="button" class="rb-back" data-press="back" title="${escapeHtml(UI.back)}">${icon('arrowRight')}${escapeHtml(UI.back)}</button>` : '';
   const hint = b.hint ? `<p class="rb-hint">${escapeHtml(b.hint)}</p>` : '';
+  // How the robot is talking to this person; tap to change it (not on the picker, nor while it asks for the level)
+  const levelFoot = b.levelLabel && b.id !== 'levelPicker' && b.id !== 'q:level' ? `
+      <button type="button" class="rb-level" data-press="level" title="${escapeHtml(LEVELS.change)}">
+        <span>${escapeHtml(LEVELS.footer(b.levelLabel))}</span><em>${escapeHtml(LEVELS.footerAction)}</em>
+      </button>` : '';
   // The recommendation: why it is a good choice first, the real tech in small print
   const card = b.stack ? `
       <div class="rb-card">
@@ -60,6 +66,7 @@ function bubbleHtml(b) {
       <p class="rb-text" title="${escapeHtml(UI.skipTyping)}"><span class="rb-typed"></span><span class="rb-caret"></span><span class="rb-dots"><i></i><i></i><i></i></span></p>
       ${hint}${card}
       <div class="rb-buttons">${buttons}</div>
+      ${levelFoot}
     </div>`;
 }
 

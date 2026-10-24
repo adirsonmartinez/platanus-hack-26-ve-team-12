@@ -127,11 +127,13 @@ export const strings = {
     more: (n) => `+${n} más`,
     integrations: 'Integraciones',
     defaultProjectName: 'proyecto',
-    // The robot on the plaza of a new, empty project. It talks to people who do not program: it asks about the
-    // idea, never about technology, and then recommends a stack explained in everyday words.
+    // The robot on the plaza of a new, empty project. It asks about the idea, never about technology, recommends a
+    // stack and keeps coaching. What it says adapts to the person's level (models/userLevelModel.js): 'new' plain
+    // words and analogies, 'some' the same with the real tech named, 'pro' straight and technical (`pro` texts).
     welcome: {
       // Every path is: start -> one question about the idea -> recommendation. Options of the second question carry
-      // the stack they lead to (a key of `stacks`).
+      // the stack they lead to (a key of `stacks`); `unsure` options tell the robot the person needs it simpler.
+      // The 'level' step goes first only while the person's level is unknown.
       steps: [
         {
           id: 'start',
@@ -153,7 +155,7 @@ export const strings = {
           options: [
             { label: '💬 Ven mis productos y me escriben por WhatsApp', next: 'recommend', stack: 'catalog' },
             { label: '💳 Pagan con tarjeta en la misma página', next: 'recommend', stack: 'shop' },
-            { label: '🤷 Todavía no lo sé', next: 'recommend', stack: 'catalog' },
+            { label: '🤷 Todavía no lo sé', next: 'recommend', stack: 'catalog', unsure: true },
           ],
         },
         {
@@ -173,7 +175,7 @@ export const strings = {
           options: [
             { label: '🙋 Solo yo', next: 'recommend', stack: 'personalTool' },
             { label: '👥 Varias personas, cada una con su cuenta', next: 'recommend', stack: 'webApp' },
-            { label: '🤷 No estoy seguro', next: 'recommend', stack: 'personalTool' },
+            { label: '🤷 No estoy seguro', next: 'recommend', stack: 'personalTool', unsure: true },
           ],
         },
         {
@@ -201,18 +203,59 @@ export const strings = {
           // Title and text come from the chosen stack (see `recommend` and `stacks`)
           id: 'recommend',
           options: [
-            { label: '✨ ¡Me encanta, empecemos!', action: 'createFiles' },
+            // `pro`: the label a programmer sees ("¿Qué significa eso?" is not offered to them)
+            { label: '✨ ¡Me encanta, empecemos!', pro: '⚡ Generar el scaffold', action: 'createFiles' },
             { label: '🤔 ¿Qué significa eso?', action: 'explain' },
-            { label: '💬 Prefiero conversarlo primero', action: 'talk' },
-            { label: 'Lo exploro yo', action: 'dismiss' },
+            { label: '💬 Prefiero conversarlo primero', pro: '💬 Discutir alternativas', action: 'talk' },
+            { label: 'Lo exploro yo', pro: 'Lo armo yo', action: 'dismiss' },
           ],
+        },
+        {
+          id: 'level',
+          title: '¡Hola! Soy tu guía 👋',
+          question: 'Antes de empezar, ¿cuánto sabes de programación? Así te hablo a tu medida.',
+          options: [
+            { label: '🌱 Nada, soy nuevo', level: 'new', next: 'start' },
+            { label: '🌿 Un poco, he tocado algo de código', level: 'some', next: 'start' },
+            { label: '🌳 Programo', level: 'pro', next: 'start' },
+          ],
+          skip: 'Prefiero no decirlo',
         },
       ],
       recommend: {
         title: 'Con lo que me contaste, ya tienes un plan 🧠',
+        proTitle: 'Stack sugerido ⚡',
         text: (stack) => `Te recomiendo ${stack.name}. ${stack.why}`,
+        someText: (stack) => `Te recomiendo ${stack.name} (${stack.tech}). ${stack.why}`,
+        proText: (stack) => `${stack.tech}: ${stack.pro}`,
         inside: 'Por dentro usa',
         explainedTitle: 'Te lo explico con un ejemplo 🍳',
+      },
+      // The person's level: shown on the bubble (tap to change), the picker and the robot's suggestions
+      levels: {
+        new: '🌱 Principiante',
+        some: '🌿 Algo sé',
+        pro: '🌳 Programo',
+        change: 'Cambiar cómo te hablo',
+        footer: (label) => `Te hablo: ${label}`,
+        footerAction: 'Cambiar',
+        pickerTitle: '¿Cómo prefieres que te hable?',
+        pickerText: 'Puedes cambiarlo cuando quieras. También ajusta el chat (Vibe o Dev).',
+        cancel: 'Así está bien',
+        suggest: {
+          // to: the level the robot proposes
+          title: { new: '¿Te lo explico más simple? 🌱', some: '¿Te hablo un poco más técnico? 🌿', pro: '¿Vamos directo al grano? 🌳' },
+          up: 'Noto que manejas términos técnicos. ¿Quieres que te hable más directo, con los nombres reales de las cosas?',
+          down: 'Noto que algunas cosas no quedaron claras. ¿Quieres que te explique todo más simple, con ejemplos?',
+          yes: 'Sí, por favor',
+          no: 'No, así está bien',
+        },
+      },
+      // How each level asks the agent to answer (goes at the end of the robot's requests)
+      voice: {
+        new: 'No sé programar: explícame en palabras simples, sin jerga, qué hiciste y cómo lo veo funcionando, paso a paso.',
+        some: 'Sé un poco de programación: usa los términos correctos, pero explica en media línea los que sean nuevos, y dime cómo lo veo funcionando.',
+        pro: 'Soy desarrollador: sé directo y técnico, sin explicaciones básicas. Dime cómo correrlo.',
       },
       // What the robot recommends. `name` and `why` in plain words; `tech` is the real stack (small print and the
       // agent's prompt); `analogy` answers "¿Qué significa eso?"; `perks` are short reasons to feel confident.
@@ -221,6 +264,7 @@ export const strings = {
           name: 'una tienda-catálogo',
           why: 'Muestras tus productos con fotos y precios, y un botón abre WhatsApp para cerrar la venta. Es la forma más rápida de empezar a vender.',
           tech: 'HTML + CSS + enlace a WhatsApp',
+          pro: 'sitio estático con un link wa.me por producto; se publica gratis en Vercel o GitHub Pages, sin backend.',
           perks: ['Lista en un día', 'Gratis para publicar', 'Sin cobros raros'],
           analogy: 'Es como una vitrina: la gente mira desde la calle y, si algo le gusta, toca la puerta (te escribe). Tú no necesitas una caja registradora todavía.',
         },
@@ -228,6 +272,7 @@ export const strings = {
           name: 'una tienda online con pagos',
           why: 'Tus clientes eligen, pagan con tarjeta y tú recibes el dinero. Es lo que usan muchos emprendimientos.',
           tech: 'Next.js + Stripe',
+          pro: 'catálogo con SSG, Stripe Checkout para cobrar y un webhook para confirmar pedidos; Vercel para el deploy.',
           perks: ['Pagos seguros', 'Funciona en el celular', 'Crece contigo'],
           analogy: 'Next.js es el local (lo que la gente ve) y Stripe es el cajero de confianza que cobra por ti. Tú nunca tocas los datos de las tarjetas.',
         },
@@ -235,6 +280,7 @@ export const strings = {
           name: 'una página web sencilla',
           why: 'Rápida, bonita y fácil de cambiar. Si alguien quiere escribirte, agregamos un formulario.',
           tech: 'HTML + CSS',
+          pro: 'estático y sin build; un formulario con Formspree si necesitas contacto. Deploy en Vercel o Pages.',
           perks: ['Carga rapidísimo', 'Gratis para publicar', 'Fácil de editar'],
           analogy: 'HTML es el texto y las fotos, como el contenido de una revista; CSS es el diseño: los colores, letras y márgenes.',
         },
@@ -242,6 +288,7 @@ export const strings = {
           name: 'una app web con cuentas de usuario',
           why: 'Cada persona entra con su correo y ve sus propias cosas. Las cuentas y los datos se guardan de forma segura.',
           tech: 'Next.js + Supabase',
+          pro: 'Supabase Auth y Postgres con RLS por usuario; App Router con server actions. Deploy en Vercel.',
           perks: ['Inicio de sesión listo', 'Datos guardados en la nube', 'Se usa desde cualquier lugar'],
           analogy: 'Next.js es el edificio donde entra la gente y Supabase es la recepción con llaves: sabe quién es quién y guarda sus cosas bajo llave.',
         },
@@ -249,6 +296,7 @@ export const strings = {
           name: 'una app personal que funciona en tu navegador',
           why: 'Guarda todo en tu propio computador, sin cuentas ni servidores. Si después quieres compartirla, la hacemos crecer.',
           tech: 'React + Vite',
+          pro: 'SPA sin backend; estado persistido en localStorage o IndexedDB. Fácil de migrar a Supabase después.',
           perks: ['Sin registrarse', 'Tus datos se quedan contigo', 'Fácil de ampliar'],
           analogy: 'Es como una libreta inteligente: vive en tu computador, nadie más la ve, y puede hacer cálculos y recordatorios por ti.',
         },
@@ -256,6 +304,7 @@ export const strings = {
           name: 'un juego 2D que se juega en el navegador',
           why: 'Personajes, saltos y puntajes, y cualquiera lo juega desde un link, incluso en el celular.',
           tech: 'Phaser',
+          pro: 'Phaser 3 con Vite: escenas, arcade physics y assets en un atlas; build estático para cualquier hosting.',
           perks: ['Sin instalar nada', 'Funciona en el celular', 'Ideal para empezar'],
           analogy: 'Phaser es como una caja de LEGO para juegos: ya trae las piezas (gravedad, choques, sonidos) y tú decides qué construir.',
         },
@@ -263,6 +312,7 @@ export const strings = {
           name: 'un juego de preguntas',
           why: 'Tú escribes las preguntas y el juego lleva los puntos. Es perfecto para compartir con amigos o en clases.',
           tech: 'HTML + CSS + JavaScript',
+          pro: 'vanilla JS con las preguntas en un JSON; sin dependencias ni build.',
           perks: ['Listo muy rápido', 'Fácil de cambiar preguntas', 'Se comparte con un link'],
           analogy: 'Es como un concurso de la tele: tú eres quien escribe las tarjetas con preguntas y la página hace de presentador.',
         },
@@ -284,50 +334,58 @@ export const strings = {
       saveProgressPhrase: 'Guarda mis avances con el nombre "Primera versión"',
       // No agent chosen yet: the request waits until the person picks one in the agent panel
       pickAgent: '¡Ya casi! 🙌 Para escribir el código necesito un asistente de IA. Elige uno en el panel de la izquierda (usa tu propia suscripción) y empiezo con tu pedido apenas lo elijas.',
-      // Requests the robot hands to the agent. The person does not program: plain words, no jargon.
-      scaffoldPrompt: (answers, stack) =>
-        `Quiero empezar un proyecto nuevo y no sé programar. Esto le conté a la guía:\n${answers.map((a) => `- ${a.question} ${a.chosen}`).join('\n')}\n\nLa guía me recomendó ${stack.name} (${stack.tech}). Crea lo mínimo para empezar, con un README y un .gitignore. Al terminar, explícame en palabras simples, sin jerga, qué hiciste y cómo lo veo funcionando, paso a paso.`,
-      talkPrompt: (answers, stack) =>
-        `Quiero conversar mi idea antes de empezar. No sé programar. Esto le conté a la guía:\n${answers.map((a) => `- ${a.question} ${a.chosen}`).join('\n')}\n\nMe recomendó ${stack.name} (${stack.tech}). Hazme hasta 3 preguntas simples, una a la vez, para entender mejor mi idea, y dime si esa recomendación me sirve.`,
+      // Requests the robot hands to the agent; `voice` is the line for the person's level (see `voice` above)
+      scaffoldPrompt: (answers, stack, voice) =>
+        `Quiero empezar un proyecto nuevo. Esto le conté a la guía:\n${answers.map((a) => `- ${a.question} ${a.chosen}`).join('\n')}\n\nLa guía me recomendó ${stack.name} (${stack.tech}). Crea lo mínimo para empezar, con un README y un .gitignore. ${voice}`,
+      talkPrompt: (answers, stack, voice) =>
+        `Quiero conversar mi idea antes de empezar. Esto le conté a la guía:\n${answers.map((a) => `- ${a.question} ${a.chosen}`).join('\n')}\n\nMe recomendó ${stack.name} (${stack.tech}). Hazme hasta 3 preguntas, una a la vez, para entender mejor mi idea, y dime si esa recomendación me sirve o qué alternativas hay. ${voice}`,
       // Coach mode: tips that react to the project while it grows. Plain words; the file names come second.
+      // `pro`: the same tip for a programmer (title, text, button), short and technical
       tips: {
         waiting: {
           title: 'Tú tomaste las decisiones importantes 🧠',
           text: 'Ahora el agente escribe el código por ti. Cuando aparezca el primer archivo en el mapa, te cuento qué sigue.',
           ask: '💬 Hablar con el agente',
           change: '↩️ Cambiar mis respuestas',
+          pro: { title: 'Esperando el scaffold ⏳', text: 'Cuando aparezca el primer archivo te marco lo que falta: .gitignore, README, secretos y el primer commit.' },
         },
         firstFile: {
           title: '¡Tu proyecto ya existe! 🎉',
           text: (name) => `Apareció ${name} en tu mapa. Yo lo vigilo: si algo se pone riesgoso, te aviso aquí mismo.`,
+          pro: { title: 'Primer archivo ✅', text: (name) => `${name} está en el mapa. El semáforo ya lo evalúa.` },
         },
         gitignore: {
           title: 'Protejamos tus contraseñas 🔐',
           text: 'Te sugiero un archivo que evita que tus claves se publiquen por accidente (se llama .gitignore). Los profesionales siempre lo tienen.',
           ask: '✨ Agrégalo por mí',
           prompt: 'Crea un .gitignore adecuado para este proyecto (excluye .env, llaves y carpetas de dependencias). Explícame en una frase simple para qué sirve.',
+          pro: { title: 'Falta .gitignore', text: 'Agrégalo antes del primer commit: .env*, llaves, node_modules y build.', ask: '⚡ Generarlo', prompt: 'Crea un .gitignore para este stack (.env*, llaves, dependencias y salidas de build). Sin explicaciones.' },
         },
         readme: {
           title: 'Preséntale tu proyecto al mundo 📝',
           text: 'Una ficha de presentación (README) cuenta qué hace tu proyecto. Es lo primero que la gente lee.',
           ask: '✨ Escríbela por mí',
           prompt: 'Escribe un README.md corto y amigable para este proyecto: qué es, para quién es y cómo verlo funcionando. Sin jerga.',
+          pro: { title: 'Falta README', text: 'Setup, scripts y variables de entorno necesarias.', ask: '⚡ Generarlo', prompt: 'Escribe un README.md técnico y breve: setup, scripts, variables de entorno (sin valores) y deploy.' },
         },
         risk: {
           title: { red: 'Encontré algo delicado 🚨', yellow: 'Vale la pena revisar esto ⚠️' },
           text: (path, reason) => `${reason} (${path}). Tranquilo: Remi lo puede arreglar contigo.`,
           repair: '🔧 Arréglalo con Remi',
           locate: '📍 Muéstramelo',
+          pro: { title: { red: 'Riesgo en rojo 🚨', yellow: 'Para revisar ⚠️' }, text: (path, reason) => `${path} · ${reason}`, repair: '🔧 Reparar con Remi', locate: '📍 Ver en el mapa' },
         },
         saveProgress: {
           title: 'Guarda una foto de tu avance 📸',
           text: 'Así siempre puedes volver a este punto si algo sale mal después. Los programadores lo llaman "commit".',
           save: '📸 Guardar mi avance',
+          pro: { title: 'Primer commit', text: 'Lo básico está listo: buen momento para el commit inicial.', save: '📸 Commit "Primera versión"' },
         },
         allSet: {
           title: '¡Lo estás haciendo increíble! 🚀',
           text: 'Tu proyecto tiene todo lo básico y nada en rojo, como el de un profesional. Me retiro; el semáforo del mapa sigue cuidándolo.',
           bye: '👋 ¡Gracias, guía!',
+          pro: { title: 'Todo en orden ✅', text: 'Base lista y sin riesgos. El semáforo sigue vigilando.', bye: 'Cerrar la guía' },
         },
         next: 'Entendido',
       },

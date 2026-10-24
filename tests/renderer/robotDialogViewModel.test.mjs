@@ -4,10 +4,15 @@ import assert from 'node:assert/strict';
 import { RobotDialogViewModel } from '../../renderer/viewmodels/robotDialogViewModel.js';
 import { SecurityModel } from '../../renderer/models/securityModel.js';
 import { Observable } from '../../renderer/core/observable.js';
+import { UserLevelModel } from '../../renderer/models/userLevelModel.js';
 
 const file = (path) => ({ type: 'file', path, size: 10 });
 
-function setup() {
+// level: the person's known level ('new' by default, so the interview starts with the idea), or null (unknown)
+function setup({ level = 'new' } = {}) {
+  localStorage.clear();
+  const userLevel = new UserLevelModel();
+  if (level) userLevel.set(level);
   const mapViewModel = { store: new Observable({ status: 'ready', session: 1, welcome: false }) };
   const projectModel = { store: new Observable({ tree: [] }) };
   const securityModel = new SecurityModel();
@@ -19,7 +24,7 @@ function setup() {
     locate: (path) => calls.push(['locate', path]),
     saveProgress: () => calls.push(['saveProgress']),
   };
-  const vm = new RobotDialogViewModel({ mapViewModel, projectModel, securityModel, actions });
+  const vm = new RobotDialogViewModel({ mapViewModel, projectModel, securityModel, actions, userLevel });
   const welcome = () => mapViewModel.store.set({ welcome: true });
   const setTree = (paths) => projectModel.store.set({ tree: paths.map(file) });
   const bubble = () => vm.store.state.bubble;
@@ -28,8 +33,107 @@ function setup() {
     assert.ok(button, `no button "${text}" in ${bubble().buttons.map((b) => b.label)}`);
     vm.press(button.id);
   };
-  return { vm, mapViewModel, securityModel, calls, welcome, setTree, bubble, pressLabel };
+  return { vm, mapViewModel, securityModel, userLevel, calls, welcome, setTree, bubble, pressLabel };
 }
+
+// ---- The person's level ----
+
+test('with an unknown level, the first question asks how much the person knows', () => {
+  const { vm, welcome, bubble, pressLabel, userLevel } = setup({ level: null });
+  welcome();
+  assert.equal(vm.store.state.stepId, 'level');
+  assert.deepEqual(bubble().progress, { step: 1, of: 4 });
+  pressLabel('Programo');
+  assert.equal(userLevel.store.state.level, 'pro');
+  assert.equal(vm.store.state.stepId, 'start');
+  assert.deepEqual(bubble().progress, { step: 2, of: 4 });
+});
+
+test('"I would rather not say" keeps beginner, unconfirmed, and moves on', () => {
+  const { vm, welcome, pressLabel, userLevel } = setup({ level: null });
+  welcome();
+  pressLabel('Prefiero no decirlo');
+  assert.equal(vm.store.state.stepId, 'start');
+  assert.equal(userLevel.store.state.confirmed, false);
+});
+
+test('a known level skips the question and shows on every bubble', () => {
+  const { vm, welcome, bubble } = setup({ level: 'some' });
+  welcome();
+  assert.equal(vm.store.state.stepId, 'start');
+  assert.equal(bubble().level, 'some');
+});
+
+test('a developer gets the stack straight, no analogy button, and a direct request to the agent', () => {
+  const { welcome, bubble, pressLabel, calls } = setup({ level: 'pro' });
+  welcome();
+  assert.equal(bubble().hint, undefined, 'no reassuring line for a programmer');
+  pressLabel('Vender algo');
+  pressLabel('tarjeta');
+  assert.match(bubble().text, /^Next\.js \+ Stripe/);
+  assert.ok(!bubble().buttons.some((b) => /significa/.test(b.label)));
+  pressLabel('scaffold');
+  assert.match(calls.at(-1)[1], /desarrollador/);
+});
+
+test('someone who knows a little sees the plain name with the real tech next to it', () => {
+  const { welcome, bubble, pressLabel } = setup({ level: 'some' });
+  welcome();
+  pressLabel('Vender algo');
+  pressLabel('WhatsApp');
+  assert.match(bubble().text, /tienda-catálogo \(HTML \+ CSS/);
+});
+
+test('a developer gets short, technical tips', () => {
+  const { vm, welcome, setTree, bubble } = setup({ level: 'pro' });
+  welcome();
+  vm.press('skip');
+  setTree(['index.js', '.env']);
+  assert.match(bubble().text, /git rm --cached/, 'the technical reason of the risk');
+  vm.press('next');
+  vm.press('next');
+  assert.equal(bubble().id, 'gitignore');
+  assert.doesNotMatch(bubble().text, /profesionales/);
+});
+
+test('the robot learns: asking for an analogy counts as "simpler, please"', () => {
+  const { welcome, pressLabel, userLevel } = setup({ level: 'some' });
+  welcome();
+  pressLabel('juego');
+  pressLabel('Mario');
+  pressLabel('Qué significa');
+  assert.equal(userLevel.store.state.score, -1);
+});
+
+test('when the evidence piles up the robot asks before changing, and goes back to what it was saying', () => {
+  const { vm, welcome, bubble, userLevel } = setup({ level: 'new' });
+  welcome();
+  for (let i = 0; i < 3; i++) userLevel.learnFromText('haz el deploy de la api');
+  assert.equal(bubble().id, 'suggest:some');
+  vm.press('acceptLevel');
+  assert.equal(userLevel.store.state.level, 'some');
+  assert.equal(bubble().id, 'q:start');
+});
+
+test('declining the suggestion keeps the level', () => {
+  const { vm, welcome, bubble, userLevel } = setup({ level: 'pro' });
+  welcome();
+  for (let i = 0; i < 3; i++) userLevel.learnFromText('no entiendo nada');
+  assert.equal(bubble().id, 'suggest:some');
+  vm.press('declineLevel');
+  assert.equal(userLevel.store.state.level, 'pro');
+  assert.equal(bubble().id, 'q:start');
+});
+
+test('the level chip opens a picker; choosing changes the level and returns', () => {
+  const { vm, welcome, bubble, pressLabel, userLevel } = setup({ level: 'new' });
+  welcome();
+  vm.press('level');
+  assert.equal(bubble().id, 'levelPicker');
+  pressLabel('Programo');
+  assert.equal(userLevel.store.state.level, 'pro');
+  assert.equal(bubble().id, 'q:start');
+});
 
 test('stays off until a new, empty project opens, then starts the interview', () => {
   const { vm, welcome, bubble } = setup();
@@ -151,7 +255,7 @@ test('"let\'s start" hands the agent the answers, the stack and a no-jargon requ
   assert.equal(name, 'askAgent');
   assert.match(prompt, /tarjeta/);
   assert.match(prompt, /Stripe/);
-  assert.match(prompt, /no sé programar/);
+  assert.match(prompt, /No sé programar/);
 });
 
 test('"talk it over" asks the agent to interview the person first', () => {
@@ -162,7 +266,7 @@ test('"talk it over" asks the agent to interview the person first', () => {
   pressLabel('conversarlo');
   const [name, prompt] = calls.at(-1);
   assert.equal(name, 'askAgent');
-  assert.match(prompt, /preguntas simples/);
+  assert.match(prompt, /preguntas, una a la vez/);
 });
 
 test('"let me explore" goes to coach mode collapsed', () => {

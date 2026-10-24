@@ -26,6 +26,18 @@ Cuando alguien crea un proyecto nuevo y vacío, un robot aparece en la plaza del
 
 **Deshacer:** el botón **Atrás** (en la cabecera del globo) quita la última respuesta, y cada respuesta anterior aparece como un chip que se puede tocar para volver a esa pregunta. Después de "¡Me encanta, empecemos!", mientras todavía no hay archivos, **↩️ Cambiar mis respuestas** vuelve a la recomendación.
 
+### Se adapta al nivel de la persona
+
+- **Pregunta directa:** si todavía no conoce a la persona, la primera pregunta es "¿Cuánto sabes de programación?" (🌱 Nada, soy nuevo · 🌿 Un poco · 🌳 Programo · Prefiero no decirlo). El nivel se recuerda entre proyectos (`localStorage`, `platanus.level.v1`) y se ve al pie de cada globo: "Te hablo: 🌱 Principiante · **Cambiar**".
+- **Respuestas a su medida:**
+  - 🌱 Principiante: palabras simples, analogías y la frase que tranquiliza.
+  - 🌿 Algo sé: lo mismo, con la tecnología real nombrada ("una tienda-catálogo (HTML + CSS…)").
+  - 🌳 Programo: "Stack sugerido ⚡" con la razón técnica de cada stack, sin analogías ni frases de aliento; consejos breves (por ejemplo "Falta .gitignore") y los riesgos con su regla técnica ("git rm --cached…"). Los botones cambian: "⚡ Generar el scaffold", "💬 Discutir alternativas", "Lo armo yo".
+  - El pedido al agente termina con una frase del nivel (`welcome.voice`): sin jerga, explicando términos nuevos, o directo y técnico.
+- **Aprende de la persona** (`renderer/models/userLevelModel.js`): bajan el nivel pedir "¿Qué significa eso?", elegir "No sé / No estoy seguro" o escribir en el chat "no entiendo", "más simple"…; lo suben saltarse las preguntas o escribir en el chat dos o más términos técnicos (api, deploy, commit…). Los mensajes que el propio robot manda al chat no cuentan.
+- **Nunca cambia solo:** con 3 señales en la misma dirección pregunta ("¿Te hablo más simple?" / "¿Vamos directo al grano?"). Si la persona dice que no, necesita el doble de señales antes de volver a preguntar.
+- **Va de la mano con Vibe / Dev:** 🌳 Programo activa el modo Dev de la app y los otros niveles, Vibe; cambiar Vibe/Dev a mano también mueve el nivel. Quien ya tenía Dev activado cuenta como programador. Así el chat y el agente se adaptan igual que el robot.
+
 ### 2. Modo guía
 
 El robot se queda y reacciona al proyecto real. En orden de prioridad:
@@ -88,7 +100,8 @@ Si el robot le pasa un pedido al agente y no hay ningún agente conectado, se ab
 
 ## Pruebas
 
-- `tests/renderer/robotDialogViewModel.test.mjs`: entrevista, recomendación, analogía, deshacer, guía, riesgos, guardar avance.
+- `tests/renderer/robotDialogViewModel.test.mjs`: entrevista, recomendación, analogía, deshacer, guía, riesgos, guardar avance y la adaptación al nivel (pregunta, respuestas por nivel, aprendizaje, sugerencia y selector).
+- `tests/renderer/userLevelModel.test.mjs`: el nivel, sus señales, la sugerencia (y su paciencia tras un "no") y Vibe / Dev.
 - `tests/renderer/agentModel.test.mjs`: qué va a git y qué va al agente (incluye que los pedidos del robot nunca se confundan con git).
 - `electron/agents.test.js`: proxy del sistema. `electron/git.test.js`: `gitInit`.
 
