@@ -25,6 +25,8 @@ ADE de escritorio (Electron) para personas no técnicas: el proyecto se ve como 
 - **Conectar mi cuenta: Supabase (proyecto B, 2026-10-24)** (`docs/features/connect-accounts/README.md`): lo hace Platanus, no el agente. `electron/supabaseConnect.js` es cliente OAuth del MCP de Supabase (SDK `@modelcontextprotocol/sdk`, PKCE, registro dinámico, retorno en `127.0.0.1:45789`); modal `connectViewModel` + `connectModalView`; claves a `.env.local` desde main. **Funciona de punta a punta con la cuenta real de Adirson (2026-10-24):** inicio de sesión, organizaciones, `get_cost` → `confirm_cost` → `create_project(confirm_cost_id)`, claves en `.env.local`. Vercel: su MCP solo acepta clientes aprobados → irá por su CLI.
 - **Panel de Supabase** (`databaseViewModel.js`, `renderSupabase` en `shellView.js`, `database.css`): clic en el nodo → panel lateral con estado, tablas, filas, tamaño vs plan y tablas más grandes; consultas fijas de solo lectura en main (`STATS_SQL`, IPC `supabase:stats`). El proyecto enlazado se guarda en `setupModel.link` al conectar; si no hay, main lo saca de la URL de `.env.local`/`.env` (`supabase:linked`, solo el ref). Probado con la cuenta real (2026-10-24).
 - **Esquema 3D de Supabase en el estilo nuevo:** tarjetas oscuras sin brillo (`CARD` en `schemaBuilder.js`, Inter/Roboto Mono, chips neutros, cuerpo `M.slab`, líneas `M.road`); solo RLS desactivado queda rojo. La tarjeta «esquema public» en vidrio (`database.css`). Siguen siendo las tablas de ejemplo, no las reales.
+- **Precisión de los gestos (2026-10-24):** filtro One Euro (`models/oneEuroFilter.js`, `HAND_FILTER`) en cursor, pellizco y dos manos; pellizco medido en 3D (`landmarks.world`, `pinchGap`); confianza del detector 0,6. Sin probar con la cámara real.
+- **Girar con pulgar + medio (2026-10-24):** `pinchFinger` (índice/medio con margen 0,7 y histéresis) y `SlideTurnTracker`; las dos manos quedaron solo para zoom. Fixtures con los otros dedos extendidos (`middlePinch`).
 - **Carpetas de confianza (como VS Code)** (`electron/trust.js`, `models/trustModel.js`): al crear o abrir un proyecto, diálogo nativo «¿Confías…?»; confiada = el agente guarda sin preguntar (`trustedNow` en `platanus_write_file`, `approvedBy: 'trusted'`), secretos bloqueados y respaldo igual. «Sí» se recuerda (`userData/trusted-folders.json`), «No» vuelve a preguntar. Menú ⋯ del chat: confiar / dejar de confiar. **Sin probar en la app real todavía.**
 - **Espera de la obra inicial:** tras «¡Empecemos!» con agente, el globo muestra «Preparando tu proyecto…» con barra (`building` en `robotDialogViewModel`); `actions.askAgent` devuelve si el agente lo recibió.
 - **Sin tarjeta del proyecto en el mapa** (2026-10-24): se quitó la etiqueta con el nombre y «N archivos vigilados»; el nombre ya está en la barra de título y los riesgos en la tarjeta de seguridad.
@@ -59,7 +61,7 @@ ADE de escritorio (Electron) para personas no técnicas: el proyecto se ve como 
   - fijos: chat abajo a la derecha, panel lateral, tarjeta de seguridad (compacta, arriba a la izquierda; reemplazó al semáforo) y selector Mapa/Git. Solo el editor se arrastra. Se quitó `floater.js`.
 
 ## Cómo comprobar
-- `npm test` (546 pruebas al 2026-10-24) y `npx esbuild renderer/main.js --bundle --outfile=/dev/null '--external:*.css' '--external:*.task'`.
+- `npm test` (563 pruebas al 2026-10-24) y `npx esbuild renderer/main.js --bundle --outfile=/dev/null '--external:*.css' '--external:*.task'`.
 - **App real:** `npx electron . --remote-debugging-port=9223 --open=<proyecto>` y scripts CDP (`scripts/demo/cdp.mjs`).
 - **Banderas:**
   - `PLATANUS_SIM=1`: agente «Simulador», escenarios en `scripts/sim/scenarios.js`;
@@ -108,4 +110,5 @@ El equipo cambió el mapa: ya no es un radar, ahora es **un árbol de todo el pr
 - El MCP de Supabase envuelve sus respuestas: `{ organizations: [...] }`, `{ projects: [...] }`, `{ url }`; los errores llegan como `{"error":{"message"}}`. Para crear un proyecto exige `get_cost` + `confirm_cost`.
 - `execute_sql` del MCP de Supabase devuelve `{ result: "…<untrusted-data-ID>[filas]</untrusted-data-ID>…" }` y el aviso de antes también nombra la etiqueta: tomar la última apertura antes del cierre. `get_organization` trae `plan` (`free`, `pro`…).
 - Antes de crear un archivo con `cat >`, mirar si existe (se pisó `tests/renderer/format.test.mjs`; se recuperó con `git show HEAD:`).
+- Un filtro con tiempo real se congela si los cuadros llegan casi a la vez (las pruebas mandan cuadros seguidos sin `now`): `oneEuroFilter` trata separaciones < 4 ms como cuadros de cámara.
 - La UI nueva llega pronto. Los selectores de la grabación viven en `scripts/demo/timeline.mjs`: si cambian, se ajustan solo ahí.

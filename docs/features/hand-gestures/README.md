@@ -2,7 +2,8 @@
 
 Con la cámara encendida, la persona maneja el mapa 3D con las manos, sin tocar el mouse:
 - mover el mapa con un pellizco;
-- acercar, alejar y girar con dos pellizcos: una mano sostiene y la otra se mueve;
+- acercar y alejar con dos pellizcos: una mano sostiene y la otra sube o baja;
+- girar con una mano: pulgar y dedo medio juntos, y la mano va de lado;
 - elegir carpetas, archivos o cualquier botón dejando el cursor quieto.
 
 - Spec: [`spec/003-hand-gestures.md`](../../../spec/003-hand-gestures.md) (gestos para acercar, alejar, girar y seleccionar)
@@ -18,11 +19,11 @@ Con la cámara encendida, la persona maneja el mapa 3D con las manos, sin tocar 
 |---|---|---|
 | Pellizco (pulgar e índice) y mover la mano | El mapa sigue a la mano | «Moviendo el mapa» |
 | Pellizco con las dos manos: una sostiene quieta y la otra sube o baja | Subir acerca y bajar aleja, alrededor de la mano que sostiene, sin pasar los límites del zoom | «Acercando» / «Alejando» |
-| Pellizco con las dos manos: una sostiene y la otra va de lado | Hacia tu derecha gira el mapa a la derecha; hacia tu izquierda, al revés | «Girando el mapa» |
+| Pulgar y dedo medio juntos, la mano va de lado | Hacia tu derecha gira el mapa a la derecha; hacia tu izquierda, al revés. No mueve ni acerca el mapa | «Girando el mapa» |
 | Mano abierta | Aparece un cursor violeta que sigue el punto entre pulgar e índice, con la tarjeta de hover del mapa | «Señalando» |
 | Dejar el cursor quieto ~800 ms sobre algo | Un anillo se llena y lo elige, igual que un clic | «Seleccionado: `src`» |
 
-Con dos manos, la dirección se decide al empezar: lo primero que pasa su umbral (vertical o de lado) se mantiene hasta soltar. Así un zoom no gira el mapa sin querer, ni un giro lo acerca. Cualquiera de las dos manos puede sostener: mueve la que más se movió. Para cambiar de gesto, suelta y vuelve a pellizcar. Girar una sola mano como una perilla ya no gira el mapa.
+Las dos manos solo hacen zoom (cambio del 2026-10-24): mover la mano libre de lado no hace nada. Cualquiera de las dos manos puede sostener: mueve la que más se movió. Girar es de una mano: pulgar y dedo medio juntos (`pinchFinger` decide qué dedo toca el pulgar; la punta más cercana tiene que ganar con margen, porque el medio y el anular se mueven juntos, y el dedo queda fijo hasta soltar). Girar una mano como una perilla no gira el mapa.
 
 El gesto de dos manos tiene sus propias reglas:
 - **Le gana al arrastre**: si una mano ya estaba moviendo el mapa y la otra pellizca, pasa al gesto de dos manos y el arrastre se detiene.
@@ -48,7 +49,7 @@ El cursor cubre toda la ventana con la parte central de la imagen, así se llega
 
 ### Dos manos y computadoras lentas
 
-MediaPipe sigue hasta dos manos por cuadro. Con `npm run dev`, la vista previa muestra los cuadros por segundo y si corre en GPU o en CPU. Si corre en CPU y baja de 20 cuadros por segundo durante 3 segundos, el zoom y el giro con dos manos se apagan: se vuelve a una mano, para que la CPU trabaje menos, y la vista previa lo dice. La próxima vez que se encienda la cámara lo intenta de nuevo.
+MediaPipe sigue hasta dos manos por cuadro. Con `npm run dev`, la vista previa muestra los cuadros por segundo y si corre en GPU o en CPU. Si corre en CPU y baja de 20 cuadros por segundo durante 3 segundos, el zoom con dos manos se apaga: se vuelve a una mano, para que la CPU trabaje menos, y la vista previa lo dice. La próxima vez que se encienda la cámara lo intenta de nuevo.
 
 ## Seguridad y privacidad
 
@@ -60,14 +61,21 @@ MediaPipe sigue hasta dos manos por cuadro. Con `npm run dev`, la vista previa m
 
 ## La librería
 
-`@mediapipe/tasks-vision` 1.1.1 (la última en npm), con `HandLandmarker` en modo VIDEO y GPU con respaldo en CPU, hasta ~30 análisis por segundo. Por cada mano entrega 21 puntos en la imagen (x, y, z), 21 en metros y si es la mano izquierda o la derecha. Usamos solo x e y de algunos puntos: muñeca, pulgar, índice, y los nudillos del índice, del medio y del meñique. Se descartó `GestureRecognizer`: solo trae 7 gestos fijos, sin pellizco ni zoom, necesita otro modelo, y su GPU es más lenta según el benchmark de Google. El paquete y el modelo son Apache 2.0.
+`@mediapipe/tasks-vision` 1.1.1 (la última en npm), con `HandLandmarker` en modo VIDEO y GPU con respaldo en CPU, hasta ~30 análisis por segundo. Por cada mano entrega 21 puntos en la imagen (x, y, z), 21 en metros y si es la mano izquierda o la derecha. Usamos x e y de algunos puntos (muñeca, pulgar, índice, y los nudillos del índice, del medio y del meñique) y, para el pellizco, los puntos en metros (ver «Precisión»). Se descartó `GestureRecognizer`: solo trae 7 gestos fijos, sin pellizco ni zoom, necesita otro modelo, y su GPU es más lenta según el benchmark de Google. El paquete y el modelo son Apache 2.0.
+
+## Precisión
+
+- **Filtro One Euro** (`renderer/models/oneEuroFilter.js`, Casiez et al. 2012) en el cursor, el pellizco y las dos manos: suaviza fuerte cuando la mano casi no se mueve (el cursor no tiembla y quedarse quieto para seleccionar es más fácil) y poco cuando se mueve rápido (no se atrasa). Usa el tiempo real de cada cuadro; sin tiempo, o con cuadros a menos de 4 ms, supone cuadros de cámara (30 por segundo). Parámetros en `HAND_FILTER`, ajustados en sus pruebas contra el suavizado fijo anterior (50 %).
+- **Pellizco en 3D:** el servicio le pega a cada mano sus puntos en metros (`landmarks.world`, de `worldLandmarks`) y `pinchGap` mide el pellizco ahí: no cambia si la mano está girada o lejos de la cámara. Sin esos puntos (pruebas, datos viejos) se mide en la imagen, como antes.
+- **Confianza del detector:** detección, presencia y seguimiento en 0,6 (MediaPipe usa 0,5 por defecto): menos manos fantasma y menos saltos.
+- Pruebas: `tests/renderer/oneEuroFilter.test.mjs`, `tests/renderer/handPrecision.test.mjs`.
 
 ## Archivos
 
 | Pieza | Archivo |
 |---|---|
 | Cámara → puntos de hasta dos manos, GPU o CPU, menos manos si la CPU no da | `renderer/services/handTrackingService.js` |
-| Puntos → gestos: pellizco (`PinchTracker`), sostener y mover con dos manos (`TwoHandTracker`: zoom o giro), cursor (`PointerTracker`), elegir quieto (`DwellTimer`), qué mano lleva el cursor (`pickCursorHand`) | `renderer/models/handGesture.js` |
+| Puntos → gestos: pellizco (`PinchTracker`), sostener y mover con dos manos (`TwoHandTracker`: zoom), qué dedo pellizca (`pinchFinger`), girar con pulgar y medio (`SlideTurnTracker`), cursor (`PointerTracker`), elegir quieto (`DwellTimer`), qué mano lleva el cursor (`pickCursorHand`) | `renderer/models/handGesture.js` |
 | Gesto → cámara del mapa, cursor, anillo y selección; cuadros por segundo | `renderer/viewmodels/handControlViewModel.js` |
 | Qué hay bajo el cursor y si se puede elegir (todo lo clickeable salvo `never`) | `renderer/views/ui/handTargets.js` |
 | El cursor y el anillo; elegir como un clic y hacer zoom con el mismo código del mouse | `renderer/views/ui/handCursorView.js` |
@@ -85,7 +93,7 @@ El paneo usa `CameraViewModel.glideBy` y el giro `CameraViewModel.turnBy`: los d
   - `handTargets.test.mjs`: qué se puede elegir y qué no (`never`, texto, diálogo abierto).
 - Con cámara: abre un proyecto y enciende la mano. Prueba:
   - pellizcar y mover;
-  - sostener con una mano y subir o bajar la otra (zoom), o moverla de lado (giro);
+  - sostener con una mano y subir o bajar la otra (zoom); juntar pulgar y medio y mover la mano de lado (giro);
   - la mano abierta quieta sobre una carpeta;
   - el cursor sobre "Reparar" (no pasa nada).
 - Sin cámara real: Chromium o Electron con `--use-fake-device-for-media-stream` llega hasta «Muestra tu mano a la cámara».

@@ -1,5 +1,5 @@
 // The hand control view model with the new gestures (spec/003-hand-gestures.md): one pinch moves the map;
-// two pinches, one holding and the other moving, zoom (up / down) or turn (sideways); an open hand moves a
+// two pinches, one holding and the other moving, zoom (up / down); thumb + middle turns (sideways); an open hand moves a
 // cursor and holding still selects. The screen side (what is under the cursor, clicking it,
 // zooming around a point) comes as fake actions.
 import './setup.mjs';
@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { HandControlViewModel } from '../../renderer/viewmodels/handControlViewModel.js';
 import { CameraViewModel, CAMERA } from '../../renderer/viewmodels/cameraViewModel.js';
 import { DWELL_MS } from '../../renderer/models/handGesture.js';
-import { hand, holdAndMove, OPEN, PINCHED } from './handFixtures.mjs';
+import { hand, holdAndMove, middlePinch, OPEN, PINCHED } from './handFixtures.mjs';
 import { toViewport } from '../../renderer/models/handGesture.js';
 
 function setup({ target = { key: 'folder:src', kind: 'pick', label: 'src', selectable: true }, now = { t: 0 } } = {}) {
@@ -43,11 +43,11 @@ test('hold with one hand and raise the other: zoom in around the holding hand; l
   assert.equal(state().gesture, 'zoomOut');
 });
 
-test('hold with one hand and move the other sideways: the map turns, without zoom (the person\'s right turns right)', async () => {
+test('thumb and middle with one hand, moving it right: the map turns right, without zoom or drag', async () => {
   const { vm, camera, send, state, now } = setup();
   await vm.toggle();
   const azimuth = camera.azimuthGoal, zoom = camera.zoomGoal;
-  for (let i = 0; i <= 10; i++) { now.t += 33; send(holdAndMove(-i * 0.02, 0)); }
+  for (let i = 0; i <= 10; i++) { now.t += 33; send([middlePinch(0.6 - i * 0.02, 0.5)]); }
   assert.ok(camera.azimuthGoal - azimuth > 0.3, `turn ${camera.azimuthGoal - azimuth}`);
   assert.equal(state().gesture, 'rotate');
   assert.equal(camera.zoomGoal, zoom);

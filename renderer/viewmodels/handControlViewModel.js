@@ -8,7 +8,7 @@
 // What is under the cursor, clicking it and zooming around a point belong to the screen: they come as
 // `actions` from main.js, so this stays free of DOM and three.js. Frames never leave the computer.
 import { Observable } from '../core/observable.js';
-import { PinchTracker, TwoHandTracker, PointerTracker, DwellTimer, isPinched, pickCursorHand, palmOf, matchHands } from '../models/handGesture.js';
+import { PinchTracker, TwoHandTracker, SlideTurnTracker, PointerTracker, DwellTimer, pinchFinger, pickCursorHand, palmOf, matchHands } from '../models/handGesture.js';
 import { CAMERA } from './cameraViewModel.js';
 
 // A drag across the whole camera image moves the map this many screens (a short hand move goes far)
@@ -38,12 +38,15 @@ export class HandControlViewModel {
   #now;
   #tracker = onePinch();
   #pair = new TwoHandTracker();
+  #turn = new SlideTurnTracker(); // thumb + middle: one hand turns the map
+  #turning = false;
   #pointer = new PointerTracker();
   #dwell = new DwellTimer();
   #run = 0; // increases each time it turns on or off, so late frames are ignored
   #twoHand = false; // both hands pinch: hold and move
   #waitRelease = false; // after a two-hand gesture, the hand that is still pinching does not drag until it lets go
-  #pinched = [false, false];
+  #pinched = [false, false]; // each hand pinches with the index (grab: drag, two-hand zoom)
+  #fingers = [null, null];   // which finger each hand pinches with: 'index' | 'middle' | null
   #palms = []; // where each hand's palm was in the last frame (keeps each hand in its place)
   #graceFrom = null; // when a single pinch started while the other hand was in view
   #twoLostAt = null; // during a two-hand gesture: since when one hand is missing or open
@@ -102,9 +105,12 @@ export class HandControlViewModel {
     this.#pair.reset();
     this.#pointer.reset();
     this.#dwell.reset();
+    this.#turn.reset();
+    this.#turning = false;
     this.#twoHand = false;
     this.#waitRelease = false;
     this.#pinched = [false, false];
+    this.#fingers = [null, null];
     this.#palms = [];
     this.#graceFrom = null;
     this.#twoLostAt = null;
@@ -120,7 +126,8 @@ export class HandControlViewModel {
     // Each hand keeps its place between frames, so its pinch state (with hysteresis) stays its own
     const match = matchHands(raw, this.#palms);
     const hands = match.hands;
-    this.#pinched = hands.map((h, i) => isPinched(h, match.previous[i] >= 0 && this.#pinched[match.previous[i]]));
+    this.#fingers = hands.map((h, i) => pinchFinger(h, match.previous[i] >= 0 ? this.#fingers[match.previous[i]] : null));
+    this.#pinched = this.#fingers.map((f) => f === 'index');
     this.#palms = match.palms;
     const twoHands = this.store.state.twoHands && hands.length === 2;
 
@@ -134,7 +141,7 @@ export class HandControlViewModel {
         this.#pair.reset();
         this.#graceFrom = null;
       }
-      const { mode, factor, dAngle, anchor } = this.#pair.update(hands[0], hands[1]);
+      const { mode, factor, dAngle, anchor } = this.#pair.update(hands[0], hands[1], now);
       let gesture = this.store.state.gesture;
       if (!mode) gesture = 'hold';
       else if (mode === 'rotate') {
@@ -162,10 +169,28 @@ export class HandControlViewModel {
       this.#waitRelease = false;
     }
 
+    // Thumb + middle finger: that hand turns the map (moving sideways), with no drag or zoom
+    const turning = this.#fingers.indexOf('middle');
+    if (turning >= 0 && hands[turning]) {
+      if (!this.#turning) {
+        this.#turning = true;
+        this.#turn.reset();
+        this.#tracker = onePinch(); // a drag that was going stops here
+        this.#camera.cancelFlight?.();
+      }
+      const { dAngle } = this.#turn.update(hands[turning], now);
+      if (dAngle) this.#camera.turnBy(dAngle);
+      return this.#show({ hand: true, pinching: true, gesture: 'rotate', cursor: null });
+    }
+    if (this.#turning) {
+      this.#turning = false;
+      this.#turn.reset();
+    }
+
     // One hand: the one pinching grabs (as before); otherwise the cursor's hand points
     const cursorHand = pickCursorHand(hands, this.#cursorPalm);
     const grabbing = hands.length === 2 ? hands[this.#pinched[0] ? 0 : this.#pinched[1] ? 1 : hands.indexOf(cursorHand)] : hands[0] ?? null;
-    const { pinching, mode, dx, dy } = this.#tracker.update(grabbing ?? null);
+    const { pinching, mode, dx, dy } = this.#tracker.update(grabbing ?? null, now);
     if (pinching) {
       // The other hand is in view and may pinch too: wait a moment before dragging (the moves of that
       // moment are not applied later, so nothing jumps)
@@ -184,7 +209,7 @@ export class HandControlViewModel {
 
   // The cursor and the hold-still selection (B10-B18)
   #point(landmarks, now) {
-    const cursor = this.#pointer.update(landmarks);
+    const cursor = this.#pointer.update(landmarks, now);
     const target = this.#actions.targetAt?.(cursor.x, cursor.y) ?? null;
     if ((target?.key ?? null) !== (this.#target?.key ?? null)) this.#actions.hover?.(target, cursor.x, cursor.y);
     this.#target = target;

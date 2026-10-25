@@ -23,7 +23,7 @@ export const strings = {
     pinching: {
       grab: 'Agarrado: mueve la mano para mover el mapa',
       pan: 'Moviendo el mapa',
-      hold: 'Sostén con una mano y mueve la otra: arriba o abajo para el zoom, a los lados para girar',
+      hold: 'Sostén con una mano y sube o baja la otra para el zoom',
       rotate: 'Girando el mapa',
     },
     // spec/003-hand-gestures.md: zoom with two hands, a cursor, selecting by holding still
@@ -32,14 +32,14 @@ export const strings = {
     holding: 'Quieta… eligiendo',
     selected: (name) => `Seleccionado: ${name}`,
     waitRelease: 'Suelta la mano para volver a agarrar',
-    slow: 'Tu computadora va lenta para dos manos: el zoom y el giro con dos manos quedaron apagados.',
+    slow: 'Tu computadora va lenta para dos manos: el zoom con dos manos quedó apagado.',
     fps: (fps, delegate) => `${fps} fps · ${delegate ?? '…'}`,
     help: 'Ver los gestos',
     helpTitle: 'Gestos',
     helpItems: [
       'Pellizca (pulgar e índice) y mueve la mano: mueves el mapa.',
       'Zoom: pellizca con las dos manos, deja una quieta y sube la otra para acercar o bájala para alejar.',
-      'Girar: pellizca con las dos manos, deja una quieta y mueve la otra a la derecha o a la izquierda.',
+      'Girar: junta pulgar y dedo medio, y mueve la mano a la derecha o a la izquierda.',
       'Mano abierta: aparece el cursor. Déjalo quieto ~1 segundo sobre algo para elegirlo.',
       'Se puede elegir todo lo que se elige con un clic, salvo reparar, verificar, deshacer, los permisos del agente y los servidores.',
     ],
