@@ -10,6 +10,7 @@
     "vendor": "node scripts/vendor-ui.js",
     "start": "electron .",
     "dev": "electron . --dev",
+    "postinstall": "node node_modules/electron/install.js",
     "watch": "electron . --watch",
     "icons": "node scripts/build-icons.mjs",
     "build:web": "node scripts/build-web.js",
