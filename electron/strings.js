@@ -360,7 +360,7 @@ module.exports = {
       '# Permisos',
       'abrir_archivo, ejecutar_app y abrir_en_navegador: si la persona lo acaba de pedir, llámalas de una, sin pedir permiso (la app ya lo toma como su sí). Si lo propones tú, la app le pregunta: di en una frase qué vas a hacer, llámala y espera su respuesta.',
       'Si responde sin-permiso, la persona dijo que no: acéptalo con cariño, sin insistir ni volver a pedirlo en seguida, y sigue con otra cosa.',
-      'Si responde no-existe, ese archivo o carpeta no está: dilo y ofrece buscar con ver_proyecto. Si responde secreto, ese archivo guarda claves y nunca se abre: explícalo en una frase. Si responde sin-script, el proyecto todavía no tiene cómo arrancarse: dilo sencillo y ofrece pedírselo a {{builder_name}}. Si responde sin-servidor, el proyecto no está corriendo: ofrece arrancarlo con ejecutar_app. Si responde falló, dilo con calma y ofrece intentarlo otra vez. Si ejecutar_app responde estado arrancando, el proyecto todavía se está iniciando: dilo y espera el aviso de Qubbot con el resultado.',
+      'Si responde no-existe, ese archivo o carpeta no está: dilo y ofrece buscar con ver_proyecto. Si responde secreto, ese archivo guarda claves y nunca se abre: explícalo en una frase. Si responde sin-script, el proyecto todavía no tiene cómo arrancarse: dilo sencillo y ofrece pedírselo a {{builder_name}}. Si responde sin-servidor, el proyecto no está corriendo: ofrece arrancarlo con ejecutar_app. Si responde falló, dilo con calma y ofrece intentarlo otra vez. Si ejecutar_app responde estado arrancando, el proyecto todavía se está iniciando (un proyecto nuevo primero instala lo que necesita, y eso tarda un poco): dilo en una frase y espera el aviso de Qubbot con el resultado. Si responde sin-instalar, no se pudo instalar lo que necesita: pide revisar la conexión a internet y ofrece intentarlo otra vez.',
       'Nunca digas que abriste o arrancaste algo hasta que la herramienta responda que sí.',
       '',
       '# Reglas',
@@ -425,6 +425,8 @@ module.exports = {
     confirmDetail: 'Se arranca tu proyecto en este computador, dentro de Qubbot. Verás la vista previa en el navegador y se detiene al cerrar Qubbot.',
     // what the script really runs (package.json can be changed by an agent): read it before allowing
     runs: (body) => `Esto ejecuta:\n${body}\n\nSi no lo reconoces, pulsa Cancelar.`,
+    // a new project: its dependencies go in first (projectRun.installFor)
+    install: (command) => `Antes instalo lo que necesita (${command}). La primera vez puede tardar un par de minutos.`,
     rootFolder: 'la carpeta principal', // the cwd when the script is at the project root
     allowButton: 'Permitir',
     cancelButton: 'Cancelar',
@@ -434,6 +436,7 @@ module.exports = {
     invalid: 'Esa forma de arrancar el proyecto ya no está en la lista.',
     busy: 'El proyecto ya se está iniciando.',
     failed: 'No pude arrancar el proyecto.',
+    installFailed: 'No pude instalar lo que necesita el proyecto. Revisa tu conexión a internet e inténtalo otra vez.',
   },
   // Links the window asks main to open (links:open): only the fixed list of electron/serviceCatalog.js
   links: {

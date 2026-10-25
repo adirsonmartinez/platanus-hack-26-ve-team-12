@@ -3,9 +3,12 @@
 // id from the list made here: the window never sends a command. Main shows its own native dialog first,
 // then the script runs as a server managed by Qubbot (servers.js createManagedServers: no Terminal
 // window, stopped when Qubbot quits), and the new listening port is found in the list of servers.
+// A project whose dependencies were never installed (a new one the agent just made) gets `npm install`
+// (or the tool of its lockfile) first, announced in the same dialog.
 // Tested in projectRun.test.js.
 const fsp = require('node:fs/promises');
 const path = require('node:path');
+const childProcess = require('node:child_process');
 
 const SCRIPTS = ['dev', 'start']; // the first one present is the one offered
 const WORKSPACE_DIRS = ['apps', 'packages'];
@@ -47,12 +50,50 @@ async function scriptsFor(root, { readFile = defaultReadFile, readdir = defaultR
   return list;
 }
 
+const exists = (file) => fsp.access(file).then(() => true, () => false);
+const LOCKFILES = [['pnpm-lock.yaml', 'pnpm'], ['yarn.lock', 'yarn'], ['bun.lockb', 'bun'], ['bun.lock', 'bun']];
+const INSTALL_MS = 5 * 60_000; // a first install can take a few minutes
+
+// -> { cwd, command } of the install a script in `cwd` needs, or null when its dependencies are there.
+// A folder of a workspace installs from the root (when the root has a package.json); the root's
+// node_modules counts for it. The lockfile picks the package manager (npm when there is none).
+async function installFor(root, cwd, { has = exists } = {}) {
+  const at = cwd !== '.' && (await has(path.join(root, 'package.json'))) ? '.' : cwd;
+  if (await has(path.join(root, at, 'node_modules'))) return null;
+  if (await has(path.join(root, cwd, 'node_modules'))) return null;
+  let tool = 'npm';
+  for (const [file, name] of LOCKFILES) if (await has(path.join(root, at, file))) { tool = name; break; }
+  return { cwd: at, command: `${tool} install` };
+}
+
+// The install itself: the same login shell as the managed servers (the person's PATH, nvm…), the words as
+// arguments (no shell code), without the app's secrets in its environment. -> true when it finished well
+function defaultInstall({ root, cwd, command }) {
+  const { managedLaunch } = require('./servers');
+  const { cleanEnv } = require('./commandRun');
+  return new Promise((resolve) => {
+    const [file, args, opts] = managedLaunch(command, path.join(root, cwd));
+    let child;
+    try {
+      child = childProcess.spawn(file, args, { ...opts, env: cleanEnv() });
+    } catch {
+      resolve(false);
+      return;
+    }
+    child.stdout?.resume();
+    child.stderr?.resume();
+    const timer = setTimeout(() => child.kill('SIGTERM'), INSTALL_MS);
+    child.on('error', () => {});
+    child.on('close', (code) => { clearTimeout(timer); resolve(code === 0); });
+  });
+}
+
 const fail = (reason) => ({ ok: false, reason });
 
 // managed: createManagedServers() of main; readEntries: servers.readEntries (listening sockets with pids);
 // confirm(choice) -> Promise<boolean>, the native dialog (choice carries body, the script's real command).
 function createProjectRun({
-  managed, readEntries, confirm,
+  managed, readEntries, confirm, install = defaultInstall,
   platform = process.platform, sleep = (ms) => new Promise((r) => setTimeout(r, ms)),
   waitMs = WAIT_MS, pollMs = POLL_MS, readFile, readdir,
 }) {
@@ -77,7 +118,8 @@ function createProjectRun({
     // for the window (run:scripts): without body, which only main's dialog needs
     scripts: async (root) => (root ? (await scriptsFor(root, { readFile, readdir })).map(({ body, ...rest }) => rest) : []),
     portOf: (pid) => ports.get(pid) ?? null,
-    // -> { ok: true, port: number | null } | { ok: false, reason: 'noProject' | 'noScript' | 'invalid' | 'busy' | 'rejected' | 'failed' }
+    // -> { ok: true, port: number | null }
+    //  | { ok: false, reason: 'noProject' | 'noScript' | 'invalid' | 'busy' | 'rejected' | 'installFailed' | 'failed' }
     async start(root, id) {
       if (!root) return fail('noProject');
       if (busy) return fail('busy');
@@ -92,7 +134,9 @@ function createProjectRun({
         if (already && managed.has(already.pid)) return { ok: true, port: already.port };
         // managed servers start through the login shell (macOS); Windows is not supported yet
         if (platform !== 'darwin') return fail('failed');
-        if (!(await confirm(choice))) return fail('rejected');
+        const needs = await installFor(root, choice.cwd);
+        if (!(await confirm({ ...choice, install: needs }))) return fail('rejected');
+        if (needs && !(await install({ root, ...needs }))) return fail('installFailed');
         const before = await listening();
         let pid;
         try {
@@ -116,4 +160,4 @@ function createProjectRun({
   };
 }
 
-module.exports = { scriptsFor, createProjectRun, SCRIPTS };
+module.exports = { scriptsFor, installFor, createProjectRun, SCRIPTS };

@@ -126,6 +126,7 @@ function runAnswer(res) {
   if (res?.ok) return { ok: true, ...(res.port ? { puerto: res.port } : {}) };
   const reason = String(res?.reason ?? '');
   if (/reject|cancel/i.test(reason)) return { ok: false, motivo: 'sin-permiso' }; // main's own dialog said no
+  if (/install/i.test(reason)) return { ok: false, motivo: 'sin-instalar' }; // npm install failed (offline…)
   if (/script/i.test(reason)) return { ok: false, motivo: 'sin-script' };
   if (/busy/i.test(reason)) return { ok: false, motivo: 'ocupado' };
   return { ok: false, motivo: 'falló' };

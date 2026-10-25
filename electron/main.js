@@ -431,9 +431,9 @@ const projectRun = createProjectRun({
   managed: managedServers,
   readEntries: () => servers.readEntries(),
   // the detail shows what the script really runs, masked like servers:restart: an agent may have rewritten it
-  confirm: ({ command, cwd, body }) => confirm(
+  confirm: ({ command, cwd, body, install }) => confirm(
     t.run.confirm(command, cwd === '.' ? t.run.rootFolder : cwd),
-    `${t.run.confirmDetail}\n\n${t.run.runs(servers.maskSecrets(body ?? ''))}`,
+    [t.run.confirmDetail, install ? t.run.install(install.command) : null, t.run.runs(servers.maskSecrets(body ?? ''))].filter(Boolean).join('\n\n'),
     t.run.allowButton,
   ),
 });

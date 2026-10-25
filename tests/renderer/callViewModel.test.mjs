@@ -1033,6 +1033,15 @@ test('ejecutar_app: no script -> sin-script; denied here or in main\'s dialog ->
   assert.deepEqual(await pending, { ok: false, motivo: 'sin-permiso' }, "main's own dialog said no");
 });
 
+test('ejecutar_app: the dependencies could not be installed -> sin-instalar (Qubi says so instead of a vague failure)', async () => {
+  const t = actingSetup({ runResult: { ok: false, reason: 'installFailed' } });
+  await t.vm.start();
+  const pending = t.tools().ejecutar_app();
+  await flush();
+  t.vm.allow(t.vm.store.state.permission.id);
+  assert.deepEqual(await pending, { ok: false, motivo: 'sin-instalar' });
+});
+
 test('ejecutar_app: a start that outlasts the tool\'s time answers arrancando, and Qubi hears the outcome later', async () => {
   let finish;
   const t = actingSetup({ timing: { toolAnswerMs: 30 } });

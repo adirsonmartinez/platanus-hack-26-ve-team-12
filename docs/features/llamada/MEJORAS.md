@@ -51,6 +51,7 @@ Qubi actúa en el proyecto solo con permiso de la persona.
 - `scriptsFor(root)`: busca un script `dev` o `start` en el `package.json` de la raíz y de `apps/*`, como mucho 1 nivel. Devuelve `[{ cwd, script, command: 'npm run dev' }]`.
 - `run(choice)` usa los servidores administrados (`createManagedServers` de `servers.js`) con `npm run <script>` en esa carpeta.
 - **Antes**, `dialog.showMessageBox` dice «Qubi quiere ejecutar `npm run dev` en `apps/web`. ¿Permitir?» y ofrece Permitir / Cancelar.
+- **Dependencias (2026-10-25):** si falta `node_modules` (un proyecto recién creado), `installFor` decide dónde instalar (la raíz si es un monorepo) y con qué (`npm`, o `pnpm` / `yarn` / `bun` según el lockfile). El mismo diálogo lo avisa («Antes instalo lo que necesita…») y la instalación corre con el login shell del usuario, sin secretos en el entorno, máximo 5 min. Si falla, no se arranca: `installFailed` → Qubi recibe `sin-instalar` y pide revisar internet.
 - **Después**, el puerto nuevo se detecta con la lista de servidores y se abre con `servers:open`.
 - IPC `run:scripts` y `run:start` (con el índice de un script de la lista, nunca texto libre).
 
