@@ -9,6 +9,9 @@ function hand(x, y, gap, turn = 0) {
   const points = Array.from({ length: 21 }, () => ({ x, y, z: 0 }));
   points[0] = { x, y: y + 0.2, z: 0 };
   points[9] = { x, y, z: 0 };
+  points[12] = { x: x + 0.01, y: y - 0.2, z: 0 }; // middle, ring and little fingers extended
+  points[16] = { x: x + 0.03, y: y - 0.19, z: 0 };
+  points[20] = { x: x + 0.05, y: y - 0.16, z: 0 };
   points[4] = { x: x - gap / 2, y: y - 0.05, z: 0 };
   points[8] = { x: x + gap / 2, y: y - 0.05, z: 0 };
   const cx = x, cy = y + 0.2 / 3;

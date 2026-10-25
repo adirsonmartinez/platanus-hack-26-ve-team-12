@@ -94,6 +94,17 @@ body:not(.chat-closed):not(.chat-min):not(.chat-docked) #stage #call-bar:not([da
 }
 @keyframes call-blink { 0%, 95%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.12); } }
 
+/* Loading (data-loading="true", until Qubi talks): only the face, the title and this bar; no wave, no
+   buttons, no link. A permission request is never hidden. */
+#call-bar .call-loader { display: none; position: relative; height: 3px; border-radius: 2px; overflow: hidden; background: rgba(255, 255, 255, .08); }
+#call-bar .call-loader i { position: absolute; inset: 0 auto 0 0; width: 40%; border-radius: inherit; background: var(--lg-text-2); animation: call-load 1.1s var(--lg-ease) infinite; }
+@keyframes call-load { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+#call-bar[data-loading="true"] .call-loader { display: block; }
+#call-bar[data-loading="true"] .call-actions,
+#call-bar[data-loading="true"] .call-wave,
+#call-bar[data-loading="true"] .call-link { display: none; }
+#call-bar[data-loading="true"] .call-eye { animation-duration: 1.4s; }
+
 #call-bar .call-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
 #call-bar .call-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
 /* the timer never gets cut: the tag gives way first */
@@ -119,19 +130,6 @@ body:not(.chat-closed):not(.chat-min):not(.chat-docked) #stage #call-bar:not([da
 }
 @container (max-width: 270px) { #stage #call-bar canvas.call-wave { display: none; } }
 
-/* What Qubi said last: two lines at most (the whole conversation is in the chat card) */
-/* What was said: the call's log, scrollable, newest at the bottom */
-#call-bar .call-line {
-  display: flex; flex-direction: column; gap: 6px; max-height: 168px; overflow-y: auto; overscroll-behavior: contain;
-  margin: 0; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .045);
-  color: var(--lg-text-2); font: 13px/1.4 var(--lg-font); overflow-wrap: anywhere;
-}
-#call-bar .call-line[hidden] { display: none; }
-#call-bar .call-line-row { margin: 0; }
-#call-bar .call-line-row b { margin-right: 6px; font-weight: 600; color: var(--lg-muted); }
-#call-bar .call-line-row.qubi b { color: var(--lg-text); }
-#call-bar .call-min { width: 28px; height: 28px; flex: none; }
-
 
 /* A permission Qubi asks for */
 #call-bar .call-perm {
@@ -140,6 +138,15 @@ body:not(.chat-closed):not(.chat-min):not(.chat-docked) #stage #call-bar:not([da
 }
 #call-bar .call-perm-text { margin: 0; font: 500 13px/1.4 var(--lg-font); color: var(--lg-text); overflow-wrap: anywhere; }
 #call-bar .call-perm-actions { display: flex; gap: 6px; }
+/* The running project's address: a white pill, the panel's primary action while it shows */
+#call-bar .call-link {
+  width: 100%; height: 34px; padding: 0 14px; border: 0; border-radius: 999px; cursor: pointer;
+  font: 600 13px/1 var(--lg-font); color: #121212; background: rgba(255, 255, 255, .92);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background .2s var(--lg-ease);
+}
+#call-bar .call-link:hover { background: #fff; }
+#call-bar .call-link:focus-visible { outline: 2px solid rgba(255, 255, 255, .6); outline-offset: 2px; }
+#call-bar .call-link[hidden] { display: none; }
 #call-bar .call-perm-btn {
   flex: 1; height: 32px; padding: 0 12px; border: 0; border-radius: 999px; cursor: pointer;
   font: 600 13px/1 var(--lg-font); color: var(--lg-text); background: var(--lg-chip); box-shadow: var(--lg-rim);
@@ -285,6 +292,7 @@ body:not(.chat-closed):not(.chat-min):not(.chat-docked) #stage #call-bar:not([da
   #call-bar .call-btn, #call-bar .call-perm-btn, #call-bar .call-mouth { transition: none; }
   #call-bar .call-btn:active { transform: none; }
   #call-bar .call-eye { animation: none; }
+  #call-bar .call-loader i { animation: none; width: 100%; opacity: .5; }
 }
 
 /* ---------- Voice connection modal (views/ui/voiceConnectView.js) ----------

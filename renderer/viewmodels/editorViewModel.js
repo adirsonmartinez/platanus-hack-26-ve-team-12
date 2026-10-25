@@ -2,6 +2,8 @@
 // (or named in the chat) opens as the active tab; it can be edited and saved. Secret files open too, flagged.
 // A save carries the mtime the file was read with, so main refuses it when the file changed on disk meanwhile
 // (the tab turns stale: reload or keep editing). Disk changes reload clean tabs and mark edited ones stale.
+// Pages and images clicked on the map go to the browser window instead (`preview`, desktop only); a page's
+// code can still be opened here, and its tab offers its preview.
 import { Observable } from '../core/observable.js';
 import { EVENTS } from '../core/eventBus.js';
 
@@ -10,13 +12,19 @@ const nameOf = (path) => path.split('/').pop();
 export class EditorViewModel {
   #workspace;
 
+  #preview;
+
   // tabs: [{ path, name, level, status: 'loading' | 'ready' | 'error', content, saved, mtime, secret,
-  //          error, stale, saving, saveError }]
+  //          error, stale, saving, saveError, canPreview }]
   store = new Observable({ open: false, tabs: [], active: null });
 
-  constructor({ workspace, bus }) {
+  // preview(path, { dryRun }) -> true when the browser window shows that file (desktop; null in the web version)
+  constructor({ workspace, bus, preview = null }) {
     this.#workspace = workspace;
-    bus.on(EVENTS.fileSelected, ({ path, level }) => this.open(path, { level }));
+    this.#preview = typeof preview === 'function' ? preview : null;
+    bus.on(EVENTS.fileSelected, ({ path, level }) => {
+      if (!this.#preview?.(path)) this.open(path, { level });
+    });
     bus.on(EVENTS.diskChanged, ({ paths }) => this.#diskChanged(paths));
     bus.on(EVENTS.projectOpened, () => this.closeAll());
     bus.on(EVENTS.projectClosed, () => this.closeAll());
@@ -41,9 +49,15 @@ export class EditorViewModel {
       this.store.set({ open: true, active: path });
       return;
     }
-    const tab = { path, name: nameOf(path), level, status: 'loading', content: '', saved: '', mtime: null, secret: false, error: null, stale: false, saving: false, saveError: null };
+    const canPreview = /\.(html?|svg)$/i.test(path) && Boolean(this.#preview);
+    const tab = { path, name: nameOf(path), level, status: 'loading', content: '', saved: '', mtime: null, secret: false, error: null, stale: false, saving: false, saveError: null, canPreview };
     this.store.set({ open: true, active: path, tabs: [...this.store.state.tabs, tab] });
     await this.#read(path);
+  }
+
+  // «Vista previa» of a page open here: the browser window shows it -> false when it cannot
+  showPreview(path) {
+    return Boolean(this.tab(path)?.canPreview && this.#preview(path));
   }
 
   activate(path) {
@@ -94,6 +108,13 @@ export class EditorViewModel {
 
   hide() {
     this.store.set({ open: false });
+  }
+
+  // Shows the window again with its tabs (false when it has none)
+  show() {
+    if (!this.store.state.tabs.length) return false;
+    this.store.set({ open: true });
+    return true;
   }
 
   async #read(path) {

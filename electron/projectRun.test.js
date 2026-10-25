@@ -5,7 +5,7 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
 const path = require('node:path');
-const { scriptsFor, createProjectRun } = require('./projectRun');
+const { scriptsFor, installFor, createProjectRun } = require('./projectRun');
 
 function project(t, files) {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), 'platanus-run-'));
@@ -49,8 +49,8 @@ test('scriptsFor: no package.json, nothing to run', async (t) => {
 });
 
 // A fake world: the managed servers, the dialog and the listening ports over time
-function world({ confirmed = true, portAfter = 2, port = 3000, exitAfter = null } = {}) {
-  const state = { polls: 0, started: [], asked: [], pid: 4242, alive: true };
+function world({ confirmed = true, portAfter = 2, port = 3000, exitAfter = null, installOk = true } = {}) {
+  const state = { polls: 0, started: [], asked: [], installed: [], pid: 4242, alive: true };
   const managed = {
     start: (spec) => { state.started.push(spec); return state.pid; },
     has: (pid) => pid === state.pid && state.alive,
@@ -65,6 +65,7 @@ function world({ confirmed = true, portAfter = 2, port = 3000, exitAfter = null 
     managed,
     readEntries,
     confirm: async (choice) => { state.asked.push(choice); return confirmed; },
+    install: async (spec) => { state.installed.push(spec); return installOk; },
     sleep: async () => {},
     platform: 'darwin',
     waitMs: 10_000,
@@ -79,7 +80,7 @@ test('start: asks first, runs npm run <script> in its folder and answers the new
   const result = await run.start(root, 'apps/web:dev');
   assert.deepEqual(result, { ok: true, port: 3000 });
   // the dialog gets what the script really runs, not only `npm run dev`
-  assert.deepEqual(state.asked, [{ id: 'apps/web:dev', cwd: 'apps/web', script: 'dev', command: 'npm run dev', body: 'vite' }]);
+  assert.deepEqual(state.asked, [{ id: 'apps/web:dev', cwd: 'apps/web', script: 'dev', command: 'npm run dev', body: 'vite', install: { cwd: 'apps/web', command: 'npm install' } }]);
   assert.equal(state.started.length, 1);
   assert.deepEqual(state.started[0].restart, { command: 'npm run dev', cwd: path.join(root, 'apps/web') });
   assert.equal(run.portOf(4242), 3000);
@@ -124,4 +125,46 @@ test('start: only on macOS for now (the managed servers run through the login sh
   const root = project(t, { 'package.json': { scripts: { dev: 'vite' } } });
   const run = createProjectRun({ managed: { start: () => 1, has: () => true }, readEntries: async () => [], confirm: async () => true, platform: 'win32' });
   assert.deepEqual(await run.start(root, '.:dev'), { ok: false, reason: 'failed' });
+});
+
+test('installFor: npm install where the dependencies go, only when node_modules is missing; the lockfile picks the tool', async (t) => {
+  const fresh = project(t, { 'package.json': { scripts: { dev: 'next dev' } } });
+  assert.deepEqual(await installFor(fresh, '.'), { cwd: '.', command: 'npm install' });
+  const ready = project(t, { 'package.json': { scripts: { dev: 'next dev' } }, 'node_modules/.package-lock.json': '{}' });
+  assert.equal(await installFor(ready, '.'), null);
+  // a workspace installs from the root, and the root's node_modules is enough
+  const mono = project(t, { 'package.json': { workspaces: ['apps/*'] }, 'apps/web/package.json': { scripts: { dev: 'vite' } }, 'pnpm-lock.yaml': '' });
+  assert.deepEqual(await installFor(mono, 'apps/web'), { cwd: '.', command: 'pnpm install' });
+  fs.mkdirSync(path.join(mono, 'node_modules'));
+  assert.equal(await installFor(mono, 'apps/web'), null);
+  // a folder of its own (no root package.json) installs in that folder
+  const solo = project(t, { 'apps/web/package.json': { scripts: { dev: 'vite' } }, 'apps/web/yarn.lock': '' });
+  assert.deepEqual(await installFor(solo, 'apps/web'), { cwd: 'apps/web', command: 'yarn install' });
+});
+
+test('start: a new project gets its dependencies first (the dialog says so), then the script runs', async (t) => {
+  const root = project(t, { 'package.json': { scripts: { dev: 'next dev' } } });
+  const { run, state } = world();
+  const result = await run.start(root, '.:dev');
+  assert.deepEqual(result, { ok: true, port: 3000 });
+  assert.deepEqual(state.asked[0].install, { cwd: '.', command: 'npm install' }, 'the person is told before');
+  assert.deepEqual(state.installed, [{ root, cwd: '.', command: 'npm install' }]);
+  assert.equal(state.started.length, 1);
+});
+
+test('start: dependencies already there: no install; a failed install never starts the script', async (t) => {
+  const ready = project(t, { 'package.json': { scripts: { dev: 'next dev' } }, 'node_modules/x': '' });
+  const a = world();
+  await a.run.start(ready, '.:dev');
+  assert.deepEqual(a.state.installed, []);
+  assert.equal(a.state.asked[0].install, null);
+
+  const fresh = project(t, { 'package.json': { scripts: { dev: 'next dev' } } });
+  const b = world({ installOk: false });
+  assert.deepEqual(await b.run.start(fresh, '.:dev'), { ok: false, reason: 'installFailed' });
+  assert.deepEqual(b.state.started, []);
+  // said no in the dialog: nothing installed either
+  const c = world({ confirmed: false });
+  assert.deepEqual(await c.run.start(fresh, '.:dev'), { ok: false, reason: 'rejected' });
+  assert.deepEqual(c.state.installed, []);
 });

@@ -27,6 +27,12 @@ const workletPath = (file) => {
   return typeof document !== 'undefined' && document.baseURI ? new URL(relative, document.baseURI).href : relative;
 };
 
+// Loads the voice SDK ahead of the first call (its first import is part of the wait before Qubi talks).
+// Nothing is opened: no socket, no microphone
+export function warmSession(load = () => import('../vendor/elevenlabs.js')) {
+  return Promise.resolve().then(load).then(() => true, () => false);
+}
+
 // overrides: what this call changes of the agent, such as the voice picked in the call's settings
 // ({ tts: { voiceId } }); the agent in the account allows exactly those overrides
 export async function openSession({ signedUrl, dynamicVariables = {}, clientTools = {}, on, sdk = null, overrides = null }) {

@@ -6,6 +6,9 @@
 const MODEL_URL = new URL('../assets/hands/hand_landmarker.task', import.meta.url).href;
 const FRAME_MS = 33; // ~30 detections per second at most, whatever the camera's rate
 const MAX_HANDS = 2;
+// How sure MediaPipe must be to find a hand, to keep it, and to keep following it (its default is 0.5): a bit
+// higher means fewer phantom hands and fewer jumps; below it, it searches the image again
+const CONFIDENCE = { minHandDetectionConfidence: 0.6, minHandPresenceConfidence: 0.6, minTrackingConfidence: 0.6 };
 
 let landmarkerPromise = null;
 let currentHands = MAX_HANDS; // what the loaded landmarker looks for
@@ -15,7 +18,7 @@ function loadLandmarker() {
     // The WASM files sit next to the bundle (node_modules in the app, vendor/ in the web build)
     const wasm = new URL('./wasm', import.meta.resolve('@mediapipe/tasks-vision')).href;
     const fileset = await FilesetResolver.forVisionTasks(wasm);
-    const options = (delegate) => ({ baseOptions: { modelAssetPath: MODEL_URL, delegate }, runningMode: 'VIDEO', numHands: MAX_HANDS });
+    const options = (delegate) => ({ baseOptions: { modelAssetPath: MODEL_URL, delegate }, runningMode: 'VIDEO', numHands: MAX_HANDS, ...CONFIDENCE });
     return HandLandmarker.createFromOptions(fileset, options('GPU'))
       .then((landmarker) => ({ landmarker, delegate: 'GPU' }))
       .catch(() => HandLandmarker.createFromOptions(fileset, options('CPU')).then((landmarker) => ({ landmarker, delegate: 'CPU' })));
@@ -45,7 +48,7 @@ export function createHandTrackingService() {
   return {
     video,
 
-    // onHands([landmarks, …], { now, delegate }) for every analysed frame (an empty list: no hand). Rejects
+    // onHands([landmarks (with .world), …], { now, delegate }) for every analysed frame (an empty list: no hand). Rejects
     // with the camera's DOMException (NotAllowedError, NotFoundError…) or a loading error.
     async start(onHands) {
       const mine = ++run;
@@ -68,7 +71,10 @@ export function createHandTrackingService() {
         if (now - last < FRAME_MS || video.readyState < 2) return;
         last = now;
         const result = landmarker.detectForVideo(video, now);
-        onHands(result.landmarks ?? [], { now, delegate });
+        // Each hand carries its 3D landmarks (metres) as `world`, so they stay with it when hands are
+        // reordered; the pinch is measured on them (models/handGesture.js pinchGap)
+        const hands = (result.landmarks ?? []).map((l, i) => Object.assign(l, { world: result.worldLandmarks?.[i] ?? null }));
+        onHands(hands, { now, delegate });
       };
       frameRequest = requestAnimationFrame(tick);
     },

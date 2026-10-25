@@ -82,7 +82,7 @@ export class SupabaseViewModel {
     if (visible !== this.store.state.visible) this.store.set({ visible });
   }
 
-  #onProject({ open, usesSupabase, session, integrationStatus, demo = false }) {
+  #onProject({ open, usesSupabase, session, integrationStatus }) {
     const status = integrationStatus?.supabase ?? 'unknown';
     if (status !== this.store.state.status) this.store.set({ status });
     if (session !== this.#session) {
@@ -94,8 +94,7 @@ export class SupabaseViewModel {
     }
     this.#inProject = open && usesSupabase;
     this.#updateVisibility();
-    // Only the web demo's project gets the made-up alarm: a real project never does
-    if (this.#demo && demo && this.#inProject && !this.#vulnerabilityTimer) {
+    if (this.#demo && this.#inProject && !this.#vulnerabilityTimer) {
       this.#vulnerabilityTimer = setTimeout(() => this.#model.setVulnerable(true), VULNERABILITY_DELAY_MS);
     }
   }

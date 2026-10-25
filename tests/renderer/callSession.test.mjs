@@ -2,7 +2,7 @@
 // simulated one (fixed script). Neither shows the app's own notices as the person's words.
 import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
-import { openSession, openSimulatedSession, NOTICE_PREFIX, reasonOf } from '../../renderer/models/callSession.js';
+import { openSession, openSimulatedSession, NOTICE_PREFIX, reasonOf, warmSession } from '../../renderer/models/callSession.js';
 import { strings } from '../../renderer/i18n/es.js';
 
 const SIM = strings.call.sim;
@@ -234,4 +234,11 @@ test('simulated call: "ve aâ€¦" sends Qubi there, "vente" brings it back, "abreâ
     assert.equal(qubi().at(-1), SIM.denied);
     session.end();
   } finally { mock.timers.reset(); }
+});
+
+test('warmSession: loads the SDK ahead of the first call and never throws', async () => {
+  let loads = 0;
+  assert.equal(await warmSession(async () => { loads++; return {}; }), true);
+  assert.equal(loads, 1);
+  assert.equal(await warmSession(async () => { throw new Error('offline'); }), false);
 });

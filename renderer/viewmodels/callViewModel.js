@@ -41,9 +41,14 @@ const plainWord = (w) => String(w ?? '').toLowerCase().normalize('NFD').replace(
 // the app's modes too: Dev is the technical level, Vibe the basic one (they follow each other: syncMode)
 const LEVEL_WORDS = { basico: 'basico', basica: 'basico', sencillo: 'basico', simple: 'basico', bajo: 'basico', vibe: 'basico', 'modo vibe': 'basico', intermedio: 'intermedio', medio: 'intermedio', normal: 'intermedio', tecnico: 'tecnico', tecnica: 'tecnico', alto: 'tecnico', avanzado: 'tecnico', experto: 'tecnico', dev: 'tecnico', 'modo dev': 'tecnico', desarrollador: 'tecnico', programador: 'tecnico' };
 const STYLE_WORDS = { pana: 'pana', venezolano: 'pana', venezolana: 'pana', criollo: 'pana', neutral: 'neutral', neutro: 'neutral', formal: 'formal', serio: 'formal', profesional: 'formal', divertido: 'divertido', alegre: 'divertido', chevere: 'divertido' };
+// The welcome's answers by voice: elegir_experiencia's level -> the bubble's button; marcar_tecnologia's names
+const WELCOME_LEVEL = { empezando: 'exp:beginner', principiante: 'exp:beginner', aprendiendo: 'exp:beginner', programo: 'exp:dev', programador: 'exp:dev', dev: 'exp:dev' };
+const WELCOME_TECH = { nextjs: 'nextjs', next: 'nextjs', vercel: 'vercel', supabase: 'supabase' };
 const VOICE_WORDS = { juan: 'juan', julio: 'julio', josemanuel: 'josemanuel', 'jose manuel': 'josemanuel', maggie: 'maggie', rex: 'rex', eve: 'eve', ara: 'ara' };
 const providerOfVoice = (voice) => Object.keys(VOICE_GROUPS).find((p) => VOICE_GROUPS[p].includes(voice)) ?? null;
-export const RING_MS = 1000;           // the ring before Qubi picks up (MEJORAS.md §5)
+export const MANUAL_MS = 8000;         // seguir_manual: the call ends by then even if Qubi says no goodbye
+export const RING_MS = 0;              // no phone ring: Qubi talks as soon as the session is ready
+export const READY_MS = 4000;          // the panel stops loading by then even if Qubi has not spoken yet
 // The voice platform gives these tools 60 s (electron/voiceCall.js PERMISSION_WAIT). The person's yes must
 // come well before that, so the action itself still fits; a tool past 60 s is reported as failed to Qubi
 export const PERMISSION_MS = 45_000;   // a permission with no answer is a no
@@ -121,6 +126,7 @@ function runAnswer(res) {
   if (res?.ok) return { ok: true, ...(res.port ? { puerto: res.port } : {}) };
   const reason = String(res?.reason ?? '');
   if (/reject|cancel/i.test(reason)) return { ok: false, motivo: 'sin-permiso' }; // main's own dialog said no
+  if (/install/i.test(reason)) return { ok: false, motivo: 'sin-instalar' }; // npm install failed (offline…)
   if (/script/i.test(reason)) return { ok: false, motivo: 'sin-script' };
   if (/busy/i.test(reason)) return { ok: false, motivo: 'ocupado' };
   return { ok: false, motivo: 'falló' };
@@ -225,8 +231,13 @@ export class CallViewModel {
   #askId = 0;
   #alwaysOpen = false; // "Siempre en esta llamada" for abrir_archivo
   #guideId = 0;
+  #welcome;            // the welcome bubble (robotDialogViewModel: voiceState, press), optional
+  #welcomeCall = false; // this call is the welcome of a new project (Qubi asks its questions by voice)
+  #manualBye = null;   // seguir_manual: { spoke } until Qubi's goodbye is over, then the call hangs up
+  #manualTimer = null;
 
   // status: 'idle' | 'ringing' | 'connecting' | 'live' | 'ending' | 'error' · mode: 'listening' | 'speaking'
+  // ready: Qubi has started talking (or READY_MS passed since the session opened): the panel stops loading
   // error: null | 'offline' | 'weak-keychain' | 'mic' | 'auth' | 'quota' | 'network' | 'failed' | 'noProject' (keys of strings.call.errors)
   // lines: the last MAX_LINES [{ id, who: 'qubi' | 'person' | 'system', text }] ('system': permissions, where Qubi goes)
   // task: null | { messageId, kind: 'build' | 'ask', pedido, status: 'running' | 'waiting' | 'done' | 'error', created, changed }
@@ -237,7 +248,8 @@ export class CallViewModel {
   // guide: null | { from, to, center, stepId, pose, text } where Qubi walks (ir_a, volver), for robotView's call job
   // gesture: null | { name, id } the last gesture Qubi made (models/gestures.js); robotView plays each new id
   // settings: { provider: 'auto' | 'elevenlabs' | 'grok', voice } (also the `settings` getter)
-  store = new Observable({ status: 'idle', mode: 'listening', muted: false, simulated: false, voiceMode: null, provider: null, error: null, lines: [], task: null, cardId: null, permission: null, guide: null, gesture: null, settings: { ...DEFAULT_SETTINGS } });
+  // link: null | { port, url } the project running (ejecutar_app), for the person to open
+  store = new Observable({ status: 'idle', ready: false, mode: 'listening', muted: false, simulated: false, voiceMode: null, provider: null, error: null, lines: [], task: null, cardId: null, permission: null, guide: null, gesture: null, link: null, settings: { ...DEFAULT_SETTINGS } });
 
   // securityModel is optional (the semáforo falls back to the demo rules); actions.showFolder or
   // actions.locate moves the map for mostrar_carpeta and ir_a (else mapViewModel.show)
@@ -245,9 +257,12 @@ export class CallViewModel {
   // call works as in fase 1
   // runService (ejecutar_app) and actions.openFile(path) (abrir_archivo), actions.projectServers() ->
   // [{ port }] and actions.openPreview(port) (abrir_en_navegador) are optional: without them the tool says no
-  // timing: { now, ringMs, permissionMs } (tests make them short); storage: { getItem, setItem }
-  constructor({ voiceService, openSession = openRealSession, openSimulatedSession = openSimSession, openGrokSession = openGrok, chatViewModel, projectModel, mapViewModel = null, securityModel = null, connection = null, actions = {}, bus = null, simulate = false, timing = {}, teamViewModel = null, memory = null, runService = null, storage = defaultStorage() }) {
+  // timing: { now, ringMs, permissionMs, manualMs } (tests make them short); storage: { getItem, setItem }
+  // welcome: the welcome bubble (robotDialogViewModel) for the welcome call's tools; actions.showLink(url)
+  // tells the chat where the running project is
+  constructor({ voiceService, openSession = openRealSession, openSimulatedSession = openSimSession, openGrokSession = openGrok, chatViewModel, projectModel, mapViewModel = null, securityModel = null, connection = null, actions = {}, bus = null, simulate = false, timing = {}, teamViewModel = null, memory = null, runService = null, storage = defaultStorage(), welcome = null }) {
     this.#voice = voiceService;
+    this.#welcome = welcome;
     this.#openReal = openSession;
     this.#openSim = openSimulatedSession;
     this.#openGrok = openGrokSession;
@@ -288,6 +303,11 @@ export class CallViewModel {
   // A real call is possible at all (the desktop app); in the web version it is always simulated
   get canUseVoice() {
     return Boolean(this.#voice?.available);
+  }
+
+  // The call going on is the welcome of a new project
+  get welcomeCall() {
+    return this.#welcomeCall && this.store.state.status !== 'idle';
   }
 
   setSimulate(on) {
@@ -353,14 +373,17 @@ export class CallViewModel {
     return this.#timing.now?.() ?? Date.now();
   }
 
-  // ringing (at least RING_MS: the ring tone plays) -> connecting -> live (the session opened).
-  // While it rings, main prepares the call (memory, which service, the one-time credential), so the
-  // ring hides that wait; Qubi only picks up once the ring is over.
+  // ringing (at least RING_MS, 0 by default: no phone ring) -> connecting -> live (the session opened).
+  // Meanwhile main prepares the call (memory, which service, the one-time credential).
   // practice: simulated for this call only («Probar sin voz»); the next call is real again
-  async start({ practice = false } = {}) {
+  // welcome: the welcome of a new project (Qubi asks the bubble's questions; a failure stays quiet)
+  async start({ practice = false, welcome = false } = {}) {
     const { status } = this.store.state;
     if (status !== 'idle' && status !== 'error') return;
     const gen = ++this.#gen;
+    this.#welcomeCall = welcome === true && Boolean(this.#welcome);
+    this.#manualBye = null;
+    clearTimeout(this.#manualTimer);
     this.#repairs.clear(); // a repair asked in an earlier call is not this call's news
     this.#lastContext = null;
     this.#practice = practice === true;
@@ -376,7 +399,7 @@ export class CallViewModel {
     this.#built = new Set();
     this.#audits = new Map();
     this.#alwaysOpen = false;
-    this.store.set({ status: 'ringing', mode: 'listening', muted: false, simulated: false, voiceMode: null, provider: null, error: null, lines: [], task: null, cardId: null, permission: null, guide: null });
+    this.store.set({ status: 'ringing', ready: false, mode: 'listening', muted: false, simulated: false, voiceMode: null, provider: null, error: null, lines: [], task: null, cardId: null, permission: null, guide: null, link: null });
     const project = this.#project.store.state;
     if (!project.open) return this.#fail('noProject');
     this.#root = String(project.root ?? project.name ?? '') || null;
@@ -452,6 +475,7 @@ export class CallViewModel {
     if (choice.voice) req.voice = choice.voice;
     req.level = this.#settings.level;
     req.style = this.#settings.style;
+    if (this.#welcomeCall) req.welcome = true;
     if (remembered && remembered !== strings.memory.empty) req.memory = remembered.slice(0, MEMORY_MAX);
     const res = await this.#voice.start(req);
     if (gen !== this.#gen) return null;
@@ -482,6 +506,9 @@ export class CallViewModel {
     if (status === 'idle') return;
     this.#gen++;
     clearTimeout(this.#silenceTimer);
+    clearTimeout(this.#readyTimer);
+    clearTimeout(this.#manualTimer);
+    this.#manualBye = null;
     const session = this.#session;
     this.#session = null;
     if (status === 'error') { this.store.set({ status: 'idle', error: null }); return; } // the card keeps the error
@@ -537,17 +564,22 @@ export class CallViewModel {
     const mine = (fn) => (...args) => { if (gen === this.#gen) fn(...args); };
     return {
       status: mine((s) => {
-        if (s === 'connected' && this.store.state.status === 'connecting') { this.store.set({ status: 'live' }); this.#syncCard(); this.#armSilence(); this.#gesture('saludar'); }
+        if (s === 'connected' && this.store.state.status === 'connecting') { this.store.set({ status: 'live' }); this.#syncCard(); this.#armSilence(); this.#armReady(); this.#gesture('saludar'); }
       }),
       mode: mine((mode) => {
         if (mode !== 'speaking' && mode !== 'listening') return;
+        // seguir_manual: once Qubi's goodbye is over, the call ends and the buttons carry on
+        if (this.#manualBye) {
+          if (mode === 'speaking') this.#manualBye.spoke = true;
+          else if (this.#manualBye.spoke) return this.hangUp();
+        }
         this.store.set({ mode });
-        if (mode === 'speaking') clearTimeout(this.#silenceTimer); else this.#armSilence();
+        if (mode === 'speaking') { clearTimeout(this.#silenceTimer); this.#markReady(); } else this.#armSilence();
       }),
       line: mine(({ who, text, final = true }) => {
         const said = String(text ?? '').trim();
         if (!said || final === false || (who !== 'qubi' && who !== 'person')) return;
-        if (who === 'person') { this.#heard = { turn: ++this.#turn, at: this.#now() }; this.#armSilence(); }
+        if (who === 'person') { this.#heard = { turn: ++this.#turn, at: this.#now() }; this.#armSilence(); } else this.#markReady();
         this.store.set({ lines: [...this.store.state.lines, { id: ++this.#lineId, who, text: said }].slice(-MAX_LINES) });
         this.#syncCard();
         // the person's next phrase answers a pending permission ("sí, dale" / "no, espera"); Qubi's never does
@@ -568,6 +600,16 @@ export class CallViewModel {
 
   // card: false leaves the chat alone when the call never got a card ('offline' opens the connect modal)
   #fail(reason, { card = true } = {}) {
+    // the welcome call is an extra: if it cannot connect, the welcome simply goes on with its buttons
+    if (this.#welcomeCall && !this.#started) {
+      this.#gen++;
+      const session = this.#session;
+      this.#session = null;
+      session?.end();
+      this.#welcomeCall = false;
+      this.store.set({ status: 'idle', error: null, mode: 'listening', permission: null, guide: null });
+      return;
+    }
     if (this.#started) this.#remember();
     this.#gen++;
     this.#settleAsk();
@@ -583,6 +625,7 @@ export class CallViewModel {
   }
 
   #finish(reason) {
+    this.#welcomeCall = false;
     if (this.#started) this.#remember();
     this.#settleAsk();
     this.#endedAt = Date.now();
@@ -598,6 +641,7 @@ export class CallViewModel {
     const s = this.store.state;
     const status = ended ?? { ringing: 'connecting', connecting: 'connecting', live: 'live', ending: 'ended', error: 'error' }[s.status];
     if (!status || !this.#chat.upsertCallCard) return;
+    if (this.#welcomeCall && !this.#started && s.status !== 'live') return; // the welcome call shows up only once connected
     const task = s.task ? { kind: s.task.kind, pedido: s.task.pedido, status: s.task.status, created: s.task.created, changed: s.task.changed } : null;
     const card = {
       status, simulated: s.simulated, startedAt: this.#startedAt,
@@ -627,7 +671,9 @@ export class CallViewModel {
       revisar_archivo: mine(({ ruta, pregunta }) => this.#reviewFile(ruta, pregunta)),
       // the person reshapes Qubi by talking: level and style apply now, the voice from the next call
       ajustar_qubi: mine((params) => this.#adjust(params)),
-      abrir_archivo: mine(({ ruta }) => this.#openFile(ruta, gen)),
+      abrir_archivo: mine(({ ruta, vista }) => this.#openFile(ruta, gen, vista)),
+      // the editor and the browser windows in a zone (only what is seen: no permission)
+      acomodar_ventanas: mine(({ ventana, zona }) => this.#arrange(ventana, zona)),
       ejecutar_app: mine(() => this.#runApp(gen)),
       abrir_en_navegador: mine(() => this.#openBrowser(gen)),
       // the voice model reads text it does not control (notices, names): a change needs the person's own say-so
@@ -645,7 +691,83 @@ export class CallViewModel {
       reparar: mine(({ ruta }) => (this.#confirmed() ? this.#repair(ruta) : { ok: false, motivo: 'sin-confirmar' })),
       // only what is seen: Qubi moves with what it says (saludar, celebrar, pensar, bailar…)
       gesto: mine(({ gesto }) => (this.#gesture(gestureName(gesto)) ? { ok: true } : { ok: false, motivo: 'no-existe' })),
+      // The welcome of a new project: the same answers as the bubble's buttons
+      elegir_experiencia: mine(({ nivel }) => this.#chooseLevel(nivel)),
+      marcar_tecnologia: mine(({ tecnologia, elegir }) => this.#markTech(tecnologia, elegir)),
+      empezar_proyecto: mine(() => this.#startProject()),
+      seguir_manual: mine(() => this.#goManual()),
     };
+  }
+
+  // --- The welcome call: Qubi answers the bubble for the person (robotDialogViewModel.press, by voice) ---
+
+  // The bubble's step and chosen technologies, or null when this is not the welcome call
+  #welcomeState() {
+    if (!this.#welcomeCall || !this.#welcome) return null;
+    return this.#welcome.voiceState();
+  }
+
+  #chooseLevel(nivel) {
+    const now = this.#welcomeState();
+    if (!now) return { ok: false, motivo: 'sin-bienvenida' };
+    const id = WELCOME_LEVEL[plainWord(nivel)];
+    if (!id) return { ok: false, motivo: 'no-entendido' };
+    if (now.paso !== 'experiencia') return { ok: false, motivo: 'otro-paso', ...now };
+    this.#welcome.press(id, { by: 'voice' });
+    return { ok: true, ...this.#welcome.voiceState() };
+  }
+
+  #markTech(tecnologia, elegir) {
+    const now = this.#welcomeState();
+    if (!now) return { ok: false, motivo: 'sin-bienvenida' };
+    const key = WELCOME_TECH[plainWord(tecnologia).replace(/[\s.]/g, '')];
+    if (!key) return { ok: false, motivo: 'no-existe' };
+    if (now.paso !== 'tecnologias') return { ok: false, motivo: 'otro-paso', ...now };
+    const want = !/^no\b/.test(plainWord(elegir));
+    if (now.tecnologias.includes(key) !== want) this.#welcome.press(`pick:${key}`, { by: 'voice' });
+    return { ok: true, ...this.#welcome.voiceState() };
+  }
+
+  // "¡Empecemos!" by voice: the bubble records the integrations and asks for the base project, which comes
+  // back here (buildForWelcome) so the call follows the work like any construir
+  #startProject() {
+    const now = this.#welcomeState();
+    if (!now) return { ok: false, motivo: 'sin-bienvenida' };
+    if (now.paso !== 'tecnologias') return { ok: false, motivo: 'otro-paso', ...now };
+    if (!this.#confirmed()) return { ok: false, motivo: 'sin-confirmar' };
+    if (!this.store.state.simulated && this.#connection && !this.#connection.live) return { ok: false, motivo: 'sin-agente' };
+    this.#welcome.press('start', { by: 'voice' });
+    return this.store.state.task?.status === 'running' ? { ok: true, estado: 'empezó' } : { ok: false, motivo: 'sin-agente' };
+  }
+
+  // The welcome's base project, handed to the agent: during the live welcome call it goes through the
+  // call (the work is told to the voice as it goes). False when this is not that call or it was refused
+  buildForWelcome(prompt) {
+    if (!this.#welcomeCall || this.store.state.status !== 'live') return false;
+    return this.#delegate('build', prompt, 'change').ok === true;
+  }
+
+  // seguir_manual: Qubi says goodbye and the call ends once it stops talking (or after a short while)
+  #goManual() {
+    if (!this.#welcomeState()) return { ok: false, motivo: 'sin-bienvenida' };
+    this.#manualBye = { spoke: this.store.state.mode === 'speaking' };
+    clearTimeout(this.#manualTimer);
+    const gen = this.#gen;
+    this.#manualTimer = setTimeout(() => { if (gen === this.#gen) this.hangUp(); }, this.#timing.manualMs ?? MANUAL_MS);
+    this.#manualTimer?.unref?.();
+    return { ok: true };
+  }
+
+  // The person tapped an answer on the bubble: they went manual, so the welcome call ends
+  manual() {
+    if (this.welcomeCall) this.hangUp();
+  }
+
+  // The project is running: its address stays on screen (the call panel, and the chat via actions.showLink)
+  #showLink(port) {
+    const url = `http://localhost:${port}`;
+    this.store.set({ link: { port, url } });
+    try { this.#actions.showLink?.(url); } catch { /* the panel still shows it */ }
   }
 
   async #auditNow() {
@@ -757,7 +879,8 @@ export class CallViewModel {
   }
 
   // abrir_archivo: a file of the project in the floating editor. Secrets never open, not even with permission
-  async #openFile(ruta, gen) {
+  // vista: 'codigo' opens a page's code in the editor; otherwise a page or an image shows in the browser window
+  async #openFile(ruta, gen, vista) {
     const path = cleanPath(ruta);
     if (!path) return { ok: false, motivo: 'no-existe' };
     if (isSecretFile(path)) return { ok: false, motivo: 'secreto' };
@@ -769,8 +892,10 @@ export class CallViewModel {
     if (refused) return refused;
     if (gen !== this.#gen) return { ok: false, motivo: 'sin-llamada' };
     try {
-      const res = await this.#actions.openFile(path);
-      return res === false || res?.ok === false ? { ok: false, motivo: 'falló' } : { ok: true };
+      const view = /^c[oó]digo$/i.test(String(vista ?? '').trim()) ? 'codigo' : 'pagina';
+      const res = await this.#actions.openFile(path, { view });
+      if (res === false || res?.ok === false) return { ok: false, motivo: 'falló' };
+      return res?.en ? { ok: true, en: res.en } : { ok: true };
     } catch {
       return { ok: false, motivo: 'falló' };
     }
@@ -799,10 +924,15 @@ export class CallViewModel {
     const late = new Promise((resolve) => { timer = setTimeout(() => resolve(LATE), budget); });
     const res = await Promise.race([started, late]);
     clearTimeout(timer);
-    if (res !== LATE) return runAnswer(res);
+    if (res !== LATE) {
+      const answer = runAnswer(res);
+      if (answer.puerto && gen === this.#gen) this.#showLink(answer.puerto);
+      return answer;
+    }
     started.then((final) => {
       if (gen !== this.#gen) return;
       const answer = runAnswer(final);
+      if (answer.puerto) this.#showLink(answer.puerto);
       this.#notify(answer.ok ? (answer.puerto ? C.notices.runReady : C.notices.runNoPort) : C.notices.runFailed);
     });
     return { ok: true, estado: 'arrancando' };
@@ -821,6 +951,16 @@ export class CallViewModel {
     try {
       const res = await this.#actions.openPreview(port);
       return res === false || res?.ok === false ? { ok: false, motivo: 'falló' } : { ok: true, puerto: port };
+    } catch {
+      return { ok: false, motivo: 'falló' };
+    }
+  }
+
+  // acomodar_ventanas -> what windowsViewModel.place answers ({ ok, ventana, zona } | { ok: false, motivo })
+  #arrange(ventana, zona) {
+    if (!this.#actions.arrangeWindows) return { ok: false, motivo: 'falló' };
+    try {
+      return this.#actions.arrangeWindows(String(ventana ?? ''), String(zona ?? '')) ?? { ok: false, motivo: 'falló' };
     } catch {
       return { ok: false, motivo: 'falló' };
     }
@@ -897,6 +1037,19 @@ export class CallViewModel {
     if (level || style) this.#session?.sendContext?.(A.context({ level: level && A.levels[level], style: style && A.styles[style] }));
     this.#system(A.done([level && C.settings.levels[level], style && C.settings.styles[style], voice && C.settings.voices[voice]].filter(Boolean).join(' · ')));
     return { ok: true, aplicado: { ...(level ? { nivel: level } : {}), ...(style ? { estilo: style } : {}), ...(voice ? { voz: voice, desde: 'la-proxima-llamada' } : {}) } };
+  }
+
+  // --- Loading: the panel shows only a loader until Qubi starts talking (READY_MS at most) ---
+  #readyTimer = null;
+  #markReady() {
+    clearTimeout(this.#readyTimer);
+    if (!this.store.state.ready && this.store.state.status === 'live') this.store.set({ ready: true });
+  }
+  #armReady() {
+    clearTimeout(this.#readyTimer);
+    const gen = this.#gen;
+    this.#readyTimer = setTimeout(() => { if (gen === this.#gen) this.#markReady(); }, this.#timing.readyMs ?? READY_MS);
+    this.#readyTimer?.unref?.();
   }
 
   // --- 20 s without an answer: Qubi hangs up (not while the agent, the team or a permission is pending) ---

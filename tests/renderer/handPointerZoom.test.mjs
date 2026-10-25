@@ -36,13 +36,10 @@ test('holding one hand and raising the other zooms in; lowering it zooms out (B5
   assert.ok(down.factor < 0.7, `zoom out ${down.factor}`);
 });
 
-test('moving the other hand sideways turns: to the person\'s right is clockwise (positive)', () => {
-  const right = run(steps(10, (i) => holdAndMove(-i * 0.02, 0))); // image left = the person's right
-  assert.equal(right.last.mode, 'rotate');
-  assert.ok(right.angle > 0.3, `angle ${right.angle}`);
-  assert.equal(right.factor, 1);
-  const left = run(steps(10, (i) => holdAndMove(i * 0.02, 0)));
-  assert.ok(left.angle < -0.3, `angle ${left.angle}`);
+test('two hands only zoom: moving the other hand sideways neither turns nor zooms (turning is thumb + middle)', () => {
+  const sideways = run(steps(10, (i) => holdAndMove(-i * 0.02, 0)));
+  assert.equal(sideways.angle, 0);
+  assert.ok(Math.abs(sideways.factor - 1) < 0.02, `factor ${sideways.factor}`);
 });
 
 test('the first direction locks until letting go: a zoom does not turn', () => {

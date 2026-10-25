@@ -3,6 +3,7 @@
 // CodeMirror with syntax colors (renderer/vendor/codemirror.js; colors are CSS tokens, `--syntax-*`).
 // Each tab keeps its own CodeMirror state (undo, cursor, scroll). ⌘S / Ctrl+S saves, Tab indents,
 // ⌘F searches. Keys typed here never reach the map's shortcuts.
+// A page's tab has «Vista previa»: the browser window (browserView.js) shows it.
 import { strings } from '../../i18n/es.js';
 import { icon } from '../icons.js';
 import { makeDraggable } from './draggable.js';
@@ -57,7 +58,8 @@ const theme = EditorView.theme({
   '.cm-tooltip': { backgroundColor: 'var(--glass-strong)', border: '1px solid var(--line-strong)', color: 'var(--text)' },
 }, { dark: true });
 
-export function createEditorView({ stage, editorViewModel }) {
+// -> { root, draggable } (windowsView places the window in a zone)
+export function createEditorView({ stage, editorViewModel, onGrab = () => {} }) {
   const vm = editorViewModel;
   const root = el('section', 'editor');
   root.id = 'editor';
@@ -79,7 +81,11 @@ export function createEditorView({ stage, editorViewModel }) {
   const save = el('button', 'editor-save', E.save);
   save.type = 'button';
   save.title = E.saveHint;
-  bar.append(path, secret, status, save);
+  // a page: its preview in the browser window
+  const previewBtn = el('button', 'editor-chip', E.preview.show);
+  previewBtn.type = 'button';
+  previewBtn.title = E.preview.showHint;
+  bar.append(path, secret, status, previewBtn, save);
 
   const notice = el('div', 'editor-notice');
   const noticeText = el('span');
@@ -94,7 +100,7 @@ export function createEditorView({ stage, editorViewModel }) {
 
   root.append(head, tabs, bar, notice, body);
   stage.appendChild(root);
-  makeDraggable({ el: root, handle: head, key: 'editor', area: stage });
+  const draggable = makeDraggable({ el: root, handle: head, key: 'editor', area: stage, onGrab });
 
   // --- CodeMirror: one view, one state per tab ---
   const states = new Map(); // path -> EditorState
@@ -154,6 +160,7 @@ export function createEditorView({ stage, editorViewModel }) {
     if (!t) { shown = null; return; }
 
     path.textContent = t.path;
+    previewBtn.hidden = !t.canPreview;
     secret.hidden = !t.secret;
     root.classList.toggle('is-secret', t.secret);
     const dirty = vm.isDirty(t.path);
@@ -193,6 +200,7 @@ export function createEditorView({ stage, editorViewModel }) {
   closeWindow.addEventListener('click', () => vm.hide());
   save.addEventListener('click', () => vm.save(vm.store.state.active));
   reload.addEventListener('click', () => vm.reload(vm.store.state.active));
+  previewBtn.addEventListener('click', () => vm.showPreview(vm.store.state.active));
 
   // Typing here never moves the map (Esc, Q/E/G, WASD); ⌘S saves from anywhere in the window
   root.addEventListener('keydown', (e) => {
@@ -208,5 +216,5 @@ export function createEditorView({ stage, editorViewModel }) {
     root.addEventListener(type, (e) => e.stopPropagation());
   }
 
-  return root;
+  return { root, draggable };
 }

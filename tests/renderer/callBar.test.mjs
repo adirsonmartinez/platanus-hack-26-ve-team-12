@@ -3,7 +3,7 @@
 import './setup.mjs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { placePanel, anchorPoint, titleText, voiceOptions, pickVoice, VOICE_KEYS } from '../../renderer/views/ui/callBarView.js';
+import { placePanel, anchorPoint, titleText, isLoading, voiceOptions, pickVoice, VOICE_KEYS } from '../../renderer/views/ui/callBarView.js';
 import { strings } from '../../renderer/i18n/es.js';
 
 const stage = { width: 1000, height: 700 };
@@ -68,12 +68,23 @@ test('anchorPoint: a world point is projected; an element (Qubi\'s bubble) gives
   assert.equal(anchorPoint({ getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: 0 }) }, { stageRect }), null);
 });
 
-test('titleText: ringing, connecting, the live timer, ending', () => {
+test('loading: from the first moment until Qubi is ready to talk', () => {
+  assert.equal(isLoading({ status: 'ringing', ready: false }), true);
+  assert.equal(isLoading({ status: 'connecting', ready: false }), true);
+  assert.equal(isLoading({ status: 'live', ready: false }), true, 'open, but Qubi has not spoken yet');
+  assert.equal(isLoading({ status: 'live', ready: true }), false);
+  assert.equal(isLoading({ status: 'error', ready: false }), false);
+  assert.equal(isLoading({ status: 'idle' }), false);
+  assert.equal(titleText({ status: 'live', ready: false }, 0), strings.call.state.connecting);
+});
+
+test('titleText: connecting (no phone ring), the live timer, ending', () => {
   const C = strings.call;
-  assert.equal(titleText({ status: 'ringing' }, 0), C.state.ringing);
-  assert.equal(titleText({ status: 'connecting' }, 0), C.state.ringing); // still ringing for the person
-  assert.equal(titleText({ status: 'live' }, 42), C.live(C.timer(42)));
-  assert.equal(titleText({ status: 'live' }, 42), 'En vivo · 0:42');
+  assert.equal(titleText({ status: 'ringing' }, 0), C.state.connecting);
+  assert.equal(titleText({ status: 'connecting' }, 0), C.state.connecting);
+  assert.doesNotMatch(titleText({ status: 'ringing' }, 0), /llamando/i, 'it does not sound like a phone call');
+  assert.equal(titleText({ status: 'live', ready: true }, 42), C.live(C.timer(42)));
+  assert.equal(titleText({ status: 'live', ready: true }, 42), 'En vivo · 0:42');
   assert.equal(titleText({ status: 'ending' }, 3), C.state.ended);
 });
 

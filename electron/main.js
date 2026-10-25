@@ -1,7 +1,7 @@
 // Electron main process: creates the window and is the only part that touches the disk.
 // The window (renderer) asks for things over IPC and they are validated here before running.
 
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell, safeStorage, systemPreferences, session: electronSession } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell, safeStorage, systemPreferences, session: electronSession, protocol } = require('electron');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const fs = require('node:fs/promises');
@@ -24,6 +24,13 @@ const { createProjectMemory } = require('./projectMemory');
 const { createSecurityStore, createSecurityService } = require('./securityStore');
 const { parseCommand, classify, commandNeedsApproval, createCommandRunner } = require('./commandRun');
 const { createProjectRun } = require('./projectRun');
+const { PREVIEW_SCHEME, previewPathOf, servePreview } = require('./preview');
+
+// The editor's preview (preview.js): its own scheme, standard (relative CSS, scripts and images resolve)
+// and with fetch, so a page loads as from a server. Registered before the app is ready, as Electron asks
+protocol.registerSchemesAsPrivileged([
+  { scheme: PREVIEW_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
+]);
 const { LINKS, publicCatalog } = require('./serviceCatalog');
 const { createServiceStatus } = require('./serviceStatus');
 
@@ -76,6 +83,9 @@ function createWindow() {
   const demo = process.env.PLATANUS_DEMO === '1' && !app.isPackaged;
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'), demo ? { query: { demo: '1' } } : {});
   if (process.argv.includes('--dev')) win.webContents.openDevTools({ mode: 'detach' });
+  // The voice SDK takes ~1.7 s to load the first time (a blocking require): load it once the window is up,
+  // so the first call with Qubi (the welcome of a new project) does not wait for it
+  win.webContents.once('did-finish-load', () => setTimeout(() => voice().warm(), VOICE_WARM_MS));
 
   // External links never open new windows inside the app
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -428,9 +438,9 @@ const projectRun = createProjectRun({
   managed: managedServers,
   readEntries: () => servers.readEntries(),
   // the detail shows what the script really runs, masked like servers:restart: an agent may have rewritten it
-  confirm: ({ command, cwd, body }) => confirm(
+  confirm: ({ command, cwd, body, install }) => confirm(
     t.run.confirm(command, cwd === '.' ? t.run.rootFolder : cwd),
-    `${t.run.confirmDetail}\n\n${t.run.runs(servers.maskSecrets(body ?? ''))}`,
+    [t.run.confirmDetail, install ? t.run.install(install.command) : null, t.run.runs(servers.maskSecrets(body ?? ''))].filter(Boolean).join('\n\n'),
     t.run.allowButton,
   ),
 });
@@ -1131,6 +1141,7 @@ const REALTIME = { mini: 'eleven_realtime_v1_mini', max: 'eleven_realtime_v1_max
 const realtimeChoice = voiceEnv('PLATANUS_VOICE_REALTIME') ?? 'mini';
 const realtime = Object.hasOwn(REALTIME, realtimeChoice) ? REALTIME[realtimeChoice] : REALTIME.mini;
 let voiceCall = null;
+const VOICE_WARM_MS = 2500;
 const voice = () => (voiceCall ??= createVoiceCall({
   // provider: 'elevenlabs' | 'grok' -> its key or null (keychain, then process.env, then devEnv)
   getKey: (provider) => keys().keyFor(provider),
@@ -1154,7 +1165,8 @@ function voiceRequest(req) {
   if (req.voice != null && !(typeof req.voice === 'string' && VOICE_KEYS.has(req.voice))) return null;
   if (req.level != null && !VOICE_LEVELS.includes(req.level)) return null;
   if (req.style != null && !VOICE_STYLES.includes(req.style)) return null;
-  return { ...Object.fromEntries(fields.map(([name]) => [name, req[name]])), provider, ...(req.voice != null ? { voice: req.voice } : {}), ...(req.level != null ? { level: req.level } : {}), ...(req.style != null ? { style: req.style } : {}) };
+  if (req.welcome != null && typeof req.welcome !== 'boolean') return null; // the welcome of a new project
+  return { ...Object.fromEntries(fields.map(([name]) => [name, req[name]])), provider, ...(req.voice != null ? { voice: req.voice } : {}), ...(req.level != null ? { level: req.level } : {}), ...(req.style != null ? { style: req.style } : {}), ...(req.welcome === true ? { welcome: true } : {}) };
 }
 
 ipcMain.handle('voice:status', () => voice().status());
@@ -1424,6 +1436,12 @@ function watchSources() {
 }
 
 app.whenReady().then(async () => {
+  // Only GET, only the open project's files (preview.js refuses secrets and links out)
+  protocol.handle(PREVIEW_SCHEME, async (request) => {
+    const rel = request.method === 'GET' ? previewPathOf(request.url) : null;
+    const { status, headers, body } = rel == null ? { status: 404, headers: {}, body: '' } : await servePreview(workspace.root, rel);
+    return new Response(status === 200 ? body : null, { status, headers });
+  });
   await nativeMenu();
   if (LIVE_RELOAD) watchSources();
   if (openArg) await openWorkspace(openArg).catch((err) => log('workspace:open', openArg, false, err.message));
