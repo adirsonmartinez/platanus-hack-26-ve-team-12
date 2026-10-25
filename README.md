@@ -22,6 +22,8 @@ npm start        # abre la app
 npm run dev      # igual, con DevTools abiertas
 ```
 
+Requiere Node 20 o más nuevo. `npm install` también baja el programa de Electron (`postinstall`): con npm 11 la instalación de dependencias ya no lo hace sola. Si la app no abre, corre `npm run postinstall`.
+
 Si abres `renderer/index.html` en el navegador, verás un proyecto de demo (sin acceso al disco).
 `npx electron . --open=/ruta/al/proyecto` abre esa carpeta al arrancar; las últimas abiertas quedan en *Archivo → Abrir reciente*.
 
