@@ -109,7 +109,9 @@ const toolSpecs = (v = t.voice) => [
   // the person reshapes Qubi by talking: level, style, voice (all optional: only what was asked)
   ['ajustar_qubi', 10, { type: 'object', required: [], properties: { nivel: text(v.tools.ajustarNivel), estilo: text(v.tools.ajustarEstilo), voz: text(v.tools.ajustarVoz) } }],
   ['revisar_archivo', 15, strings({ ruta: v.tools.revisarArchivoRuta, pregunta: v.tools.revisarArchivoPregunta })],
-  ['abrir_archivo', PERMISSION_WAIT, strings({ ruta: v.tools.abrirArchivoRuta })],
+  ['abrir_archivo', PERMISSION_WAIT, { type: 'object', required: ['ruta'], properties: { ruta: text(v.tools.abrirArchivoRuta), vista: text(v.tools.abrirArchivoVista) } }],
+  // the editor and the browser windows in a zone of the screen (only what is seen: no permission)
+  ['acomodar_ventanas', 10, strings({ ventana: v.tools.acomodarVentana, zona: v.tools.acomodarZona })],
   ['ejecutar_app', PERMISSION_WAIT],
   ['abrir_en_navegador', PERMISSION_WAIT],
   // the security audit: read the project again (only reads), or repair a file (changes files: after a yes)
@@ -117,6 +119,11 @@ const toolSpecs = (v = t.voice) => [
   ['reparar', 15, strings({ ruta: v.tools.repararRuta })],
   // Qubi's body language on the map while it talks (only what is seen)
   ['gesto', 10, strings({ gesto: v.tools.gestoGesto })],
+  // the welcome of a new project: the bubble's answers by voice (outside it they answer sin-bienvenida)
+  ['elegir_experiencia', 10, strings({ nivel: v.tools.elegirExperienciaNivel })],
+  ['marcar_tecnologia', 10, strings({ tecnologia: v.tools.marcarTecnologiaTecnologia, elegir: v.tools.marcarTecnologiaElegir })],
+  ['empezar_proyecto', 15],
+  ['seguir_manual', 10],
 ];
 
 // One client tool of the window for ElevenLabs: answers in the same turn (expectsResponse), never with
@@ -158,6 +165,7 @@ function agentConfig({ voiceId = DEFAULT_VOICE_ID, llm = DEFAULT_LLM } = {}) {
             tech_level: v.levels[v.defaults.level],
             speech_style: v.styles[v.defaults.style],
             greeting: fill(v.greetings[v.defaults.style][0], { project_name: v.defaults.projectName }),
+            welcome_mode: v.welcome.off,
           },
         },
         prompt: {
@@ -187,6 +195,8 @@ function stable(value) {
 }
 const configHash = (config) => crypto.createHash('sha256').update(stable(config)).digest('hex').slice(0, 16);
 // Which account the voices cache belongs to: a short one-way fingerprint, never the key
+// A voice the account refused is asked again after this long (the person may have upgraded the plan)
+const VOICE_RETRY_MS = 60 * 60 * 1000;
 const accountOf = (key) => crypto.createHash('sha256').update(`platanus-voice:${key}`).digest('hex').slice(0, 16);
 
 // SDK or HTTP error -> a reason the window explains in plain Spanish. ElevenLabs answers an exhausted
@@ -216,10 +226,12 @@ const fill = (template, values) => template.replace(/\{\{(\w+)\}\}/g, (whole, na
 
 const notFound = (error) => error?.statusCode === 404;
 // ElevenLabs answers an unknown voice with a 400 whose code is voice_not_found, not a 404
+// ElevenLabs will not put this voice in an agent (a library voice with live moderation): permanent
+const voiceModerated = (error) => /voice_live_moderated_not_allowed/.test(JSON.stringify(error?.body ?? ''));
 const voiceMissing = (error) => notFound(error) || /voice_not_found/.test(JSON.stringify(error?.body ?? ''));
 const httpError = (status, body) => Object.assign(new Error(`Status code: ${status}`), { statusCode: status, body });
 
-function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = globalThis.fetch, voiceId, llm, realtime = REALTIME_MODEL, random = Math.random }) {
+function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = globalThis.fetch, voiceId, llm, realtime = REALTIME_MODEL, random = Math.random, now = Date.now }) {
   // voiceId: an optional fixed voice for the agent (PLATANUS_VOICE_ID in development); it must already be
   // in the account. Without it the agent speaks with Juan and the window may pick another listed voice.
   const customVoice = typeof voiceId === 'string' && voiceId ? voiceId : null;
@@ -242,7 +254,8 @@ function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = g
   let ensuring = null; // one creation at a time: two quick calls must not make two agents
   const sharing = new Map(); // library voice id -> its pending check, so a voice is added only once
 
-  // The saved file: { agentId, hash, voiceMode, voices: { account, ids: { libraryId: accountId } } }
+  // The saved file: { agentId, hash, voiceMode,
+  //   voices: { account, ids: { libraryId: accountId }, failed: { libraryId: at }, moderated: [libraryId] } }
   const load = () => {
     try {
       const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -273,15 +286,40 @@ function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = g
 
   // --- ElevenLabs ---
 
+  // The voices entry of this account (another key's cache is dropped), with one change
+  function rememberVoices(key, change) {
+    const account = accountOf(key);
+    const voices = load().voices;
+    const own = voices?.account === account ? voices : {};
+    const ids = own.ids && typeof own.ids === 'object' ? own.ids : {};
+    const failed = own.failed && typeof own.failed === 'object' ? own.failed : {};
+    const moderated = Array.isArray(own.moderated) ? own.moderated : [];
+    store({ voices: { account, ids, failed, moderated, ...change({ ids, failed, moderated }) } });
+  }
+  const moderatedVoice = (key, name) => {
+    const voices = load().voices;
+    return voices?.account === accountOf(key) && Array.isArray(voices.moderated) && voices.moderated.includes(VOICES.elevenlabs[name].id);
+  };
+
   // Makes sure one listed library voice is in the account: voices.get, and voices.share when it is missing. Cached
   // per account in the file, so it is checked once. -> the id to use, or null when it could not be added
-  // (full voice slots, a key without that permission…): the agent then speaks with its own voice. A
-  // network failure is thrown: the call would fail anyway.
+  // (a free plan, full voice slots, a key without that permission…): the agent then speaks with its own voice,
+  // and the refusal is remembered for VOICE_RETRY_MS so every call does not wait for two failing requests.
+  // A network failure is thrown: the call would fail anyway.
   function ensureVoice(client, key, name) {
     const spec = VOICES.elevenlabs[name];
     const account = accountOf(key);
     const cached = load().voices;
-    if (cached?.account === account && typeof cached.ids?.[spec.id] === 'string') return Promise.resolve(cached.ids[spec.id]);
+    const mine = cached?.account === account ? cached : null;
+    if (Array.isArray(mine?.moderated) && mine.moderated.includes(spec.id)) return Promise.resolve(null);
+    if (typeof mine?.ids?.[spec.id] === 'string') return Promise.resolve(mine.ids[spec.id]);
+    const failedAt = mine?.failed?.[spec.id];
+    if (Number.isFinite(failedAt) && now() - failedAt < VOICE_RETRY_MS) return Promise.resolve(null);
+    const remember = (change) => rememberVoices(key, change);
+    const refused = () => {
+      remember(({ ids, failed }) => ({ ids, failed: { ...failed, [spec.id]: now() } }));
+      return null;
+    };
     if (!sharing.has(spec.id)) {
       const check = (async () => {
         let id = spec.id;
@@ -289,18 +327,19 @@ function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = g
           await client.voices.get(spec.id);
         } catch (error) {
           if (!error?.statusCode) throw error;
-          if (!voiceMissing(error)) return null;
+          if (!voiceMissing(error)) return refused();
           try {
             const added = await client.voices.share(spec.owner, spec.id, { newName: t.voice.sharedVoiceName(spec.name) });
             if (typeof added?.voiceId === 'string' && /^[\w-]{1,100}$/.test(added.voiceId)) id = added.voiceId;
           } catch (shareError) {
             if (!shareError?.statusCode) throw shareError;
-            return null;
+            return refused();
           }
         }
-        const voices = load().voices;
-        const ids = voices?.account === account && voices.ids && typeof voices.ids === 'object' ? voices.ids : {};
-        store({ voices: { account, ids: { ...ids, [spec.id]: id } } });
+        remember(({ ids, failed }) => {
+          const { [spec.id]: _, ...rest } = failed;
+          return { ids: { ...ids, [spec.id]: id }, failed: rest };
+        });
         return id;
       })().finally(() => sharing.delete(spec.id));
       sharing.set(spec.id, check);
@@ -326,8 +365,20 @@ function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = g
   // The id of an agent with this configuration: the saved one, updated if its configuration changed,
   // or a new one when there is none or it was deleted from the account (404). Before writing the agent,
   // its default voice is made sure to be in the account (best effort).
+  // A default voice ElevenLabs refuses for agents (live moderation) is remembered for good and the agent is
+  // written again, in the same call, with the fallback voice.
   async function ensureAgent(client, key, { fresh = false } = {}) {
     if (!customVoice) useVoice((await ensureVoice(client, key, DEFAULT_VOICE.elevenlabs)) ?? FALLBACK_VOICE_ID);
+    try {
+      return await writeAgent(client, fresh);
+    } catch (error) {
+      if (customVoice || !voiceModerated(error) || moderatedVoice(key, DEFAULT_VOICE.elevenlabs)) throw error;
+      const juan = VOICES.elevenlabs[DEFAULT_VOICE.elevenlabs].id;
+      rememberVoices(key, ({ moderated }) => ({ moderated: [...new Set([...moderated, juan])] }));
+      return ensureAgent(client, key, { fresh });
+    }
+  }
+  async function writeAgent(client, fresh) {
     const saved = fresh ? null : read();
     if (saved?.hash === hash) return saved.agentId;
     if (!saved) return create(client);
@@ -357,7 +408,9 @@ function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = g
       if (!notFound(error)) throw error;
       url = await signedUrl(client, await agentId(client, key, { fresh: true })); // the saved agent was deleted
     }
-    return { ok: true, provider: 'elevenlabs', signedUrl: url, dynamicVariables, voiceMode: read()?.voiceMode ?? 'custom', voiceId: voiceIdForCall };
+    // a voice found refused for agents while the agent was written is not asked for this call either
+    const voiceId = !customVoice && moderatedVoice(key, chosen) ? null : voiceIdForCall;
+    return { ok: true, provider: 'elevenlabs', signedUrl: url, dynamicVariables, voiceMode: read()?.voiceMode ?? 'custom', voiceId };
   }
 
   // --- Grok Voice (xAI) ---
@@ -415,6 +468,14 @@ function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = g
   }
 
   return {
+    // Loads the ElevenLabs client ahead of the first call: requiring the SDK takes ~1.7 s the first time,
+    // which the person would otherwise wait for. No request is made; any failure is left to start()
+    async warm() {
+      try {
+        const key = await keyOf('elevenlabs');
+        if (key) makeClient(key);
+      } catch { /* start() reports it */ }
+    },
     // -> { ready: true } or { ready: false, reason: 'no-key' }
     async status() {
       return (await pick('auto')) ? { ready: true } : { ready: false, reason: 'no-key' };
@@ -430,7 +491,8 @@ function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = g
     // -> ElevenLabs { ok, provider, signedUrl, dynamicVariables, voiceMode, voiceId }
     //  | Grok { ok, provider, token, expiresAt, model, session }
     //  | { ok: false, reason: 'no-key' | 'auth' | 'quota' | 'network' | 'failed' }   (never the key)
-    async start({ projectName, context, builder, memory, provider = 'auto', voice, level, style } = {}) {
+    // welcome: the welcome of a new project (its greeting and instructions instead of a normal pick-up)
+    async start({ projectName, context, builder, memory, provider = 'auto', voice, level, style, welcome = false } = {}) {
       const chosen = await pick(PROVIDERS.includes(provider) ? provider : 'auto');
       if (!chosen) return { ok: false, reason: 'no-key' };
       const d = t.voice.defaults;
@@ -444,7 +506,8 @@ function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = g
         // the instructions of the level the person picked (a key of LEVELS, never free text)
         tech_level: t.voice.levels[LEVELS.includes(level) ? level : d.level],
         speech_style: t.voice.styles[speech],
-        greeting: greeting(speech, name),
+        greeting: welcome === true ? fill(t.voice.welcome.greetings[speech], { project_name: name }) : greeting(speech, name),
+        welcome_mode: welcome === true ? t.voice.welcome.instructions : t.voice.welcome.off,
       };
       const voiceName = typeof voice === 'string' ? voice : '';
       try {

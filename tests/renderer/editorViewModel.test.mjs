@@ -160,3 +160,33 @@ test('opening or closing a project closes every tab', async () => {
   bus.emit(EVENTS.projectOpened, { name: 'x' });
   assert.equal(vm.store.state.tabs.length, 0);
 });
+
+// --- Preview: pages and images go to the browser window (browserViewModel); the editor keeps the code ---
+
+test('preview: a page or image clicked on the map goes to the browser; the page code stays one click away', async () => {
+  const bus = createEventBus();
+  const workspace = fakeWorkspace({ 'index.html': { content: '<h1>hola</h1>', mtime: 1 }, 'src/a.ts': { content: 'x', mtime: 2 } });
+  const previewed = [];
+  const vm = new EditorViewModel({ workspace, bus, preview: (path) => { previewed.push(path); return /\.(html?|svg|png)$/.test(path); } });
+  bus.emit(EVENTS.fileSelected, { path: 'index.html', level: 'green' });
+  bus.emit(EVENTS.fileSelected, { path: 'img/logo.png', level: 'green' });
+  bus.emit(EVENTS.fileSelected, { path: 'src/a.ts', level: 'green' });
+  await flush();
+  assert.deepEqual(previewed, ['index.html', 'img/logo.png', 'src/a.ts']);
+  assert.deepEqual(vm.store.state.tabs.map((t) => t.path), ['src/a.ts'], 'only the code file opened here');
+  // the code of a page: opened in the editor on purpose, with its preview button
+  await vm.open('index.html');
+  assert.equal(tab(vm, 'index.html').canPreview, true);
+  assert.equal(tab(vm, 'src/a.ts').canPreview, false);
+  assert.equal(vm.showPreview('index.html'), true);
+  assert.deepEqual(previewed.at(-1), 'index.html');
+  assert.equal(vm.showPreview('src/a.ts'), false);
+});
+
+test('preview: off (the web version) -> every file opens here as code', async () => {
+  const { vm, bus } = setup({ 'index.html': { content: '<h1>x</h1>', mtime: 1 } });
+  bus.emit(EVENTS.fileSelected, { path: 'index.html', level: 'green' });
+  await flush();
+  assert.equal(tab(vm, 'index.html').status, 'ready');
+  assert.equal(tab(vm, 'index.html').canPreview, false);
+});

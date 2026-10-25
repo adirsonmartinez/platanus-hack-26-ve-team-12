@@ -12,6 +12,7 @@ function setup({ agentLive = true } = {}) {
   const projectModel = { store: new Observable({ tree: [] }) };
   const securityModel = new SecurityModel();
   const calls = [];
+  const touched = [];
   const actions = {
     // true: the request went to an agent; false: no agent yet, it waits until the person picks one
     askAgent: (prompt) => { calls.push(['askAgent', prompt]); return agentLive; },
@@ -21,6 +22,7 @@ function setup({ agentLive = true } = {}) {
     saveProgress: () => calls.push(['saveProgress']),
     devMode: () => calls.push(['devMode']),
     prepareSetup: (integrations) => calls.push(['prepareSetup', integrations]),
+    welcomeTouched: (id) => touched.push(id), // the person answered with a tap (not Qubi by voice)
   };
   const vm = new RobotDialogViewModel({ mapViewModel, projectModel, securityModel, actions });
   const welcome = () => mapViewModel.store.set({ welcome: true });
@@ -31,7 +33,7 @@ function setup({ agentLive = true } = {}) {
     assert.ok(button, `no button "${text}" in ${bubble().buttons.map((b) => b.label)}`);
     vm.press(button.id);
   };
-  return { vm, mapViewModel, securityModel, calls, welcome, setTree, bubble, pressLabel };
+  return { vm, mapViewModel, securityModel, calls, touched, welcome, setTree, bubble, pressLabel };
 }
 
 test('stays off until a new, empty project opens, then asks about experience first', () => {
@@ -247,3 +249,45 @@ function pressLabelOf(vm, text) {
   assert.ok(button, `no button "${text}"`);
   vm.press(button.id);
 }
+
+// Qubi asks the same questions by voice (docs/features/welcome-robot/): the call answers with press(id, { by: 'voice' })
+test('Qubi can answer for the person by voice; only the person\'s own taps tell the app they went manual', () => {
+  const { vm, welcome, bubble, touched } = setup();
+  welcome();
+  assert.deepEqual(vm.voiceState(), { paso: 'experiencia', tecnologias: ['nextjs', 'vercel', 'supabase'] });
+  vm.press('exp:beginner', { by: 'voice' });
+  assert.equal(bubble().id, 'q:stack');
+  assert.deepEqual(vm.voiceState().paso, 'tecnologias');
+  vm.press('pick:vercel', { by: 'voice' });
+  assert.deepEqual(vm.voiceState().tecnologias, ['nextjs', 'supabase']);
+  assert.deepEqual(touched, [], 'the voice is not the person tapping');
+  vm.press('pick:vercel');
+  assert.deepEqual(touched, ['pick:vercel']);
+});
+
+test('collapsing or expanding the bubble is not answering: the call goes on', () => {
+  const { vm, welcome, touched } = setup();
+  welcome();
+  vm.press('collapse');
+  vm.press('expand');
+  assert.deepEqual(touched, []);
+});
+
+test('the voice state follows the bubble to the end: building, then over', () => {
+  const { vm, welcome, setTree } = setup();
+  assert.deepEqual(vm.voiceState(), { paso: 'terminada', tecnologias: [] });
+  welcome();
+  vm.press('exp:beginner', { by: 'voice' });
+  vm.press('start', { by: 'voice' });
+  assert.equal(vm.voiceState().paso, 'construyendo');
+  setTree(['package.json']);
+  assert.equal(vm.voiceState().paso, 'terminada');
+});
+
+test('"I already code" by voice: the same goodbye', () => {
+  const { vm, welcome, bubble } = setup();
+  welcome();
+  vm.press('exp:dev', { by: 'voice' });
+  assert.equal(bubble().id, 'farewell');
+  assert.equal(vm.voiceState().paso, 'terminada');
+});

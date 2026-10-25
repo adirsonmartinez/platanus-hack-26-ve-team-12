@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Observable } from '../../renderer/core/observable.js';
 import { createEventBus, EVENTS } from '../../renderer/core/eventBus.js';
-import { CallViewModel, contextFor, CONTEXT_MAX, MAX_LINES, SETTINGS_KEY, settingsOf, voiceAnswer, pickScript, PERMISSION_MS, TOOL_ANSWER_MS } from '../../renderer/viewmodels/callViewModel.js';
+import { CallViewModel, RING_MS, READY_MS, contextFor, CONTEXT_MAX, MAX_LINES, SETTINGS_KEY, settingsOf, voiceAnswer, pickScript, PERMISSION_MS, TOOL_ANSWER_MS } from '../../renderer/viewmodels/callViewModel.js';
 import { ChatViewModel } from '../../renderer/viewmodels/chatViewModel.js';
 import { strings } from '../../renderer/i18n/es.js';
 import { memoryText } from '../../renderer/models/projectMemoryModel.js';
@@ -117,6 +117,40 @@ test('a call rings first, then connects, then is live with the real voice; the c
   assert.deepEqual(t.cards.map((c) => c.status), ['connecting', 'live'], 'ringing shows as connecting in the card');
   assert.equal(t.cards.at(-1).simulated, false);
   assert.equal(typeof t.cards.at(-1).startedAt, 'number');
+});
+
+test('no phone ring by default: Qubi starts talking as soon as the session is ready', () => {
+  assert.equal(RING_MS, 0);
+});
+
+test('ready: false while it connects and until Qubi first speaks; then true for the rest of the call', async () => {
+  const t = setup();
+  const started = t.vm.start();
+  assert.equal(t.vm.store.state.ready, false);
+  await started;
+  assert.equal(t.vm.store.state.status, 'live');
+  assert.equal(t.vm.store.state.ready, false, 'the session is open but Qubi has not said a word yet');
+  t.on().mode('speaking');
+  assert.equal(t.vm.store.state.ready, true);
+  t.on().mode('listening');
+  assert.equal(t.vm.store.state.ready, true, 'it stays ready');
+  t.vm.hangUp();
+  await t.vm.start();
+  assert.equal(t.vm.store.state.ready, false, 'a new call starts loading again');
+});
+
+test('ready: a line from Qubi counts too, and a silent start is ready after readyMs (never stuck loading)', async () => {
+  const t = setup();
+  await t.vm.start();
+  t.on().line({ who: 'qubi', text: 'Hola', final: true });
+  assert.equal(t.vm.store.state.ready, true);
+
+  const quiet = setup({ timing: { readyMs: 20 } });
+  await quiet.vm.start();
+  assert.equal(quiet.vm.store.state.ready, false);
+  await new Promise((r) => setTimeout(r, 40));
+  assert.equal(quiet.vm.store.state.ready, true);
+  assert.ok(READY_MS >= 2000 && READY_MS <= 6000);
 });
 
 test('the ring lasts at least ringMs even when main answers at once; Qubi picks up only after it', async () => {
@@ -429,8 +463,8 @@ test("the agent's answer never reaches the voice: no code, no keys (only the app
   const session = t.sessions.real[0];
   await t.tools().preguntar({ pregunta: '¿Qué hace config.js?' });
   const ask = t.runCard({ intent: 'explain' });
-  const fake = ['sk', 'live', '4f9a8b7c6d5e4f3a2b1c'].join('-'); // built here so the secrets scan never sees a key
-  const text = `Guarda la clave así:\n\`\`\`js\nconst API_KEY = "${fake}";\n\`\`\`\nY usa \`process.env.SECRET_TOKEN\` en \`src/config.js\`.`;
+  // the made-up key is split so the repo's secret scan (tests/secrets.test.mjs) does not take it for a real one
+  const text = 'Guarda la clave así:\n```js\nconst API_KEY = "sk-live-' + '4f9a8b7c6d5e4f3a2b1c";\n```\nY usa `process.env.SECRET_TOKEN` en `src/config.js`.';
   ask((r) => ({ ...r, status: 'done' }), { text });
   const avance = await t.tools().ver_avance();
   const heard = [...session.context, ...session.notified, avance.resumen, JSON.stringify(avance)].join('\n');
@@ -860,6 +894,31 @@ function actingSetup(extra = {}) {
   return { ...t, opened, previews, ran, shown, runService };
 }
 
+test('abrir_archivo: a page opens in the browser window unless Qubi asks for its code (vista codigo)', async () => {
+  const calls = [];
+  const open = (path, opts) => { calls.push([path, opts]); return { ok: true, en: opts?.view === 'codigo' ? 'editor' : 'navegador' }; };
+  const s = setup({ actions: { openFile: open } });
+  await s.vm.start();
+  // the person's own «ábrelo» is the permission (no question)
+  s.say('ábrelo');
+  assert.deepEqual(await s.tools().abrir_archivo({ ruta: 'src/app.js' }), { ok: true, en: 'navegador' });
+  s.say('muéstrame el código');
+  assert.deepEqual(await s.tools().abrir_archivo({ ruta: 'src/app.js', vista: 'código' }), { ok: true, en: 'editor' });
+  assert.deepEqual(calls.map(([, o]) => o.view), ['pagina', 'codigo']);
+});
+
+test('acomodar_ventanas: Qubi places the editor and the browser (only what is seen: no permission)', async () => {
+  const placed = [];
+  const s = setup({ actions: { arrangeWindows: (ventana, zona) => { placed.push([ventana, zona]); return { ok: true, ventana: 'navegador', zona: 'derecha' }; } } });
+  await s.vm.start();
+  assert.deepEqual(await s.tools().acomodar_ventanas({ ventana: 'el juego', zona: 'derecha' }), { ok: true, ventana: 'navegador', zona: 'derecha' });
+  assert.deepEqual(placed, [['el juego', 'derecha']]);
+  assert.equal(s.vm.store.state.permission, null);
+  const none = setup();
+  await none.vm.start();
+  assert.deepEqual(await none.tools().acomodar_ventanas({ ventana: 'editor', zona: 'izquierda' }), { ok: false, motivo: 'falló' });
+});
+
 test('abrir_archivo asks first: the button allows it, the file opens; the card keeps system lines', async () => {
   const t = actingSetup();
   await t.vm.start();
@@ -997,6 +1056,15 @@ test('ejecutar_app: no script -> sin-script; denied here or in main\'s dialog ->
   await flush();
   t.vm.allow(t.vm.store.state.permission.id);
   assert.deepEqual(await pending, { ok: false, motivo: 'sin-permiso' }, "main's own dialog said no");
+});
+
+test('ejecutar_app: the dependencies could not be installed -> sin-instalar (Qubi says so instead of a vague failure)', async () => {
+  const t = actingSetup({ runResult: { ok: false, reason: 'installFailed' } });
+  await t.vm.start();
+  const pending = t.tools().ejecutar_app();
+  await flush();
+  t.vm.allow(t.vm.store.state.permission.id);
+  assert.deepEqual(await pending, { ok: false, motivo: 'sin-instalar' });
 });
 
 test('ejecutar_app: a start that outlasts the tool\'s time answers arrancando, and Qubi hears the outcome later', async () => {

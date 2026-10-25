@@ -6,7 +6,7 @@ Lo que pidió la persona después de probar la llamada:
 2. Qubi **pide permiso** antes de abrir o ejecutar cualquier cosa.
 3. Se le puede **dirigir por voz** («ve a apps», «vente», «allá voy»). Camina hasta allí y hace gestos.
 4. Sus **ojos y su boca** se mueven mientras conversa: se tiene que notar que está hablando contigo.
-5. **Llamar se siente como una llamada**: «Hablar en vivo», un timbre de 1 s, y al atender dice «¡Aló! ¿Quién habla?».
+5. **Qubi habla de una** (cambiado el 2026-10-25): sin timbre ni «¡Aló!»; mientras conecta el panel dice «Conectando…» y Qubi empieza con un saludo corto.
 6. Qubi habla **coloquial venezolano, pana**, con una voz venezolana.
 
 ## 1. Panel encima de Qubi
@@ -14,12 +14,12 @@ Lo que pidió la persona después de probar la llamada:
 `callBarView` deja de estar fijo abajo. Durante la llamada, el panel es una etiqueta del mapa anclada sobre la cabeza del robot, con `labels.add`, como el globo. Sigue al robot en cada cuadro, también cuando camina o construye.
 
 - **Contenido:**
-  - la cara de Qubi y «En vivo · 0:42», o «Llamando…» mientras suena;
+  - la cara de Qubi y «En vivo · 0:42», o «Conectando…» mientras se abre;
   - la onda de voz;
-  - lo último que dijo Qubi, en una o dos líneas y recortado;
   - los botones Ajustes, Chat, Micrófono y Colgar (rojo).
 - **Pedido de permiso:** si hay uno pendiente, el panel lo muestra arriba de la onda con «Permitir» y «No».
-- **El globo de Qubi no se dibuja** durante la llamada (job `call`): el panel ya dice lo que dice.
+- **El panel no muestra el texto de la conversación** (2026-10-25): tapaba el mapa y las ventanas de la bienvenida. Lo dicho queda en la tarjeta de llamada del chat (botón Chat).
+- **El globo de Qubi no se dibuja** durante la llamada (job `call`).
 - **Si el robot no se ve** (oculto, o con el recorrido en marcha), el panel vuelve abajo al centro, como ahora.
 - **Tamaño:** compacto, como mucho 340 px de ancho. Vidrio con `--lg-*`, opaco: las etiquetas de atrás no deben transparentarse (`lessons.md`).
 - **Posición:** se aplica `transform` en cada cuadro, sin `top`/`left`, para no forzar el layout.
@@ -33,6 +33,7 @@ Qubi actúa en el proyecto solo con permiso de la persona.
 | `ir_a({ ruta })` | Qubi camina hasta la carpeta o el archivo, la cámara lo sigue, señala y dice dónde está | No (solo mueve el mapa) |
 | `volver()` | Qubi vuelve a su lugar | No |
 | `abrir_archivo({ ruta })` | Abre el archivo en el editor flotante (`editorViewModel.open`) | **Sí** |
+| `acomodar_ventanas(ventana, zona)` | Pone el editor o el navegador a la izquierda, a la derecha, arriba, abajo o en pantalla completa; la otra ventana toma la otra mitad (`windowsViewModel.place`) | No: solo cambia lo que se ve |
 | `ejecutar_app()` | Arranca el proyecto con su script `dev` o `start` del `package.json` (nunca otro comando) y abre la vista previa en el navegador cuando aparece el puerto | **Sí**, y además main muestra su propio diálogo nativo |
 | `abrir_en_navegador()` | Abre en el navegador un servidor del proyecto que ya está corriendo | **Sí** |
 
@@ -51,6 +52,7 @@ Qubi actúa en el proyecto solo con permiso de la persona.
 - `scriptsFor(root)`: busca un script `dev` o `start` en el `package.json` de la raíz y de `apps/*`, como mucho 1 nivel. Devuelve `[{ cwd, script, command: 'npm run dev' }]`.
 - `run(choice)` usa los servidores administrados (`createManagedServers` de `servers.js`) con `npm run <script>` en esa carpeta.
 - **Antes**, `dialog.showMessageBox` dice «Qubi quiere ejecutar `npm run dev` en `apps/web`. ¿Permitir?» y ofrece Permitir / Cancelar.
+- **Dependencias (2026-10-25):** si falta `node_modules` (un proyecto recién creado), `installFor` decide dónde instalar (la raíz si es un monorepo) y con qué (`npm`, o `pnpm` / `yarn` / `bun` según el lockfile). El mismo diálogo lo avisa («Antes instalo lo que necesita…») y la instalación corre con el login shell del usuario, sin secretos en el entorno, máximo 5 min. Si falla, no se arranca: `installFailed` → Qubi recibe `sin-instalar` y pide revisar internet.
 - **Después**, el puerto nuevo se detecta con la lista de servidores y se abre con `servers:open`.
 - IPC `run:scripts` y `run:start` (con el índice de un script de la lista, nunca texto libre).
 
@@ -108,7 +110,7 @@ Qubi actúa en el proyecto solo con permiso de la persona.
 ## 5. Se siente como una llamada
 
 - **Botón:** el teléfono del chat se llama «Hablar en vivo». En el globo del robot dice «Hablar».
-- **Timbre:** `renderer/views/ui/ringTone.js` dibuja un timbre de 1 s con WebAudio, dos tonos tipo teléfono (440 + 480 Hz, 0,4 s, una pausa y otra vez), sin archivos. Suena mientras conecta. Si la conexión tarda, sigue sonando cada 2 s hasta 8 s, y para en cuanto Qubi atiende.
+- **Sin timbre** (2026-10-25): se quitó `ringTone.js`; no debe sonar a llamada de teléfono.
 - **Primer mensaje:** cambia en cada llamada; sale de `voice.greetings` según la forma de hablar (en `electron/strings.js`), por ejemplo «¡Aló! ¿Quién habla? … ¡Epa, pana! Aquí Qubi, viendo {{project_name}}. ¿Qué vamos a construir hoy?».
 
 ## 6. Qubi venezolano
@@ -147,7 +149,7 @@ Qubi actúa en el proyecto solo con permiso de la persona.
 
 - **Panel encima de Qubi:** `callBarView` recibe `sceneView`, `anchor` (`robotView.head()`, el punto sobre la cabeza) y se mueve con `transform` en cada cuadro de `sceneView.onFrame`, después de que Qubi se movió. No usa `labels.add`: es el mismo `#call-bar`, colocado por `placePanel` (dentro del escenario y a la izquierda del chat flotante si lo taparía). En la vista Git, o si Qubi está oculto (recorrido), vuelve abajo al centro.
 - **«Llamada simulada» ya no aparece sola:** sin servicio de voz conectado, la llamada termina en error `offline` y se abre el modal de voz (`VOZ.md`). Además se quitó de `renderer/main.js` el arranque automático en simulada cuando aparece el agente «Simulador» (`PLATANUS_SIM=1`). La simulada solo se usa si la persona la elige (Ajustes o «Probar sin voz») o en la versión web.
-- **Atender:** `ringing` (≥ 1 s, suena `ringTone.js`) → `connecting` → `live`. La sesión se abre después del timbre, así el «¡Aló!» no se pisa con él.
+- **Empezar:** `ringing` (sin espera: `RING_MS` = 0) → `connecting` → `live`; Qubi habla en cuanto la sesión abre.
 - **Venezolano:** el prompt, el primer mensaje y la voz por defecto (Juan) están en `electron/strings.js` y `electron/voiceCall.js`. Como cambió la configuración, el agente guardado en la cuenta de ElevenLabs **se actualiza solo en la próxima llamada real** (`configHash`). Ojo: si `.env.local` tiene `PLATANUS_VOICE_ID`, esa voz fija gana sobre la venezolana.
 - **Permisos:** `store.permission` con Permitir / No / «Siempre en esta llamada» (solo `abrir_archivo`, y vale para cualquier archivo no secreto de esa llamada). La herramienta responde `ok`, `sin-permiso`, `no-existe`, `secreto`, `sin-script`, `sin-servidor`, `ocupado` o `falló`; el prompt explica todos.
 - **Cableado (`renderer/main.js`):**

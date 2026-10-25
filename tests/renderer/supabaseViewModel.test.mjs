@@ -5,16 +5,17 @@ import { createEventBus } from '../../renderer/core/eventBus.js';
 import { SupabaseModel } from '../../renderer/models/supabaseModel.js';
 import { SupabaseViewModel } from '../../renderer/viewmodels/supabaseViewModel.js';
 
-function setup(project) {
-  const projectModel = { store: new Observable({ open: false, usesSupabase: false, session: 0, demo: false }) };
+// demo: the web version (the only one with made-up data)
+function setup({ demo }) {
+  const projectModel = { store: new Observable({ open: false, usesSupabase: false, session: 0 }) };
   const supabaseModel = new SupabaseModel();
   const camera = { saveView: () => ({}), flyTo() {} };
-  new SupabaseViewModel({ supabaseModel, projectModel, camera, bus: createEventBus() });
-  projectModel.store.set({ open: true, usesSupabase: true, session: 1, ...project });
+  new SupabaseViewModel({ supabaseModel, projectModel, camera, bus: createEventBus(), demo });
+  projectModel.store.set({ open: true, usesSupabase: true, session: 1 });
   return { supabaseModel };
 }
 
-test('the demo project shows the RLS vulnerability a few seconds after opening', () => {
+test('the web demo shows the RLS vulnerability a few seconds after opening', () => {
   mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
   try {
     const { supabaseModel } = setup({ demo: true });
@@ -23,7 +24,7 @@ test('the demo project shows the RLS vulnerability a few seconds after opening',
   } finally { mock.timers.reset(); }
 });
 
-test('a real project connected to Supabase never shows the demo vulnerability', () => {
+test('a desktop project never shows the demo vulnerability', () => {
   mock.timers.enable({ apis: ['setTimeout', 'setInterval'] });
   try {
     const { supabaseModel } = setup({ demo: false });

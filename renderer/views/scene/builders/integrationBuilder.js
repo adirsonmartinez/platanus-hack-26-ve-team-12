@@ -1,11 +1,11 @@
-// An integration node in the band at the top of the map (Vercel, GitHub, Clerk, PostHog, Supabase while it
-// waits for an account, and any other service main detects: Stripe, Sentry…): a dark platform like
+// An integration node in the band at the top of the map (Vercel, GitHub, Clerk, PostHog, any other service
+// main detects: Stripe, Sentry…, and Supabase while it waits for an account): a dark platform like
 // Supabase's, a small silver emblem that hints at the service (a plug for the ones without their own) and a
 // light: purple when connected, amber with an incident, off when disconnected. A disconnected node looks
-// unplugged: its emblem is dull, sunk a little and still, so it reads "off" at a glance. Pending ("Por
-// conectar": set up, waiting for the person's account) is a piece half built: a see-through emblem that
-// stays still, the light off and a dashed outline around the platform. It never glows
-// (docs/features/servicios/README.md).
+// unplugged: its emblem is dull, sunk a little and still, so it reads "off" at a glance
+// (docs/features/servicios/README.md). Pending ("Por conectar": set up, waiting for the person's account) is a
+// piece half built: a see-through emblem that stays still, the light off and a dashed outline around the
+// platform. It never glows.
 // Origin at the center of the platform, on the ground.
 import * as THREE from 'three';
 import { box, cylinder, materials as M, PALETTE } from '../materials.js';
@@ -83,7 +83,7 @@ function genericEmblem(g) {
   return e;
 }
 
-const LIGHT = { connected: () => M.accentSolid, incident: () => M.warnSolid, disconnected: () => M.slab, unknown: () => M.slab, pending: () => M.slab };
+const LIGHT = { connected: () => M.accentSolid, incident: () => M.warnSolid, disconnected: () => M.slab, pending: () => M.slab };
 
 // The unplugged look: one dull, see-through grey for every piece of the emblem (shared, never edited)
 let offMaterial = null;
@@ -94,10 +94,11 @@ export function buildIntegration(key, status = 'connected') {
   const g = new THREE.Group();
   box(g, M.slabEdge, PLATFORM, 0.3, PLATFORM, 0, 0, 0);
   box(g, M.slab, PLATFORM - 0.4, 0.25, PLATFORM - 0.4, 0, 0.3, 0);
-  const led = box(g, (LIGHT[status] ?? LIGHT.connected)(), 0.5, 0.06, 0.12, 0, BASE, PLATFORM / 2 - 0.45);
+  const led = box(g, (LIGHT[status] ?? LIGHT.disconnected)(), 0.5, 0.06, 0.12, 0, BASE, PLATFORM / 2 - 0.45);
   led.castShadow = false;
   const emblem = (EMBLEMS[key] ?? genericEmblem)(g);
 
+  // 'unknown' (main could not check it) looks unplugged too, like its label: never lit without a check
   const live = status === 'connected' || status === 'incident';
   if (status === 'pending') {
     emblem.traverse((o) => { if (o.isMesh) { o.material = pending(); o.castShadow = false; } });

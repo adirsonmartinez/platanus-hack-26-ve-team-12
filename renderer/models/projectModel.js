@@ -22,9 +22,9 @@ export class ProjectModel {
   // `version` increases each time the tree is reloaded.
   // integrations: keys in the catalog's order (main's), or INTEGRATIONS order from the files;
   // integrationStatus: key -> 'connected' | 'incident' | 'disconnected' (the map's look; 'unknown' shows as disconnected)
-  // | 'pending' (set up by the welcome robot, waiting for the person's account);
+  // | 'pending' (set up by the welcome robot, waiting for the person's account)
   // services: [{ key, name, state: 'connected' | 'disconnected' | 'unknown', via, evidence }] (servicesViewModel)
-  // usesSupabase: a live Supabase the map draws with its schema (not a pending one);
+  // usesSupabase: a live Supabase the map draws with its schema (not a pending one)
   // root: the folder's full path (the project's memory is keyed by it; main accepts only the open or a recent one)
   // demo: only the browser demo (no disk); a desktop folder is always a real project
   store = new Observable({ open: false, name: null, root: null, demo: false, tree: [], usesSupabase: false, integrations: [], integrationStatus: {}, services: [], session: 0, version: 0 });
@@ -72,11 +72,11 @@ export class ProjectModel {
 
   // The tree is loaded before publishing, so the map never draws a half-loaded project
   async open({ name, root }) {
-    const at = typeof root === 'string' && root ? root : null;
-    const loaded = await this.#load(name, at);
+    root = typeof root === 'string' && root ? root : null;
+    const loaded = await this.#load(name, root);
     if (!loaded) return;
     const { session, version } = this.store.state;
-    this.store.set({ open: true, name: name || null, root: at, ...loaded, session: session + 1, version: version + 1 });
+    this.store.set({ open: true, name: name || null, root, ...loaded, session: session + 1, version: version + 1 });
   }
 
   // Back to the start screen: the main process stops watching the folder and the agent loses access
@@ -101,9 +101,10 @@ export class ProjectModel {
     const integrations = services.map((s) => s.key);
     // connected, disconnected or "could not check" (unknown, never shown as disconnected); the web demo's incident
     const integrationStatus = Object.fromEntries(services.map((s) => [s.key, s.status ?? (s.state === 'connected' ? 'connected' : s.state === 'unknown' ? 'unknown' : 'disconnected')]));
-    // Found in the files but still waiting for the person's account (set up by the welcome robot)
-    this.#setup?.pendingOf(root).forEach((key) => { if (key in integrationStatus && integrationStatus[key] !== 'disconnected') integrationStatus[key] = 'pending'; });
+    // Set up by the welcome robot and still waiting for the person's account
+    this.#setup?.pendingOf(root).forEach((key) => { if (key in integrationStatus) integrationStatus[key] = 'pending'; });
     const usesSupabase = integrations.includes('supabase') && integrationStatus.supabase !== 'pending';
+    // the web version only (no disk: always the made-up project)
     const demo = this.#workspace.isDesktop === false;
     return { tree: response.data, integrations, integrationStatus, services: services.map(({ status, ...s }) => s), usesSupabase, demo };
   }

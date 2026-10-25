@@ -6,6 +6,9 @@
 //   coach:     tips that react to the project while it grows (first file, risky files, .gitignore, README),
 //              until everything basic is in place and the person says goodbye
 // The view only renders `bubble` and calls press(id) with the id of the clicked button or card.
+// Qubi can ask the same interview by voice (the welcome call, callViewModel): it answers with
+// press(id, { by: 'voice' }) and reads voiceState(); a tap of the person's own on an answer tells
+// actions.welcomeTouched(id), so the call knows they went manual.
 import { Observable } from '../core/observable.js';
 import { allFiles, baseName } from '../models/fileTree.js';
 import { LEVEL_RANK } from '../models/securityModel.js';
@@ -51,14 +54,27 @@ export class RobotDialogViewModel {
     securityModel.store.subscribe(() => this.#refreshCoach());
   }
 
-  press(id) {
+  // by: 'person' (a tap) or 'voice' (Qubi answered for them in the welcome call)
+  press(id, { by = 'person' } = {}) {
     const state = this.store.state;
     if (state.phase === 'off' || state.phase === 'farewell') return;
     if (id === 'close') return this.#turnOff();
     if (id === 'collapse') return this.store.set({ collapsed: true });
     if (id === 'expand') return this.store.set({ collapsed: false, unread: false });
-    if (state.phase === 'interview') return this.#pressInterview(id);
+    if (state.phase === 'interview') {
+      if (by !== 'voice') this.#actions.welcomeTouched?.(id);
+      return this.#pressInterview(id);
+    }
     this.#pressCoach(id);
+  }
+
+  // Where the welcome is, for Qubi's voice: { paso: 'experiencia' | 'tecnologias' | 'construyendo' |
+  // 'terminada', tecnologias: the chosen catalog ids }
+  voiceState() {
+    const { phase, stepId, selection, building } = this.store.state;
+    if (phase === 'interview') return { paso: stepId === 'stack' ? 'tecnologias' : 'experiencia', tecnologias: [...selection] };
+    const waiting = phase === 'coach' && building && !allFiles(this.#project.store.state.tree ?? []).length;
+    return { paso: waiting ? 'construyendo' : 'terminada', tecnologias: phase === 'coach' ? [...selection] : [] };
   }
 
   #pressInterview(id) {

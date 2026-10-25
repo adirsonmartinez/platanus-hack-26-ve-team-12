@@ -15,7 +15,7 @@ import { createHandTrackingService } from './services/handTrackingService.js';
 import { createVoiceService } from './services/voiceService.js';
 import { createRunService } from './services/runService.js';
 import { createSecurityService } from './services/securityService.js';
-import { openSession, openSimulatedSession } from './models/callSession.js';
+import { openSession, openSimulatedSession, warmSession } from './models/callSession.js';
 import { createProjectMemory, memoryText } from './models/projectMemoryModel.js';
 
 import { ProjectModel } from './models/projectModel.js';
@@ -49,6 +49,8 @@ import { RobotViewModel } from './viewmodels/robotViewModel.js';
 import { BuildViewModel } from './viewmodels/buildViewModel.js';
 import { HandControlViewModel } from './viewmodels/handControlViewModel.js';
 import { EditorViewModel } from './viewmodels/editorViewModel.js';
+import { BrowserViewModel } from './viewmodels/browserViewModel.js';
+import { WindowsViewModel } from './viewmodels/windowsViewModel.js';
 import { CallViewModel } from './viewmodels/callViewModel.js';
 import { TeamViewModel } from './viewmodels/teamViewModel.js';
 import { ServicesViewModel } from './viewmodels/servicesViewModel.js';
@@ -86,6 +88,8 @@ import { createServiceConnectView } from './views/ui/serviceConnectView.js';
 import { createRepairPanelView } from './views/ui/repairPanelView.js';
 import { createHoverCardView } from './views/ui/hoverCardView.js';
 import { createEditorView } from './views/ui/editorView.js';
+import { createBrowserView } from './views/ui/browserView.js';
+import { createWindowsView } from './views/ui/windowsView.js';
 import { qubiJump } from './views/ui/qubiJump.js';
 import { applyStrings } from './views/ui/domStrings.js';
 import { applyIcons } from './views/icons.js';
@@ -126,7 +130,14 @@ const appViewModel = new AppViewModel({ camera: cameraViewModel, gitModel, gitVi
 const shellViewModel = new ShellViewModel({ projectModel, securityModel, mapViewModel, compact: window.matchMedia('(max-width: 820px)').matches });
 const repairViewModel = new RepairViewModel({ securityModel, mapViewModel, cameraViewModel, connection, history: repairHistory, agentService, bus, voiceMode: () => (modeModel.tech ? 'dev' : 'vibe'), audit: auditViewModel });
 const serversViewModel = new ServersViewModel({ serversModel });
-const editorViewModel = new EditorViewModel({ workspace, bus }); // files clicked on the map open as tabs
+// files clicked on the map open as tabs; on the desktop pages, images and localhost also show as a preview
+// The browser window (desktop): pages and images clicked on the map, and the project on localhost
+const browserViewModel = new BrowserViewModel({ bus });
+const editorViewModel = new EditorViewModel({ workspace, bus, preview: workspace.isDesktop ? (path) => browserViewModel.openFile(path) : null });
+// The project running on this computer: a tab of the browser window (the person's browser in the web version)
+const showLocal = (port) => (workspace.isDesktop && browserViewModel.openUrl(`http://localhost:${port}`)) || serversModel.open(port);
+// Where the two windows go: halves when both are open, or the zone Qubi gives them (acomodar_ventanas)
+const windowsViewModel = new WindowsViewModel({ windows: { editor: editorViewModel, navegador: browserViewModel } });
 const handTracking = createHandTrackingService();
 // The tour of the open project ("Recorrido"): the analyzer decides the stops, the agent narrates them
 const tourViewModel = new TourViewModel({ projectModel, workspace, connection, modeModel, camera: cameraViewModel, mapViewModel, repairViewModel, bus });
@@ -200,9 +211,11 @@ const actions = {
   // The welcome robot hands a ready-made request to the agent (scaffold, .gitignore, README). With no agent
   // connected (none logged in, so none picked automatically) the scripted demo would answer, so the request
   // waits until the person picks one
-  // Returns true when an agent got the request now, false when it waits for one
+  // Returns true when an agent got the request now, false when it waits for one. During the welcome call the
+  // base project goes through the call, so Qubi tells the person how the work goes
   askAgent(prompt) {
     actions.openChat();
+    if (callViewModel.buildForWelcome(prompt)) return true;
     if (connection.live) {
       chatViewModel.send(prompt);
       return true;
@@ -223,6 +236,8 @@ const actions = {
   untrustFolder: () => trustModel.revoke(),
   // Someone who already programs: the app talks in Dev mode
   devMode: () => modeModel.set('tech'),
+  // The person answered the welcome with a tap: they went manual, so the welcome call (if any) ends
+  welcomeTouched: () => callViewModel.manual(),
   // The integrations the welcome robot is setting up: "Por conectar" on the map once their files arrive
   prepareSetup(integrations) {
     setupModel.prepare(projectModel.store.state.root, integrations);
@@ -320,7 +335,8 @@ const runService = (() => {
       const res = await run.start(id);
       if (res?.ok && Number.isInteger(res.port)) {
         startedPorts.add(res.port);
-        serversModel.open(res.port);
+        // the welcome call leaves the link for the person to open (callViewModel.link); otherwise it opens now
+        if (!callViewModel.welcomeCall) serversModel.open(res.port);
       }
       return res;
     },
@@ -328,12 +344,25 @@ const runService = (() => {
 })();
 const callViewModel = new CallViewModel({
   voiceService, runService, openSession, openSimulatedSession, chatViewModel, projectModel, mapViewModel, securityModel, connection, bus,
-  teamViewModel, memory: projectMemory,
+  teamViewModel, memory: projectMemory, welcome: robotDialogViewModel,
   actions: {
+    // the project running: a button in the chat that opens it in the browser
+    showLink(url) {
+      const address = url.replace(/^https?:\/\//, '');
+      const port = Number(address.split(':')[1]);
+      chatViewModel.sayFromMap({ text: strings.call.link.chat(address), chips: [{ label: strings.call.link.chip, run: () => showLocal(port), quiet: true }] });
+    },
     // mostrar_carpeta and ir_a: only visual, the map flies to the folder (the project root goes back home)
     showFolder: (path) => { shellViewModel.setStage('map'); return path ? mapViewModel.show(path) : (mapViewModel.home(), true); },
     // abrir_archivo (after the person's permission): the floating editor, as a click on the map
-    openFile: (path) => editorViewModel.open(path),
+    // a page or an image shows in the browser window, unless Qubi asked for the code
+    openFile: (path, { view } = {}) => {
+      if (view !== 'codigo' && workspace.isDesktop && browserViewModel.openFile(path)) return { ok: true, en: 'navegador' };
+      editorViewModel.open(path);
+      return { ok: true, en: 'editor' };
+    },
+    // acomodar_ventanas: the editor and the browser in a zone (models/windowLayout.js)
+    arrangeWindows: (ventana, zona) => windowsViewModel.place(ventana, zona),
     // abrir_en_navegador: servers Qubbot started (managed) or Qubi started in this window. The server
     // list knows no projects, so any other port (a database, another app) is never offered
     async projectServers() {
@@ -341,7 +370,7 @@ const callViewModel = new CallViewModel({
       await serversModel.refresh();
       return serversModel.store.state.servers.filter((s) => s.managed || startedPorts.has(s.port)).map((s) => ({ port: s.port }));
     },
-    openPreview: (port) => serversModel.open(port),
+    openPreview: (port) => showLocal(port),
     // auditar: the whole project again -> { before, after, fixed, worse } (null when it could not run)
     audit: async () => ((await auditViewModel.auditNow()) ? auditViewModel.store.state.last : null),
     // reparar (after the person's yes): the same repair as the risks panel's button
@@ -351,6 +380,19 @@ const callViewModel = new CallViewModel({
   },
   simulate: false,
 });
+// The welcome by voice (docs/features/welcome-robot/): as soon as a new project's welcome starts, Qubi calls
+// on its own and asks the same questions; the bubble's buttons keep working. Only when a voice service is
+// connected and the window can use it: otherwise the welcome is just the buttons, with no error
+robotDialogViewModel.store.subscribe(async ({ phase }, prev) => {
+  if (phase !== 'interview' || prev?.phase !== 'off' || !callViewModel.canUseVoice) return;
+  if (callViewModel.store.state.status !== 'idle') return;
+  let ready = null;
+  try { ready = await voiceService.providers(); } catch { ready = null; }
+  if (!ready?.elevenlabs?.ready && !ready?.grok?.ready) return;
+  if (robotDialogViewModel.store.state.phase === 'interview') callViewModel.start({ welcome: true });
+});
+// The voice SDK loads while the person looks at the start screen, so the first call does not wait for it
+if (callViewModel.canUseVoice) setTimeout(() => warmSession(), 2500);
 // …and the other way: Vibe / Dev in the app sets Qubi's technical level
 modeModel.store.subscribe(({ mode }) => callViewModel.syncMode(mode === 'tech'), { immediate: true });
 // The Simulator agent (PLATANUS_SIM=1) no longer turns the simulated call on by itself: the person saw
@@ -384,7 +426,10 @@ const labels = createLabelLayer(document.getElementById('map-labels'), sceneView
 const mapView = createMapView({
   sceneView, labels, mapViewModel,
   nameOf: (key) => servicesViewModel.store.state.services.find((s) => s.key === key)?.name ?? null,
-  onIntegration: (key) => servicesViewModel.openConnect(key),
+  // one still "por conectar" (set up by the welcome) goes to its own flow ("Conectar mi cuenta" for Supabase)
+  onIntegration: (key) => (projectModel.store.state.integrationStatus?.[key] === 'pending'
+    ? mapViewModel.handlePick({ type: 'integration', key })
+    : servicesViewModel.openConnect(key)),
 });
 const supabaseView = createSupabaseView({ sceneView, labels, supabaseViewModel, supabaseModel });
 const gitView = createGitView({ sceneView, labels, gitViewModel });
@@ -419,14 +464,14 @@ const leadBox = () => {
   };
 };
 const teamView = createTeamView({ sceneView, labels, teamViewModel, origin: robotView.qubi, cameraViewModel, qubiBubble: leadBox });
-createWelcomeRobotView({ sceneView, labels, mapViewModel, robotDialogViewModel, tourViewModel, buildViewModel, callViewModel, teamViewModel });
+const welcomeRobotView = createWelcomeRobotView({ sceneView, labels, mapViewModel, robotDialogViewModel, tourViewModel, buildViewModel, callViewModel, teamViewModel });
 createConnectModalView({ connectViewModel });
 if (isDemo) {
   createDemoCursor(); // recording the product video (scripts/demo/)
   // the recorder (and checks) can drive the robot and find 3D things on screen
   window.__platanus = {
-    robotViewModel, robotDialogViewModel, tourViewModel, mapViewModel, buildViewModel, chatViewModel, cameraViewModel, projectModel, connectViewModel,
-    callViewModel, teamViewModel, servicesViewModel,
+    robotViewModel, robotDialogViewModel, tourViewModel, mapViewModel, buildViewModel, chatViewModel, callViewModel, teamViewModel, servicesViewModel,
+    cameraViewModel, projectModel, connectViewModel, editorViewModel, browserViewModel, windowsViewModel,
     screenOf: (point) => { const r = stage.getBoundingClientRect(); const s = sceneView.toScreen(point); return { x: r.left + s.x, y: r.top + s.y }; },
   };
 }
@@ -435,7 +480,15 @@ appViewModel.store.subscribe(({ view }) => {
   sceneView.setActiveLayer(view);
   labels.setActiveLayer(view);
 }, { immediate: true });
-createEditorView({ stage, editorViewModel });
+const editorWindow = createEditorView({ stage, editorViewModel, onGrab: () => windowsViewModel.grab('editor') });
+const browserWindow = createBrowserView({
+  stage, browserViewModel,
+  onShowCode: (path) => editorViewModel.open(path),
+  // «Abrir en tu navegador»: a localhost tab in the person's browser, a file with its default app
+  onOpenOutside: (tab) => (tab.kind === 'web' ? serversModel.open(Number(new URL(tab.path).port)) : workspace.open(tab.path, 'default')),
+  onGrab: () => windowsViewModel.grab('navegador'),
+});
+createWindowsView({ stage, windowsViewModel, windows: { editor: editorWindow, navegador: browserWindow } });
 const hoverCard = createHoverCardView({ card: document.getElementById('hover-card'), stage, mapViewModel, modeModel });
 
 // Clicks, hover and Esc go to the view on screen
@@ -494,10 +547,12 @@ const voiceConnect = createVoiceConnectView({ container: document.getElementById
 // center. "Chat" opens the chat at the call's card, where the person can write to Qubi
 createCallBarView({
   container: document.getElementById('call-bar'), callButton: document.getElementById('chat-call'), callViewModel, connection,
-  sceneView, voiceConnect,
+  sceneView, voiceConnect, onOpenLink: (port) => showLocal(port),
   // while Qubi builds his bubble stays (robotView 'build' job): the panel sits above it, not on it.
   // No head (hidden, the tour): docked, even if a bubble shows
   anchor: () => {
+    // the welcome's interview (the welcome call): above the welcome robot's bubble, never on its buttons
+    if (appViewModel.view === 'map' && robotDialogViewModel.store.state.phase === 'interview') return welcomeRobotView.bubble();
     const head = appViewModel.view === 'map' ? robotView.head() : null;
     return head ? robotView.bubble() ?? head : null;
   },

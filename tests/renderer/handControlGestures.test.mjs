@@ -1,5 +1,5 @@
 // The hand control view model with the new gestures (spec/003-hand-gestures.md): one pinch moves the map;
-// two pinches, one holding and the other moving, zoom (up / down) or turn (sideways); an open hand moves a
+// two pinches, one holding and the other moving, zoom (up / down); thumb + middle turns (sideways); an open hand moves a
 // cursor and holding still selects. The screen side (what is under the cursor, clicking it,
 // zooming around a point) comes as fake actions.
 import './setup.mjs';
@@ -8,7 +8,7 @@ import assert from 'node:assert/strict';
 import { HandControlViewModel } from '../../renderer/viewmodels/handControlViewModel.js';
 import { CameraViewModel, CAMERA } from '../../renderer/viewmodels/cameraViewModel.js';
 import { DWELL_MS } from '../../renderer/models/handGesture.js';
-import { hand, holdAndMove, OPEN, PINCHED } from './handFixtures.mjs';
+import { hand, holdAndMove, middlePinch, OPEN, PINCHED } from './handFixtures.mjs';
 import { toViewport } from '../../renderer/models/handGesture.js';
 
 function setup({ target = { key: 'folder:src', kind: 'pick', label: 'src', selectable: true }, now = { t: 0 } } = {}) {
@@ -43,11 +43,11 @@ test('hold with one hand and raise the other: zoom in around the holding hand; l
   assert.equal(state().gesture, 'zoomOut');
 });
 
-test('hold with one hand and move the other sideways: the map turns, without zoom (the person\'s right turns right)', async () => {
+test('thumb and middle with one hand, moving it right: the map turns right, without zoom or drag', async () => {
   const { vm, camera, send, state, now } = setup();
   await vm.toggle();
   const azimuth = camera.azimuthGoal, zoom = camera.zoomGoal;
-  for (let i = 0; i <= 10; i++) { now.t += 33; send(holdAndMove(-i * 0.02, 0)); }
+  for (let i = 0; i <= 10; i++) { now.t += 33; send([middlePinch(0.6 - i * 0.02, 0.5)]); }
   assert.ok(camera.azimuthGoal - azimuth > 0.3, `turn ${camera.azimuthGoal - azimuth}`);
   assert.equal(state().gesture, 'rotate');
   assert.equal(camera.zoomGoal, zoom);
@@ -207,4 +207,42 @@ test('a hand lost for a frame or two (tracking blinks) does not end the gesture'
   assert.ok(state().gesture.startsWith('zoom'), 'still zooming');
   for (let i = 7; i <= 12; i++) { now.t += 33; send(holdAndMove(0, -i * 0.02)); }
   assert.ok(camera.zoomGoal > before, 'and it goes on');
+});
+
+test('a quick pinch (and release) clicks what is under the cursor, once', async () => {
+  const { vm, calls, send, state, now } = setup();
+  await vm.toggle();
+  send([hand(0.5, 0.5, OPEN)]);
+  for (let i = 0; i < 3; i++) { now.t += 33; send([hand(0.5, 0.5, PINCHED)]); }
+  now.t += 33; send([hand(0.5, 0.5, OPEN)]);
+  assert.deepEqual(calls.selected, ['folder:src']);
+  assert.equal(state().selected, 'src');
+  // holding still afterwards does not click it again
+  for (let i = 0; i < 40; i++) { now.t += 33; send([hand(0.5, 0.5, OPEN)]); }
+  assert.deepEqual(calls.selected, ['folder:src']);
+});
+
+test('a long pinch or a pinch that drags is not a click', async () => {
+  const long = setup();
+  await long.vm.toggle();
+  long.send([hand(0.5, 0.5, OPEN)]);
+  for (let i = 0; i < 15; i++) { long.now.t += 33; long.send([hand(0.5, 0.5, PINCHED)]); } // ~0.5 s
+  long.now.t += 33; long.send([hand(0.5, 0.5, OPEN)]);
+  assert.deepEqual(long.calls.selected, []);
+
+  const drag = setup();
+  await drag.vm.toggle();
+  drag.send([hand(0.5, 0.5, OPEN)]);
+  for (let i = 1; i <= 6; i++) { drag.now.t += 33; drag.send([hand(0.5 - i * 0.03, 0.5, PINCHED)]); }
+  drag.now.t += 33; drag.send([hand(0.32, 0.5, OPEN)]);
+  assert.deepEqual(drag.calls.selected, []);
+});
+
+test('a quick pinch over something not selectable clicks nothing', async () => {
+  const { vm, calls, send, now } = setup({ target: { key: 'ui:repair', kind: 'ui', label: 'Reparar', selectable: false } });
+  await vm.toggle();
+  send([hand(0.5, 0.5, OPEN)]);
+  now.t += 33; send([hand(0.5, 0.5, PINCHED)]);
+  now.t += 33; send([hand(0.5, 0.5, OPEN)]);
+  assert.deepEqual(calls.selected, []);
 });

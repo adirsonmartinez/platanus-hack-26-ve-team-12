@@ -128,8 +128,8 @@ test('ElevenLabs: creates the agent once, keeps its id in the file and reuses it
   assert.equal(first.provider, 'elevenlabs');
   assert.match(first.signedUrl, /^wss:\/\//);
   assert.equal(first.voiceId, JUAN, 'Juan by default');
-  assert.deepEqual(Object.keys(first.dynamicVariables).sort(), ['builder_name', 'greeting', 'project_context', 'project_memory', 'project_name', 'speech_style', 'tech_level']);
-  assert.deepEqual({ ...first.dynamicVariables, project_memory: '', greeting: '' }, { project_name: 'Feria Online', project_context: 'Carpetas: web, api.', builder_name: 'Claude', project_memory: '', greeting: '', tech_level: t.voice.levels.basico, speech_style: t.voice.styles.pana });
+  assert.deepEqual(Object.keys(first.dynamicVariables).sort(), ['builder_name', 'greeting', 'project_context', 'project_memory', 'project_name', 'speech_style', 'tech_level', 'welcome_mode']);
+  assert.deepEqual({ ...first.dynamicVariables, project_memory: '', greeting: '' }, { project_name: 'Feria Online', project_context: 'Carpetas: web, api.', builder_name: 'Claude', project_memory: '', greeting: '', tech_level: t.voice.levels.basico, speech_style: t.voice.styles.pana, welcome_mode: t.voice.welcome.off });
   assert.ok(t.voice.greetings.pana.map((g) => g.replace('{{project_name}}', 'Feria Online')).includes(first.dynamicVariables.greeting), 'a pana greeting, with the project in');
   assert.ok(first.dynamicVariables.project_memory.length > 0, 'without a memory: the placeholder');
   assert.equal(madeWith[0], KEY, 'the key only goes to the client');
@@ -242,11 +242,35 @@ test('a voice that cannot be added (full slots) does not stop the call: Qubi kee
   const result = await createVoiceCall({ getKey: ONLY_ELEVEN, file, makeClient: () => client }).start({ ...REQ, voice: 'maggie' });
   assert.equal(result.ok, true);
   assert.equal(result.voiceId, null);
-  assert.equal(voicesCache(file).ids[maggie.id], undefined, 'not cached: tried again next time');
+  assert.equal(voicesCache(file).ids[maggie.id], undefined, 'no id cached');
 
   // a network failure while checking the voice is the call's failure
   const offline = fakeClient({ fail: { voiceGet: [Object.assign(new Error('fetch failed'), { cause: { code: 'ENOTFOUND' } })] } });
   assert.deepEqual(await createVoiceCall({ getKey: ONLY_ELEVEN, file: tmp(), makeClient: () => offline }).start(REQ), { ok: false, reason: 'network' });
+});
+
+test('a voice ElevenLabs will not put in an agent (live moderation) falls back at once and is never tried again', async () => {
+  const file = tmp();
+  fs.writeFileSync(file, JSON.stringify({ agentId: 'agent_1', hash: 'old', voiceMode: 'realtime' }));
+  const moderated = () => httpError(400, { detail: { status: 'voice_live_moderated_not_allowed', param: 'conversation_config.tts.voice_id' } });
+  const client = fakeClient({ fail: { update: [moderated()] } }); // Juan is in the account, but agents refuse it
+  const call = createVoiceCall({ getKey: ONLY_ELEVEN, file, makeClient: () => client });
+  const result = await call.start(REQ);
+  assert.equal(result.ok, true, 'the same call goes on with the fallback voice');
+  assert.equal(result.voiceId, null, 'and never asks for Juan as the call voice');
+  const updates = client.calls.filter(([op]) => op === 'update');
+  assert.equal(updates.length, 2);
+  assert.equal(updates[0][2].conversationConfig.tts.voiceId, JUAN);
+  assert.notEqual(updates[1][2].conversationConfig.tts.voiceId, JUAN);
+  assert.ok(voicesCache(file).moderated.includes(JUAN), 'remembered for good');
+  // later calls (and another app start) skip Juan entirely: no voice requests, no failing update
+  client.calls.length = 0;
+  assert.equal((await call.start(REQ)).ok, true);
+  assert.deepEqual(client.ops(), ['signedUrl']);
+  const again = fakeClient();
+  const next = await createVoiceCall({ getKey: ONLY_ELEVEN, file, makeClient: () => again }).start({ ...REQ, voice: 'juan' });
+  assert.equal(next.voiceId, null);
+  assert.ok(!again.ops().includes('update'), 'its saved agent already has the fallback voice');
 });
 
 test('a fixed development voice (PLATANUS_VOICE_ID) is used as it is, without voice requests', async () => {
@@ -300,10 +324,11 @@ test('the project memory goes in its own variable, cleaned and capped at 800', a
   assert.deepEqual(LIMITS, { projectName: 120, context: 2500, builder: 40, memory: 800 });
 });
 
-const TOOL_NAMES = ['ver_proyecto', 'construir', 'preguntar', 'ver_avance', 'mostrar_carpeta', 'repartir', 'ver_equipo', 'ir_a', 'volver', 'ajustar_qubi', 'revisar_archivo', 'abrir_archivo', 'ejecutar_app', 'abrir_en_navegador', 'auditar', 'reparar', 'gesto'];
+const TOOL_NAMES = ['ver_proyecto', 'construir', 'preguntar', 'ver_avance', 'mostrar_carpeta', 'repartir', 'ver_equipo', 'ir_a', 'volver', 'ajustar_qubi', 'revisar_archivo', 'abrir_archivo', 'acomodar_ventanas', 'ejecutar_app', 'abrir_en_navegador', 'auditar', 'reparar', 'gesto', 'elegir_experiencia', 'marcar_tecnologia', 'empezar_proyecto', 'seguir_manual'];
 const REQUIRED = {
   ver_proyecto: [], construir: ['pedido'], preguntar: ['pregunta'], ver_avance: [], mostrar_carpeta: ['ruta'], repartir: ['tareas'], ver_equipo: [],
-  ir_a: ['ruta'], volver: [], ajustar_qubi: [], revisar_archivo: ['ruta', 'pregunta'], abrir_archivo: ['ruta'], ejecutar_app: [], abrir_en_navegador: [], auditar: [], reparar: ['ruta'], gesto: ['gesto'],
+  ir_a: ['ruta'], volver: [], ajustar_qubi: [], revisar_archivo: ['ruta', 'pregunta'], abrir_archivo: ['ruta'], acomodar_ventanas: ['ventana', 'zona'], ejecutar_app: [], abrir_en_navegador: [], auditar: [], reparar: ['ruta'], gesto: ['gesto'],
+  elegir_experiencia: ['nivel'], marcar_tecnologia: ['tecnologia', 'elegir'], empezar_proyecto: [], seguir_manual: [],
 };
 // the tools that ask the person for permission first wait for the answer (MEJORAS.md §2)
 const ASKS_PERMISSION = new Set(['abrir_archivo', 'ejecutar_app', 'abrir_en_navegador']);
@@ -324,11 +349,11 @@ test('the agent: Spanish, Venezuelan greeting, private, voice override allowed, 
   assert.equal(agent.dynamicVariables.dynamic_variable_placeholders.greeting, t.voice.greetings.pana[0].replace('{{project_name}}', t.voice.defaults.projectName));
   assert.ok(agent.prompt.prompt.includes('{{greeting}}'), 'Qubi knows how it picked up');
   assert.equal(agent.prompt.prompt, t.voice.prompt);
-  for (const section of ['# Personalidad', '# Entorno', '# Tono', '# Objetivo', '# Herramientas', '# Permisos', '# Reglas']) {
+  for (const section of ['# Personalidad', '# Entorno', '# Brevedad', '# Tono', '# Objetivo', '# Herramientas', '# Permisos', '# Reglas']) {
     assert.ok(agent.prompt.prompt.includes(section), section);
   }
   for (const variable of ['gesto', 'celebrar', 'auditar', 'reparar', 'la auditoría', '{{project_context}}', '{{builder_name}}', '{{project_memory}}', '[aviso de Qubbot]', 'repartir', 'ver_equipo']) assert.ok(agent.prompt.prompt.includes(variable), variable);
-  assert.deepEqual(Object.keys(agent.dynamicVariables.dynamic_variable_placeholders).sort(), ['builder_name', 'greeting', 'project_context', 'project_memory', 'project_name', 'speech_style', 'tech_level']);
+  assert.deepEqual(Object.keys(agent.dynamicVariables.dynamic_variable_placeholders).sort(), ['builder_name', 'greeting', 'project_context', 'project_memory', 'project_name', 'speech_style', 'tech_level', 'welcome_mode']);
   assert.equal(agent.prompt.builtInTools.endCall.params.systemToolType, 'end_call');
 
   const tools = agent.prompt.tools;
@@ -478,6 +503,44 @@ test('Grok: errors map like ElevenLabs ones and never carry the key', async () =
   assert.deepEqual(await noFetch.start(REQ), { ok: false, reason: 'network' });
 });
 
+test('a voice the account refused (free plan) is not asked again for an hour: the call starts fast', async () => {
+  const file = tmp();
+  fs.writeFileSync(file, JSON.stringify({ agentId: 'agent_1', hash: HASH, voiceMode: 'realtime' }));
+  let now = 1_000_000;
+  const paid = () => httpError(400, { detail: { status: 'free_users_not_allowed', code: 'paid_plan_required' } });
+  const client = fakeClient({ missing: [JUAN], fail: { voiceShare: [paid(), paid(), paid()] } });
+  const call = createVoiceCall({ getKey: ONLY_ELEVEN, file, makeClient: () => client, now: () => now });
+  assert.equal((await call.start(REQ)).ok, true);
+  const first = client.ops().filter((op) => op === 'voiceGet' || op === 'voiceShare');
+  assert.deepEqual(first, ['voiceGet', 'voiceShare'], 'tried once per start, not once for the agent and again for the call');
+  client.calls.length = 0;
+  assert.equal((await call.start(REQ)).ok, true);
+  assert.deepEqual(client.ops(), ['signedUrl'], 'the next call goes straight to the signed URL');
+  // another app start (same file) remembers it too
+  const again = fakeClient({ missing: [JUAN] });
+  await createVoiceCall({ getKey: ONLY_ELEVEN, file, makeClient: () => again, now: () => now }).start(REQ);
+  assert.deepEqual(again.ops(), ['signedUrl']);
+  // an hour later it tries again (the plan may have changed)
+  now += 60 * 60 * 1000 + 1;
+  client.calls.length = 0;
+  await call.start(REQ);
+  assert.ok(client.ops().includes('voiceGet'));
+});
+
+test('warm: loads the client ahead of the first call (no network), and only with an ElevenLabs key', async () => {
+  let made = 0;
+  const client = fakeClient();
+  await createVoiceCall({ getKey: ONLY_ELEVEN, file: tmp(), makeClient: () => { made++; return client; } }).warm();
+  assert.equal(made, 1);
+  assert.deepEqual(client.calls, [], 'nothing is asked to ElevenLabs');
+  let none = 0;
+  await createVoiceCall({ getKey: keys({ grok: XKEY }), file: tmp(), makeClient: () => { none++; return client; } }).warm();
+  await createVoiceCall({ getKey: keys({}), file: tmp(), makeClient: () => { none++; return client; } }).warm();
+  assert.equal(none, 0);
+  // a failing load is not the app's problem: the call will report it
+  await createVoiceCall({ getKey: ONLY_ELEVEN, file: tmp(), makeClient: () => { throw new Error('boom'); } }).warm();
+});
+
 test('the agent falls back to a premade voice when Juan cannot be added (a key without voices_write)', async () => {
   const client = fakeClient({ missing: [JUAN], fail: { voiceShare: [401, 401].map((code) => httpError(code, { detail: { status: 'missing_permissions' } })) } });
   const result = await createVoiceCall({ getKey: ONLY_ELEVEN, file: tmp(), makeClient: () => client }).start(REQ);
@@ -493,12 +556,14 @@ test('greetings: several per style, Venezuelan by default, each with the project
     assert.ok(list.length >= 3, style);
     assert.equal(new Set(list).size, list.length, `${style}: no repeats`);
     for (const g of list) {
-      assert.ok(g.includes('{{project_name}}') && g.includes('?') && g.length <= 200, g);
+      assert.ok(g.includes('{{project_name}}') && g.includes('?') && g.length <= 90, `short and direct: ${g}`);
       assert.deepEqual(g.match(/\{\{\w+\}\}/g), ['{{project_name}}'], g);
     }
   }
   const venezuelan = /¡Epa|¡Épale|pana|chamo|chévere|Naguará|fino|molleja|burda|pichón/;
   for (const g of greetings.pana) assert.match(g, venezuelan, g);
+  // Qubi just starts talking: no «¡Aló!», «¿quién habla?» or other phone words
+  for (const list of Object.values(greetings)) for (const g of list) assert.doesNotMatch(g, /al[óo]\b|llamada|llamaste|quién habla|ring/i, g);
 });
 
 test('greetings: picked from the chosen style, never the same twice in a row', async () => {
@@ -514,4 +579,45 @@ test('greetings: picked from the chosen style, never the same twice in a row', a
   // an unknown style falls back to pana; the random number never picks outside the list
   const odd = createVoiceCall({ getKey: ONLY_ELEVEN, file: tmp(), makeClient: () => fakeClient(), random: always(0.999999) });
   assert.ok(fill('pana').includes((await odd.start({ ...REQ, style: 'raro' })).dynamicVariables.greeting));
+});
+
+// The welcome of a new project (docs/features/welcome-robot/): Qubi asks the interview by voice
+test('welcome: the call starts with the welcome greeting and its instructions; a normal call says it does not apply', async () => {
+  const client = fakeClient();
+  const call = createVoiceCall({ getKey: ONLY_ELEVEN, file: tmp(), makeClient: () => client });
+  const normal = await call.start(REQ);
+  assert.equal(normal.dynamicVariables.welcome_mode, t.voice.welcome.off);
+  const welcome = await call.start({ ...REQ, welcome: true });
+  assert.equal(welcome.dynamicVariables.welcome_mode, t.voice.welcome.instructions);
+  assert.equal(welcome.dynamicVariables.greeting, t.voice.welcome.greetings.pana.replace('{{project_name}}', 'Feria Online'));
+  const formal = await call.start({ ...REQ, welcome: true, style: 'formal' });
+  assert.equal(formal.dynamicVariables.greeting, t.voice.welcome.greetings.formal.replace('{{project_name}}', 'Feria Online'));
+  // anything but true is a normal call
+  assert.equal((await call.start({ ...REQ, welcome: 'yes' })).dynamicVariables.welcome_mode, t.voice.welcome.off);
+});
+
+test('welcome: every style has a greeting that says Qubi listens and the buttons work too; the prompt has its section', () => {
+  const { welcome } = t.voice;
+  assert.deepEqual(Object.keys(welcome.greetings).sort(), Object.keys(t.voice.styles).sort());
+  for (const [style, g] of Object.entries(welcome.greetings)) {
+    assert.match(g, /escucho|escuchando/i, style);
+    assert.match(g, /botones/i, style);
+    assert.match(g, /\?$/, `${style} ends asking`);
+  }
+  for (const tool of ['elegir_experiencia', 'marcar_tecnologia', 'empezar_proyecto', 'seguir_manual', 'ejecutar_app', 'end_call']) assert.ok(welcome.instructions.includes(tool), tool);
+  // the demo lasts 3 minutes: a beginner goes straight to the build, without a "keep them?" round trip
+  assert.match(welcome.instructions, /empezar_proyecto de una, sin preguntar/);
+  for (const g of Object.values(welcome.greetings)) assert.ok(g.length <= 100, `quick welcome: ${g}`);
+  const { agent } = agentConfig().conversationConfig;
+  assert.ok(agent.prompt.prompt.includes('# Bienvenida') && agent.prompt.prompt.includes('{{welcome_mode}}'));
+  assert.equal(agent.dynamicVariables.dynamic_variable_placeholders.welcome_mode, welcome.off);
+});
+
+test('welcome: Grok gets the instructions and the greeting already filled', async () => {
+  const fetchFn = async () => ({ ok: true, json: async () => ({ value: 'ek_live_secret_123', expires_at: 1_900_000_000 }) });
+  const call = createVoiceCall({ getKey: keys({ grok: XKEY }), file: tmp(), makeClient: () => assert.fail('no ElevenLabs client'), fetchFn });
+  const { session } = await call.start({ ...REQ, provider: 'grok', welcome: true });
+  assert.equal(session.firstMessage, t.voice.welcome.greetings.pana.replace('{{project_name}}', 'Feria Online'));
+  assert.ok(session.instructions.includes(t.voice.welcome.instructions));
+  assert.ok(session.tools.some((tool) => tool.name === 'empezar_proyecto'));
 });

@@ -23,24 +23,24 @@ export const strings = {
     pinching: {
       grab: 'Agarrado: mueve la mano para mover el mapa',
       pan: 'Moviendo el mapa',
-      hold: 'Sostén con una mano y mueve la otra: arriba o abajo para el zoom, a los lados para girar',
+      hold: 'Sostén con una mano y sube o baja la otra para el zoom',
       rotate: 'Girando el mapa',
     },
     // spec/003-hand-gestures.md: zoom with two hands, a cursor, selecting by holding still
     zoom: { zoom: 'Zoom: sube o baja la mano', zoomIn: 'Acercando', zoomOut: 'Alejando' },
-    pointing: 'Señalando: deja la mano quieta sobre algo para elegirlo',
+    pointing: 'Señalando: pellizca rápido o deja la mano quieta sobre algo para elegirlo',
     holding: 'Quieta… eligiendo',
     selected: (name) => `Seleccionado: ${name}`,
     waitRelease: 'Suelta la mano para volver a agarrar',
-    slow: 'Tu computadora va lenta para dos manos: el zoom y el giro con dos manos quedaron apagados.',
+    slow: 'Tu computadora va lenta para dos manos: el zoom con dos manos quedó apagado.',
     fps: (fps, delegate) => `${fps} fps · ${delegate ?? '…'}`,
     help: 'Ver los gestos',
     helpTitle: 'Gestos',
     helpItems: [
       'Pellizca (pulgar e índice) y mueve la mano: mueves el mapa.',
       'Zoom: pellizca con las dos manos, deja una quieta y sube la otra para acercar o bájala para alejar.',
-      'Girar: pellizca con las dos manos, deja una quieta y mueve la otra a la derecha o a la izquierda.',
-      'Mano abierta: aparece el cursor. Déjalo quieto ~1 segundo sobre algo para elegirlo.',
+      'Girar: junta pulgar y dedo medio, y mueve la mano a la derecha o a la izquierda.',
+      'Mano abierta: aparece el cursor. Para elegir algo, haz un pellizco rápido (pulgar e índice) o deja el cursor quieto ~1 segundo encima.',
       'Se puede elegir todo lo que se elige con un clic, salvo reparar, verificar, deshacer, los permisos del agente y los servidores.',
     ],
     errors: {
@@ -101,6 +101,11 @@ export const strings = {
     confirmClose: (name) => `"${name}" tiene cambios sin guardar. ¿Cerrar y perderlos?`,
     stale: 'El archivo cambió en el disco mientras lo editabas.',
     reload: 'Recargar del disco',
+    // Preview: pages and images rendered, and the project running on this computer
+    preview: {
+      show: 'Vista previa',
+      showHint: 'Ver la página en el navegador de Qubbot',
+    },
     // CodeMirror's own texts (search panel, folding), by its English phrase
     phrases: {
       'Find': 'Buscar', 'Replace': 'Reemplazar', 'next': 'siguiente', 'previous': 'anterior', 'all': 'todos',
@@ -119,6 +124,16 @@ export const strings = {
       'desktop-only': 'Disponible en la app de escritorio.',
       failed: 'No se pudo abrir el archivo.',
     },
+  },
+  // The browser window: pages and images of the project, and the project running on this computer
+  browser: {
+    title: 'Navegador',
+    close: 'Cerrar el navegador',
+    closeTab: 'Cerrar pestaña',
+    code: 'Código',
+    codeHint: 'Ver el código de esta página en el editor',
+    refresh: 'Recargar',
+    outside: 'Abrir en tu navegador',
   },
 
   panels: {
@@ -155,18 +170,18 @@ export const strings = {
       experience: {
         title: '¡Hola! Soy tu guía 👋',
         question: '¿Cuánta experiencia tienes programando?',
-        hint: 'No hay respuestas incorrectas: así sé cómo ayudarte mejor.',
+        hint: 'Así sé cómo ayudarte.',
         beginner: '🌱 Estoy empezando',
         dev: '💻 Ya programo',
       },
       farewell: {
         title: '¡Genial! 🚀',
-        text: 'Te dejo el chat para que pidas lo que quieras. Si me necesitas, aquí estaré.',
+        text: 'Te dejo el chat para que pidas lo que quieras.',
       },
       // Second question: the technologies to start with (models/stackCatalog.js decides which and their rules)
       stack: {
         title: '¿Con qué quieres empezar tu proyecto?',
-        question: 'Ya elegí lo más usado para empezar. Toca una tarjeta para quitarla o volver a ponerla.',
+        question: 'Ya elegí lo más usado. Toca una para quitarla.',
         start: '✨ ¡Empecemos!',
         dismiss: 'Lo exploro yo',
       },
@@ -219,12 +234,12 @@ export const strings = {
         // The base project went to the agent: it is getting ready before the first file shows up
         building: {
           title: 'Preparando tu proyecto…',
-          text: 'El agente está pensando cómo armarlo. En un momento verás aparecer las primeras carpetas en el mapa.',
+          text: 'En un momento verás las primeras carpetas en el mapa.',
           watch: '💬 Ver lo que hace',
         },
         waiting: {
           title: 'Tú tomaste las decisiones importantes 🧠',
-          text: 'Ahora el agente escribe el código por ti. Cuando aparezca el primer archivo en el mapa, te cuento qué sigue.',
+          text: 'El agente escribe el código por ti. Te aviso cuando aparezca el primer archivo.',
           ask: '💬 Hablar con el agente',
           change: '↩️ Cambiar mi elección',
         },
@@ -330,8 +345,8 @@ export const strings = {
   integrations: {
     names: { supabase: 'Supabase', vercel: 'Vercel', github: 'GitHub', clerk: 'Clerk', posthog: 'PostHog' },
     // whether your agent (or Qubbot itself) can use the service: main checks its CLI login and MCP config;
-    // "por conectar": set up in the project, still waiting for the person's account
-    status: { connected: 'con acceso', incident: 'con una incidencia', disconnected: 'sin acceso', pending: 'por conectar', unknown: 'sin comprobar' },
+    // pending: set up by the welcome robot, waiting for the person's account
+    status: { connected: 'con acceso', incident: 'con una incidencia', disconnected: 'sin acceso', unknown: 'sin comprobar', pending: 'por conectar' },
     // A click on an integration still waiting for the person's account ("Conectar mi cuenta" comes later)
     pendingInfo: (name) => `${name} ya está listo en tu proyecto: solo falta conectar tu cuenta. Muy pronto podrás hacerlo con un clic desde aquí; mientras tanto, el README te dice qué datos necesita.`,
   },
@@ -771,10 +786,17 @@ export const strings = {
       return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
     },
     live: (time) => `En vivo · ${time}`,
+    // The project running (ejecutar_app): the address in the call panel and in the chat
+    link: {
+      open: (address) => `Ver tu proyecto · ${address}`,
+      hint: 'Abre tu proyecto en el navegador',
+      chat: (address) => `¡Tu proyecto está listo y corriendo en ${address}!`,
+      chip: 'Abrir en el navegador',
+    },
     state: {
-      ringing: 'Llamando…',
       live: 'En vivo',
       connecting: 'Conectando con Qubi…',
+      preparing: 'Preparando su voz…',
       listening: 'Qubi te escucha',
       speaking: 'Qubi está hablando',
       muted: 'Micrófono apagado',
@@ -785,7 +807,7 @@ export const strings = {
       working: 'Qubi está construyendo',
       asking: 'Buscando la respuesta…',
     },
-    actions: { hideLog: 'Ocultar la conversación', showLog: 'Mostrar la conversación', settings: 'Ajustes', chat: 'Ver la conversación', mute: 'Apagar micrófono', unmute: 'Encender micrófono', hangUp: 'Colgar' },
+    actions: { settings: 'Ajustes', chat: 'Ver la conversación', mute: 'Apagar micrófono', unmute: 'Encender micrófono', hangUp: 'Colgar' },
     settings: {
       title: 'Ajustes de la llamada',
       builder: 'Quién construye',
