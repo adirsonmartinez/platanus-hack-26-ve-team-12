@@ -119,19 +119,6 @@ body:not(.chat-closed):not(.chat-min):not(.chat-docked) #stage #call-bar:not([da
 }
 @container (max-width: 270px) { #stage #call-bar canvas.call-wave { display: none; } }
 
-/* What Qubi said last: two lines at most (the whole conversation is in the chat card) */
-/* What was said: the call's log, scrollable, newest at the bottom */
-#call-bar .call-line {
-  display: flex; flex-direction: column; gap: 6px; max-height: 168px; overflow-y: auto; overscroll-behavior: contain;
-  margin: 0; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .045);
-  color: var(--lg-text-2); font: 13px/1.4 var(--lg-font); overflow-wrap: anywhere;
-}
-#call-bar .call-line[hidden] { display: none; }
-#call-bar .call-line-row { margin: 0; }
-#call-bar .call-line-row b { margin-right: 6px; font-weight: 600; color: var(--lg-muted); }
-#call-bar .call-line-row.qubi b { color: var(--lg-text); }
-#call-bar .call-min { width: 28px; height: 28px; flex: none; }
-
 
 /* A permission Qubi asks for */
 #call-bar .call-perm {

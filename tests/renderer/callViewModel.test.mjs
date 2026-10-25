@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Observable } from '../../renderer/core/observable.js';
 import { createEventBus, EVENTS } from '../../renderer/core/eventBus.js';
-import { CallViewModel, contextFor, CONTEXT_MAX, MAX_LINES, SETTINGS_KEY, settingsOf, voiceAnswer, pickScript, PERMISSION_MS, TOOL_ANSWER_MS } from '../../renderer/viewmodels/callViewModel.js';
+import { CallViewModel, RING_MS, contextFor, CONTEXT_MAX, MAX_LINES, SETTINGS_KEY, settingsOf, voiceAnswer, pickScript, PERMISSION_MS, TOOL_ANSWER_MS } from '../../renderer/viewmodels/callViewModel.js';
 import { ChatViewModel } from '../../renderer/viewmodels/chatViewModel.js';
 import { strings } from '../../renderer/i18n/es.js';
 import { memoryText } from '../../renderer/models/projectMemoryModel.js';
@@ -117,6 +117,10 @@ test('a call rings first, then connects, then is live with the real voice; the c
   assert.deepEqual(t.cards.map((c) => c.status), ['connecting', 'live'], 'ringing shows as connecting in the card');
   assert.equal(t.cards.at(-1).simulated, false);
   assert.equal(typeof t.cards.at(-1).startedAt, 'number');
+});
+
+test('no phone ring by default: Qubi starts talking as soon as the session is ready', () => {
+  assert.equal(RING_MS, 0);
 });
 
 test('the ring lasts at least ringMs even when main answers at once; Qubi picks up only after it', async () => {

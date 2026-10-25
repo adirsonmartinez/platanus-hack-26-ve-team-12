@@ -15,8 +15,9 @@ Fases: 1) llamada + voz + delegar en un agente (este documento); 2) trabajadores
 3. Main (`electron/voiceCall.js`): toma la clave `ELEVENLABS_API_KEY` (de `process.env`; en desarrollo `.env.local` se carga al arrancar con `process.loadEnvFile`), se asegura de que exista el agente "Qubi" en la cuenta (lo crea o lo actualiza si cambió su configuración; el id queda en `userData/voice-agent.json`), pide una **URL firmada** (`conversationalAi.conversations.getSignedUrl`) y devuelve `{ ok: true, signedUrl, dynamicVariables }`. **La clave nunca sale de main.**
 4. Ventana (`renderer/models/callSession.js`): `Conversation.startSession({ signedUrl, connectionType: 'websocket', dynamicVariables, clientTools, workletPaths })` con el SDK vendorizado en `renderer/vendor/elevenlabs.js` y los worklets copiados en `renderer/vendor/elevenlabs/` (así la CSP no necesita `blob:`).
 5. Barra de llamada flotante (abajo al centro del mapa): logo de Qubi, onda de voz, Ajustes, Chat, Micrófono, Colgar (rojo).
-6. La transcripción entra al chat como **una tarjeta de llamada** que se actualiza en su sitio. Lo que Qubi delega aparece como una tarjeta de trabajo normal (la de siempre, con pasos y cambios) y el robot construye en vivo.
-7. Mientras el agente trabaja, la app le cuenta el avance a la voz (`sendContextualUpdate`) y, cuando termina o necesita permiso, le pide que lo diga (`sendUserMessage` con un aviso marcado `[aviso de Qubbot]`, que la tarjeta no muestra como frase de la persona).
+6. La transcripción entra **solo** al chat (el panel flotante no la muestra) como **una tarjeta de llamada** que se actualiza en su sitio. Lo que Qubi delega aparece como una tarjeta de trabajo normal (la de siempre, con pasos y cambios) y el robot construye en vivo.
+7. **Qubi habla corto:** una o dos frases por turno (sección `# Brevedad` del prompt y saludos cortos en `electron/strings.js` → `voice`). Para cambiar cómo habla, se edita ese archivo.
+8. Mientras el agente trabaja, la app le cuenta el avance a la voz (`sendContextualUpdate`) y, cuando termina o necesita permiso, le pide que lo diga (`sendUserMessage` con un aviso marcado `[aviso de Qubbot]`, que la tarjeta no muestra como frase de la persona).
 
 Sin clave, sin red o en la versión web: **llamada simulada** (mismo adaptador, sin audio ni micrófono, guion fijo y texto escrito) para la demo y las pruebas.
 

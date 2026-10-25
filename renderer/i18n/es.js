@@ -155,18 +155,18 @@ export const strings = {
       experience: {
         title: '¡Hola! Soy tu guía 👋',
         question: '¿Cuánta experiencia tienes programando?',
-        hint: 'No hay respuestas incorrectas: así sé cómo ayudarte mejor.',
+        hint: 'Así sé cómo ayudarte.',
         beginner: '🌱 Estoy empezando',
         dev: '💻 Ya programo',
       },
       farewell: {
         title: '¡Genial! 🚀',
-        text: 'Te dejo el chat para que pidas lo que quieras. Si me necesitas, aquí estaré.',
+        text: 'Te dejo el chat para que pidas lo que quieras.',
       },
       // Second question: the technologies to start with (models/stackCatalog.js decides which and their rules)
       stack: {
         title: '¿Con qué quieres empezar tu proyecto?',
-        question: 'Ya elegí lo más usado para empezar. Toca una tarjeta para quitarla o volver a ponerla.',
+        question: 'Ya elegí lo más usado. Toca una para quitarla.',
         start: '✨ ¡Empecemos!',
         dismiss: 'Lo exploro yo',
       },
@@ -219,12 +219,12 @@ export const strings = {
         // The base project went to the agent: it is getting ready before the first file shows up
         building: {
           title: 'Preparando tu proyecto…',
-          text: 'El agente está pensando cómo armarlo. En un momento verás aparecer las primeras carpetas en el mapa.',
+          text: 'En un momento verás las primeras carpetas en el mapa.',
           watch: '💬 Ver lo que hace',
         },
         waiting: {
           title: 'Tú tomaste las decisiones importantes 🧠',
-          text: 'Ahora el agente escribe el código por ti. Cuando aparezca el primer archivo en el mapa, te cuento qué sigue.',
+          text: 'El agente escribe el código por ti. Te aviso cuando aparezca el primer archivo.',
           ask: '💬 Hablar con el agente',
           change: '↩️ Cambiar mi elección',
         },
@@ -792,7 +792,7 @@ export const strings = {
       working: 'Qubi está construyendo',
       asking: 'Buscando la respuesta…',
     },
-    actions: { hideLog: 'Ocultar la conversación', showLog: 'Mostrar la conversación', settings: 'Ajustes', chat: 'Ver la conversación', mute: 'Apagar micrófono', unmute: 'Encender micrófono', hangUp: 'Colgar' },
+    actions: { settings: 'Ajustes', chat: 'Ver la conversación', mute: 'Apagar micrófono', unmute: 'Encender micrófono', hangUp: 'Colgar' },
     settings: {
       title: 'Ajustes de la llamada',
       builder: 'Quién construye',

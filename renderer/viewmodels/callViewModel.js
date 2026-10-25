@@ -47,7 +47,7 @@ const WELCOME_TECH = { nextjs: 'nextjs', next: 'nextjs', vercel: 'vercel', supab
 const VOICE_WORDS = { juan: 'juan', julio: 'julio', josemanuel: 'josemanuel', 'jose manuel': 'josemanuel', maggie: 'maggie', rex: 'rex', eve: 'eve', ara: 'ara' };
 const providerOfVoice = (voice) => Object.keys(VOICE_GROUPS).find((p) => VOICE_GROUPS[p].includes(voice)) ?? null;
 export const MANUAL_MS = 8000;         // seguir_manual: the call ends by then even if Qubi says no goodbye
-export const RING_MS = 1000;           // the ring before Qubi picks up (MEJORAS.md §5)
+export const RING_MS = 0;              // no phone ring: Qubi talks as soon as the session is ready
 // The voice platform gives these tools 60 s (electron/voiceCall.js PERMISSION_WAIT). The person's yes must
 // come well before that, so the action itself still fits; a tool past 60 s is reported as failed to Qubi
 export const PERMISSION_MS = 45_000;   // a permission with no answer is a no
@@ -370,9 +370,8 @@ export class CallViewModel {
     return this.#timing.now?.() ?? Date.now();
   }
 
-  // ringing (at least RING_MS: the ring tone plays) -> connecting -> live (the session opened).
-  // While it rings, main prepares the call (memory, which service, the one-time credential), so the
-  // ring hides that wait; Qubi only picks up once the ring is over.
+  // ringing (at least RING_MS, 0 by default: no phone ring) -> connecting -> live (the session opened).
+  // Meanwhile main prepares the call (memory, which service, the one-time credential).
   // practice: simulated for this call only («Probar sin voz»); the next call is real again
   // welcome: the welcome of a new project (Qubi asks the bubble's questions; a failure stays quiet)
   async start({ practice = false, welcome = false } = {}) {

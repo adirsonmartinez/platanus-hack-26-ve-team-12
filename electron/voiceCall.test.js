@@ -325,7 +325,7 @@ test('the agent: Spanish, Venezuelan greeting, private, voice override allowed, 
   assert.equal(agent.dynamicVariables.dynamic_variable_placeholders.greeting, t.voice.greetings.pana[0].replace('{{project_name}}', t.voice.defaults.projectName));
   assert.ok(agent.prompt.prompt.includes('{{greeting}}'), 'Qubi knows how it picked up');
   assert.equal(agent.prompt.prompt, t.voice.prompt);
-  for (const section of ['# Personalidad', '# Entorno', '# Tono', '# Objetivo', '# Herramientas', '# Permisos', '# Reglas']) {
+  for (const section of ['# Personalidad', '# Entorno', '# Brevedad', '# Tono', '# Objetivo', '# Herramientas', '# Permisos', '# Reglas']) {
     assert.ok(agent.prompt.prompt.includes(section), section);
   }
   for (const variable of ['gesto', 'celebrar', 'auditar', 'reparar', 'la auditoría', '{{project_context}}', '{{builder_name}}', '{{project_memory}}', '[aviso de Qubbot]', 'repartir', 'ver_equipo']) assert.ok(agent.prompt.prompt.includes(variable), variable);
@@ -494,12 +494,14 @@ test('greetings: several per style, Venezuelan by default, each with the project
     assert.ok(list.length >= 3, style);
     assert.equal(new Set(list).size, list.length, `${style}: no repeats`);
     for (const g of list) {
-      assert.ok(g.includes('{{project_name}}') && g.includes('?') && g.length <= 200, g);
+      assert.ok(g.includes('{{project_name}}') && g.includes('?') && g.length <= 90, `short and direct: ${g}`);
       assert.deepEqual(g.match(/\{\{\w+\}\}/g), ['{{project_name}}'], g);
     }
   }
   const venezuelan = /¡Epa|¡Épale|pana|chamo|chévere|Naguará|fino|molleja|burda|pichón/;
   for (const g of greetings.pana) assert.match(g, venezuelan, g);
+  // Qubi just starts talking: no «¡Aló!», «¿quién habla?» or other phone words
+  for (const list of Object.values(greetings)) for (const g of list) assert.doesNotMatch(g, /al[óo]\b|llamada|llamaste|quién habla|ring/i, g);
 });
 
 test('greetings: picked from the chosen style, never the same twice in a row', async () => {
@@ -541,6 +543,9 @@ test('welcome: every style has a greeting that says Qubi listens and the buttons
     assert.match(g, /\?$/, `${style} ends asking`);
   }
   for (const tool of ['elegir_experiencia', 'marcar_tecnologia', 'empezar_proyecto', 'seguir_manual', 'ejecutar_app', 'end_call']) assert.ok(welcome.instructions.includes(tool), tool);
+  // the demo lasts 3 minutes: a beginner goes straight to the build, without a "keep them?" round trip
+  assert.match(welcome.instructions, /empezar_proyecto de una, sin preguntar/);
+  for (const g of Object.values(welcome.greetings)) assert.ok(g.length <= 100, `quick welcome: ${g}`);
   const { agent } = agentConfig().conversationConfig;
   assert.ok(agent.prompt.prompt.includes('# Bienvenida') && agent.prompt.prompt.includes('{{welcome_mode}}'));
   assert.equal(agent.dynamicVariables.dynamic_variable_placeholders.welcome_mode, welcome.off);

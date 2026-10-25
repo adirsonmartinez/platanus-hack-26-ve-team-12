@@ -2,7 +2,7 @@
 
 Léelo **antes** de trabajar y actualízalo **al terminar** cada tarea. El protocolo está en `.claude/skills/platanus-ade/SKILL.md`. Se escribe corto: lo que cambia rápido va aquí; lo estable va en `CLAUDE.md` y `docs/`.
 
-Última actualización: 2026-10-24.
+Última actualización: 2026-10-25.
 
 ## Qué es
 ADE de escritorio (Electron) para personas no técnicas: el proyecto se ve como un mapa 3D (radar de seguridad), con un chat agéntico en español sencillo. Los agentes (Claude, Codex, Grok, OpenCode, Simulador) actúan **solo** con las herramientas MCP de Qubbot.
@@ -62,7 +62,7 @@ ADE de escritorio (Electron) para personas no técnicas: el proyecto se ve como 
   - fijos: chat abajo a la derecha, panel lateral, tarjeta de seguridad (compacta, arriba a la izquierda; reemplazó al semáforo) y selector Mapa/Git. Solo el editor se arrastra. Se quitó `floater.js`.
 
 ## Cómo comprobar
-- `npm test` (881 pruebas al 2026-10-25, tras fusionar `feature/llamada-remi`) y `npx esbuild renderer/main.js --bundle --outfile=/dev/null '--external:*.css' '--external:*.task'`.
+- `npm test` (898 pruebas al 2026-10-25) y `npx esbuild renderer/main.js --bundle --outfile=/dev/null '--external:*.css' '--external:*.task'`.
 - **App real:** `npx electron . --remote-debugging-port=9223 --open=<proyecto>` y scripts CDP (`scripts/demo/cdp.mjs`).
 - **Banderas:**
   - `PLATANUS_SIM=1`: agente «Simulador», escenarios en `scripts/sim/scenarios.js`;
@@ -88,6 +88,7 @@ El equipo cambió el mapa: ya no es un radar, ahora es **un árbol de todo el pr
 - Delegar tareas acotadas a Pi (gentle-shell) cuando convenga, no a opencode.
 
 ## Pendiente o ideas acordadas
+- **Pulido para la demo (2026-10-25, sin commit):** el fork de hardware se dejó; se pule Qubbot y se despliega a prod. Adirson sube a `personal` y Rafa lo pasa al repo de la organización. Hecho: el panel de la llamada ya no muestra el texto (solo el chat), y Qubi habla más corto (`# Brevedad` en el prompt, saludos de ≤ 90 caracteres; pruebas en `voiceCall.test.js`). Bienvenida por voz rápida para la demo de 3 min: saludo ≤ 100, con «estoy empezando» arranca la obra de una sin preguntar por las tecnologías, callado durante la obra; textos de la burbuja más cortos. Sin timbre ni «¡Aló!»: `RING_MS` = 0, se borró `ringTone.js`, el panel dice «Conectando…» y Qubi habla de una. El agente de ElevenLabs se actualiza solo en la próxima llamada (`configHash`). Sin probar con voz real.
 - **Bienvenida por voz (2026-10-25, sin commit, sin probar con voz real):** Qubi llama solo al crear un proyecto y hace la entrevista hablando; botones siguen; tocar uno cuelga; link del proyecto al final (`docs/features/welcome-robot/` → «Bienvenida por voz»). Probar con `npm start` + VPN + `ELEVENLABS_API_KEY` en `.env.local` (cuenta gratis: puede fallar la voz de biblioteca). El agente de ElevenLabs se actualiza solo (cambió `configHash`).
 - **Arreglado tras la fusión:** el clic en una integración «por conectar» volvía a ir al modal de servicios de Rafa; ahora va a nuestro flujo (`onIntegration` en `main.js`).
 - **Conectar mi cuenta, lo que falta:** Vercel por su CLI (`vercel login/link/env add/deploy` desde main); tablas reales de Supabase en el mapa (`list_tables`); que la regla de seguridad entienda `.gitignore` (hoy `.env.local` queda verde solo en la sesión en que se conectó).
@@ -103,7 +104,7 @@ El equipo cambió el mapa: ya no es un radar, ahora es **un árbol de todo el pr
   - Fase 3 hecha: memoria del proyecto (`electron/projectMemory.js`, `models/projectMemoryModel.js`). Se guarda al colgar y entra en la voz y en los prompts de los trabajadores.
   - Mejoras de la primera prueba (`MEJORAS.md` y `VOZ.md` → «Cómo quedó»):
     - el panel flota sobre la cabeza de Qubi (`robotView.head()`);
-    - suena un timbre y atiende cada vez con un saludo distinto (`voice.greetings` por estilo, sin repetir el anterior), en tono pana venezolano y con la voz Juan;
+    - (ya sin timbre) saluda cada vez distinto (`voice.greetings` por estilo, sin repetir el anterior), en tono pana venezolano y con la voz Juan;
     - pide permiso para abrir, ejecutar o abrir en el navegador; se le dirige con `ir_a` y `volver`, y camina también al mostrar una carpeta, revisar o abrir un archivo;
     - es expresivo: gestos y caras (`models/gestures.js`, `views/scene/robotGestures.js`), automáticos en la llamada y con la herramienta `gesto`; sigue el cursor con la mirada, reacciona a un toque y gira con el mapa (MEJORAS.md §3);
     - sin servicio de voz, se abre el modal «Qubi está fuera de conexión» (iniciar sesión en ElevenLabs, pegar la clave de ElevenLabs o de xAI, o probar sin voz). **Ya no se simula sola**, tampoco con el Simulador.

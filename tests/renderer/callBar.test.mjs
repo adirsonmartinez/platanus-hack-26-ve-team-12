@@ -68,10 +68,11 @@ test('anchorPoint: a world point is projected; an element (Qubi\'s bubble) gives
   assert.equal(anchorPoint({ getBoundingClientRect: () => ({ left: 0, top: 0, width: 0, height: 0 }) }, { stageRect }), null);
 });
 
-test('titleText: ringing, connecting, the live timer, ending', () => {
+test('titleText: connecting (no phone ring), the live timer, ending', () => {
   const C = strings.call;
-  assert.equal(titleText({ status: 'ringing' }, 0), C.state.ringing);
-  assert.equal(titleText({ status: 'connecting' }, 0), C.state.ringing); // still ringing for the person
+  assert.equal(titleText({ status: 'ringing' }, 0), C.state.connecting);
+  assert.equal(titleText({ status: 'connecting' }, 0), C.state.connecting);
+  assert.doesNotMatch(titleText({ status: 'ringing' }, 0), /llamando/i, 'it does not sound like a phone call');
   assert.equal(titleText({ status: 'live' }, 42), C.live(C.timer(42)));
   assert.equal(titleText({ status: 'live' }, 42), 'En vivo · 0:42');
   assert.equal(titleText({ status: 'ending' }, 3), C.state.ended);

@@ -71,7 +71,7 @@ renderer/
                   file links, chatCards: folder / file cards), icons (DOM helper over views/icons.js), thinkingOrb
                   (libraries.dev orbs over the package engine), agentPicker
                   (+ effortSlider), chatMenu, agentConnect, devTree, hoverCard, hud,
-                  callBar (the call panel above Qubi) + ringTone, voiceConnect (voice connection modal), serviceConnect,
+                  callBar (the call panel above Qubi, no phone ring), voiceConnect (voice connection modal), serviceConnect,
                   repairPanel, qubiJump, editor (floating file editor with tabs, CodeMirror with syntax colors; secrets open flagged), panels (breadcrumb, schema, git), controls, handControl (hand button + camera preview + "?" with the gestures),
                   handCursor (white cursor + hold-still ring; holding still or a quick pinch selects like a click), handTargets (what the cursor may
                   select: 3D picks, and in panels anything clickable except data-gesture="never"), labels

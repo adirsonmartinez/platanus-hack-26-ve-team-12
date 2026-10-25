@@ -3,14 +3,13 @@
 // - During a call the compact panel floats ABOVE QUBI'S HEAD on the map. It follows him every frame (when
 //   he walks, builds or is thrown), clamped inside the stage and out of the floating chat's way. When Qubi
 //   is not on screen (hidden, the tour, the git view) it falls back to the bottom center of the map.
-// - Contents: Qubi's face, «En vivo · 0:42» (or «Llamando…» while it rings), the voice wave, the last
-//   thing Qubi said (two lines at most), a permission request when Qubi asks for one, and round buttons
-//   (settings, chat, microphone, hang up in red).
-// - A phone ring (ringTone.js) sounds while the call connects and stops when Qubi answers.
+// - Contents: Qubi's face, «En vivo · 0:42» (or «Llamando…» while it rings), the voice wave, a permission
+//   request when Qubi asks for one, and round buttons (settings, chat, microphone, hang up in red). What
+//   was said is not shown here: it covered the map and the welcome; the chat keeps it.
+// - No phone ring: while it connects the panel says «Conectando…» and Qubi talks as soon as it is ready.
 // The view only reads callViewModel.store and calls its public API (docs/features/llamada/README.md).
 import { strings } from '../../i18n/es.js';
 import { icon } from './icons.js';
-import { createRingTone } from './ringTone.js';
 
 const BARS = 14;
 const WAVE_W = 64; // CSS px; call.css gives the canvas this exact size
@@ -36,11 +35,10 @@ export function pickVoice(provider, voice) {
   return keys.includes(voice) ? voice : keys[0];
 }
 
-// The panel's title: it rings (also while connecting: for the person the phone is still ringing), then
-// the live timer
+// The panel's title: «Conectando…» until Qubi is there (it is not a phone call), then the live timer
 export function titleText(state, seconds = 0) {
   const C = strings.call;
-  if (state.status === 'ringing' || state.status === 'connecting') return C.state.ringing;
+  if (state.status === 'ringing' || state.status === 'connecting') return C.state.connecting;
   if (state.status === 'ending') return C.state.ended;
   return C.live(C.timer(seconds));
 }
@@ -136,7 +134,6 @@ export function createCallBarView({
   const S = C.settings;
   const reduced = window.matchMedia?.('(prefers-reduced-motion: reduce)');
   const toScreen = project ?? (sceneView ? (x, y, z) => sceneView.toScreen({ x, y, z }) : null);
-  const ring = createRingTone();
 
   // ---------- Markup ----------
   container.classList.add('call-bar');
@@ -187,19 +184,8 @@ export function createCallBarView({
   info.append(titleRow, status);
   const wave = el('canvas', 'call-wave');
   wave.setAttribute('aria-hidden', 'true');
-  // hides or shows the conversation log (the buttons stay)
-  const minBtn = roundButton('call-min', 'unfoldLess', C.actions.hideLog);
-  minBtn.setAttribute('aria-pressed', 'false');
   const head = el('div', 'call-head');
-  head.append(face, info, wave, minBtn);
-
-  // What was said: a log of the whole call (Qubi and you), scrollable, newest at the bottom. The button in
-  // the head hides or shows it; the call's buttons always stay
-  const line = el('div', 'call-line');
-  line.setAttribute('role', 'log');
-  line.setAttribute('aria-label', C.card.title);
-  line.hidden = true;
-  let logHidden = false;
+  head.append(face, info, wave);
 
   const settingsBtn = roundButton('call-settings', 'settings', C.actions.settings);
   settingsBtn.setAttribute('aria-haspopup', 'dialog');
@@ -246,7 +232,7 @@ export function createCallBarView({
 
   const tail = el('span', 'call-tail');
   tail.setAttribute('aria-hidden', 'true');
-  panel.append(perm, head, linkBtn, line, actions, pop, tail);
+  panel.append(perm, head, linkBtn, actions, pop, tail);
 
   // Errors: the reason in plain words, with "try again" and close
   const errorBox = el('div', 'call-error');
@@ -315,34 +301,6 @@ export function createCallBarView({
   });
   document.addEventListener('pointerdown', (e) => {
     if (!pop.hidden && !pop.contains(e.target) && !settingsBtn.contains(e.target)) openPop(false);
-  });
-
-  // ---------- What was said ----------
-  const LOG_MAX = 60;
-  let lineKey = '';
-  function renderLine(s) {
-    const said = (s.lines ?? []).filter((l) => l.who === 'qubi' || l.who === 'person');
-    line.hidden = !said.length || logHidden;
-    const key = `${said.length}|${said.at(-1)?.text ?? ''}`;
-    if (!said.length || key === lineKey) return;
-    lineKey = key;
-    // stays at the bottom while the person is there; if they scrolled up to read, it does not jump
-    const atBottom = line.scrollHeight - line.scrollTop - line.clientHeight < 24;
-    line.replaceChildren(...said.slice(-LOG_MAX).map((l) => {
-      const row = el('p', `call-line-row ${l.who}`);
-      row.append(el('b', '', l.who === 'qubi' ? C.card.qubi : C.card.you), document.createTextNode(l.text));
-      return row;
-    }));
-    if (atBottom || said.length <= 2) line.scrollTop = line.scrollHeight;
-  }
-  minBtn.addEventListener('click', () => {
-    logHidden = !logHidden;
-    minBtn.setAttribute('aria-pressed', String(logHidden));
-    setIcon(minBtn, logHidden ? 'unfoldMore' : 'unfoldLess');
-    minBtn.title = logHidden ? C.actions.showLog : C.actions.hideLog;
-    minBtn.setAttribute('aria-label', minBtn.title);
-    renderLine(vm.store.state);
-    if (!logHidden) line.scrollTop = line.scrollHeight;
   });
 
   // ---------- Buttons ----------
@@ -571,12 +529,8 @@ export function createCallBarView({
 
   // The «offline» error belongs to the voice connection modal (voiceConnectView): the panel stays closed
   const ownedByModal = (s) => s.status === 'error' && s.error === 'offline' && Boolean(voiceConnect);
-  const isRinging = (s) => s?.status === 'ringing' || s?.status === 'connecting';
 
   function render(s, prev) {
-    // the ring: from the first ring until Qubi answers (or the call fails or is hung up)
-    if (isRinging(s) && !isRinging(prev)) ring.start();
-    else if (!isRinging(s)) ring.stop();
     if (s.status === 'live' && prev?.status !== 'live') liveAt = performance.now();
     if (s.status === 'idle') liveAt = 0;
 
@@ -613,7 +567,6 @@ export function createCallBarView({
     if (status.textContent !== text) status.textContent = text; // aria-live speaks only real changes
     status.title = s.simulated || !mode ? '' : C.state.realtimeHint;
     tag.hidden = true;
-    renderLine(s);
     renderPermission(s);
     linkBtn.hidden = !s.link;
     if (s.link && linkBtn.dataset.url !== s.link.url) {
