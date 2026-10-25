@@ -26,7 +26,7 @@ export class ProjectModel {
   // services: [{ key, name, state: 'connected' | 'disconnected' | 'unknown', via, evidence }] (servicesViewModel)
   // usesSupabase: a live Supabase the map draws with its schema (not a pending one)
   // root: the folder's full path (the project's memory is keyed by it; main accepts only the open or a recent one)
-  // demo: the web version's made-up project, whose Supabase shows made-up numbers (never on the desktop)
+  // demo: only the browser demo (no disk); a desktop folder is always a real project
   store = new Observable({ open: false, name: null, root: null, demo: false, tree: [], usesSupabase: false, integrations: [], integrationStatus: {}, services: [], session: 0, version: 0 });
 
   #services;
@@ -105,7 +105,7 @@ export class ProjectModel {
     this.#setup?.pendingOf(root).forEach((key) => { if (key in integrationStatus) integrationStatus[key] = 'pending'; });
     const usesSupabase = integrations.includes('supabase') && integrationStatus.supabase !== 'pending';
     // the web version only (no disk: always the made-up project)
-    const demo = !this.#services?.detect && (Boolean(DEMO_INTEGRATIONS[(name ?? '').toLowerCase()]) || this.#workspace.isDesktop === false);
+    const demo = this.#workspace.isDesktop === false;
     return { tree: response.data, integrations, integrationStatus, services: services.map(({ status, ...s }) => s), usesSupabase, demo };
   }
 

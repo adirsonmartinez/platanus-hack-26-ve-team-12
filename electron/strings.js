@@ -15,16 +15,16 @@ module.exports = {
   supabase: {
     confirmCreate: (project, org) => `¿Crear el proyecto «${project}» en Supabase?`,
     // cost: { amount (USD), recurrence: 'monthly' | 'hourly' } from Supabase
-    confirmCreateDetail: (org, cost) => `Se crea en tu organización «${org}», en la región de São Paulo.\n\nCosto: ${cost.amount === 0 ? 'gratis' : `US$${cost.amount} ${cost.recurrence === 'hourly' ? 'por hora' : 'al mes'}`}.\n\nPlatanus guardará su dirección y su clave pública en .env.local, sin mostrarlas.`,
+    confirmCreateDetail: (org, cost) => `Se crea en tu organización «${org}», en la región de São Paulo.\n\nCosto: ${cost.amount === 0 ? 'gratis' : `US$${cost.amount} ${cost.recurrence === 'hourly' ? 'por hora' : 'al mes'}`}.\n\nQubbot guardará su dirección y su clave pública en .env.local, sin mostrarlas.`,
     confirmUse: (project) => `¿Conectar este proyecto con «${project}» de Supabase?`,
-    confirmUseDetail: 'Platanus guardará su dirección y su clave pública en .env.local, sin mostrarlas.',
+    confirmUseDetail: 'Qubbot guardará su dirección y su clave pública en .env.local, sin mostrarlas.',
     create: 'Crear proyecto',
     use: 'Conectar',
     notChosen: 'Esa organización o ese proyecto ya no está en tu cuenta. Vuelve a intentarlo.',
     notReady: 'Supabase está tardando más de lo normal en preparar el proyecto. Inténtalo de nuevo en unos minutos.',
     noKey: 'No encontré una clave pública activa en ese proyecto.',
     signInFailed: 'No se pudo iniciar sesión en Supabase.',
-    page: (ok) => `<!doctype html><meta charset="utf-8"><title>Platanus</title><body style="font:16px -apple-system,sans-serif;background:#121212;color:#fff;display:grid;place-items:center;height:100vh;margin:0"><p>${ok ? '✅ Listo. Ya puedes volver a Platanus.' : 'No se pudo iniciar sesión. Vuelve a Platanus e inténtalo otra vez.'}</p></body>`,
+    page: (ok) => `<!doctype html><meta charset="utf-8"><title>Qubbot</title><body style="font:16px -apple-system,sans-serif;background:#121212;color:#fff;display:grid;place-items:center;height:100vh;margin:0"><p>${ok ? '✅ Listo. Ya puedes volver a Qubbot.' : 'No se pudo iniciar sesión. Vuelve a Qubbot e inténtalo otra vez.'}</p></body>`,
   },
   // Trusted folders (electron/trust.js): asked when a project is created or opened
   trust: {

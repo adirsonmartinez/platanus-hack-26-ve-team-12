@@ -225,7 +225,7 @@ export const strings = {
           ...(has('supabase') ? ['- Supabase: @supabase/supabase-js en package.json, un cliente en lib/supabase.ts que lea NEXT_PUBLIC_SUPABASE_URL y NEXT_PUBLIC_SUPABASE_ANON_KEY, y un .env.example con esas variables vacías.'] : []),
           ...(has('vercel') ? ['- Vercel: un vercel.json mínimo para publicarla.'] : []),
           '',
-          'No pongas claves reales ni crees archivos .env: yo conecto mis cuentas después desde Platanus.',
+          'No pongas claves reales ni crees archivos .env: yo conecto mis cuentas después desde Qubbot.',
           'Al terminar, explícame en palabras simples, sin jerga, qué hiciste y qué falta conectar.',
         ].join('\n');
       },
@@ -338,7 +338,7 @@ export const strings = {
       retry: 'Intentar de nuevo',
       // What the chat says once it is connected, and why .env.local stays green
       chat: (name) => `Supabase quedó conectado con «${name}» ✅. Las claves están en .env.local y no se suben a internet.`,
-      envReason: 'Claves guardadas por Platanus; .gitignore evita que se suban.',
+      envReason: 'Claves guardadas por Qubbot; .gitignore evita que se suban.',
     },
   },
 
