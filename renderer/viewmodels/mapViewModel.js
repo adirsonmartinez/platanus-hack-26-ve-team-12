@@ -149,7 +149,7 @@ export class MapViewModel {
     return null;
   }
 
-  // Where Remi goes to repair a file: next to its icon (the folder it is in opens; root files are always
+  // Where Qubi goes to repair a file: next to its icon (the folder it is in opens; root files are always
   // shown), or the plaza when it is not on the map
   locateFile(path) {
     const folder = path.includes('/') ? topFolderOf(path) : '';
@@ -157,6 +157,9 @@ export class MapViewModel {
     const icons = folder ? this.store.state.opened?.files : this.store.state.rootFiles?.files;
     const icon = icons?.find((f) => f.path === path);
     if (icon) return { folder, x: icon.x, z: icon.z, height: 1, radius: 1.6 }; // just off the icon
+    // not drawn (a folder with more items than fit): its folder's branch, never the plaza
+    const branch = folder ? this.store.state.opened : null;
+    if (branch) return { folder, x: branch.x, z: branch.z, height: 1, radius: 2.5 };
     const plaza = this.store.state.plaza;
     return { folder, x: 0, z: 0, height: 1, radius: (plaza?.size ?? 5) / 2 };
   }
@@ -313,24 +316,25 @@ export class MapViewModel {
       const last = nodes.at(-1).u;
       addLinks({ links: [[0, INTEGRATION_ROW.busV, last, INTEGRATION_ROW.busV], ...nodes.map((n) => [n.u, INTEGRATION_ROW.busV, n.u, integrationV])] }, 'top');
     }
-    const statusOf = (key) => integrationStatus[key] ?? 'connected';
+    const statusOf = (key) => integrationStatus[key] ?? 'unknown'; // never "connected" without a check
     const integrationNodes = nodes.map((n) => ({ key: n.key, status: statusOf(n.key), ...toWorld(n.u, integrationV) }));
 
     // Lit lines: each live integration lights its way to the folders (down to the road, along it, down
     // the trunk). A stretch shared by several is purple if any of them is connected, amber if they only
-    // have incidents; nothing lights a disconnected one's way.
+    // have incidents; nothing lights the way of one that is disconnected or could not be checked.
+    const lit = (status) => status === 'connected' || status === 'incident';
     const trunkEnd = dirs.length ? topBlock.slots[0].v - TREE.top.rowGap / 2 : 0;
     const strongest = (list) => (list.includes('connected') ? 'connected' : list.includes('incident') ? 'incident' : null);
     const line = (u1, v1, u2, v2, status) => ({ from: toWorld(u1, v1), to: toWorld(u2, v2), status });
     const integrationLines = [];
     nodes.forEach((n, i) => {
       const status = statusOf(n.key);
-      if (status !== 'disconnected') integrationLines.push(line(n.u, integrationV, n.u, INTEGRATION_ROW.busV, status));
+      if (lit(status)) integrationLines.push(line(n.u, integrationV, n.u, INTEGRATION_ROW.busV, status));
       // The road from the previous node (or the trunk) to this one carries this one and every one after it
       const along = strongest(nodes.slice(i).map((m) => statusOf(m.key)));
       if (along) integrationLines.push(line(i ? nodes[i - 1].u : 0, INTEGRATION_ROW.busV, n.u, INTEGRATION_ROW.busV, along));
     });
-    if (withSupabase && statusOf('supabase') !== 'disconnected') {
+    if (withSupabase && lit(statusOf('supabase'))) {
       integrationLines.push(line(0, integrationV, 0, INTEGRATION_ROW.busV, statusOf('supabase')));
     }
     const trunk = strongest(integrations.map(statusOf));
@@ -357,9 +361,10 @@ export class MapViewModel {
         total,
         dirs: countDirs(tree),
         ...project,
-        // Share of evaluated files that are safe (100 when there is nothing to evaluate)
-        securityScore: securityScore(project.counts),
-        scoreLevel: scoreLevel(project.counts),
+        // The audit's score for the whole project (every file on disk); before it, from the files loaded
+        ...(this.#security.audited ? { counts: { ...project.counts, ...this.#security.store.state.counts } } : {}),
+        securityScore: this.#security.audited ? this.#security.store.state.score : securityScore(project.counts),
+        scoreLevel: scoreLevel(this.#security.audited ? this.#security.store.state.counts : project.counts),
       },
       // The project's plaza; counts are the open folder's (at any depth), or the whole project's
       plaza: {

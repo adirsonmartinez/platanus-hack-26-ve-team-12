@@ -53,8 +53,8 @@ contextBridge.exposeInMainWorld('platanus', {
     stop: (port) => ipcRenderer.invoke('servers:stop', port),
     pause: (port) => ipcRenderer.invoke('servers:pause', port),
     resume: (port) => ipcRenderer.invoke('servers:resume', port),
-    // Stopped from Platanus: reactivate inside the app (asks first), cancel a start or forget, by the id
-    // the main process gave; output of a server Platanus started, by port or by that id
+    // Stopped from Qubbot: reactivate inside the app (asks first), cancel a start or forget, by the id
+    // the main process gave; output of a server Qubbot started, by port or by that id
     stopped: () => ipcRenderer.invoke('servers:stopped'),
     restart: (id) => ipcRenderer.invoke('servers:restart', id),
     cancelStart: (id) => ipcRenderer.invoke('servers:cancelStart', id),
@@ -72,9 +72,11 @@ contextBridge.exposeInMainWorld('platanus', {
   agents: {
     detect: () => ipcRenderer.invoke('agents:detect'),
     login: (id) => ipcRenderer.invoke('agents:login', id),
+    // req goes as is: { agent, prompt, session, readOnly, voice, …, worker, scope } (main validates every
+    // field; a worker of Qubi's team carries session 'worker-N', its id and 1-2 folders)
     run: (req) => ipcRenderer.invoke('agents:run', req),
     cancel: (runId) => ipcRenderer.invoke('agents:cancel', runId),
-    onEvent: on('agents:event'), // ({ runId, type: 'text'|'tool'|'error'|'done', ... }) => ...
+    onEvent: on('agents:event'), // ({ runId, worker?, type: 'text'|'tool'|'error'|'done', ... }) => ...
   },
   mcp: {
     info: () => ipcRenderer.invoke('mcp:info'),
@@ -82,10 +84,54 @@ contextBridge.exposeInMainWorld('platanus', {
     onRequest: on('mcp:request'), // ({ id, tool, args }) => reply({ id, ok, data | error })
     reply: (payload) => ipcRenderer.invoke('mcp:reply', payload),
     onScore: on('agent:score'), // ({ path, level, reason }) => ...
-    onChanged: on('agent:changed'), // ({ path, reason, created, backup, at }) => ...
-    onAwaiting: on('agent:awaiting'), // ({ path, waiting }) => ... while the person is asked to approve a change
+    onChanged: on('agent:changed'), // ({ path, reason, created, backup, at, worker? }) => ...
+    onAwaiting: on('agent:awaiting'), // ({ path, waiting, worker? }) => ... while the person is asked to approve a change
     undo: (change) => ipcRenderer.invoke('agent:undo', change),
     setApproval: (mode) => ipcRenderer.invoke('agent:approval', mode), // 'manual' | 'auto' | 'bypass'
+  },
+  // Call with Qubi (ElevenLabs or Grok Voice): whether a voice service is ready ({ ready, reason? }), each
+  // provider's state ({ elevenlabs: { ready, last4? }, grok: { ready, last4? } }) and what the window needs
+  // to talk (a signed URL or a short-lived token, docs/features/llamada/VOZ.md); the keys stay in main
+  voice: {
+    status: () => ipcRenderer.invoke('voice:status'),
+    // { projectName, context, builder, memory?, provider?: 'auto'|'elevenlabs'|'grok', voice?: a key of the voice list }
+    start: (req) => ipcRenderer.invoke('voice:start', req),
+    providers: () => ipcRenderer.invoke('voice:providers'),
+    // ElevenLabs sign-in in the browser -> { ok: true, last4 } | { ok: false, reason }
+    login: () => ipcRenderer.invoke('voice:login'),
+    loginCancel: () => ipcRenderer.invoke('voice:loginCancel'),
+  },
+  // Official pages of the services and of the voice keys: main opens only the URLs of its fixed list
+  links: {
+    open: (url) => ipcRenderer.invoke('links:open', url),
+  },
+  // Starting the open project (Qubi's ejecutar_app): its dev/start scripts, and one of them by id
+  // (main asks with its own dialog first) -> { ok, port?, reason? }
+  run: {
+    scripts: () => ipcRenderer.invoke('run:scripts'),
+    start: (id) => ipcRenderer.invoke('run:start', id),
+  },
+  // External services the open project uses and whether the person's agent can work with them
+  services: {
+    detect: () => ipcRenderer.invoke('services:detect'), // { ok, data: [{ key, name, state, via, evidence }] }
+    catalog: () => ipcRenderer.invoke('services:catalog'), // { ok, data: { [key]: { name, cli, mcp, dashboard } } }
+    refresh: () => ipcRenderer.invoke('services:refresh'),
+  },
+  // What Qubi remembers of a project between calls (only the open project or a recent one):
+  // Security audit of the open project (securityAudit.js): each answers { ok, data: { at, files, counts,
+  // score, history, truncated } }; accept answers { ok, data: { ok, reason?, audit? } }
+  security: {
+    audit: (cause) => ipcRenderer.invoke('security:audit', cause), // 'open' | 'audit' | 'repair'
+    check: (paths, cause) => ipcRenderer.invoke('security:check', paths, cause), // the files that changed
+    accept: (rel) => ipcRenderer.invoke('security:accept', rel),
+    unaccept: (rel) => ipcRenderer.invoke('security:unaccept', rel),
+  },
+  // read -> { calls, learned }; append / learn -> that memory, or null if refused; forget -> true | false
+  memory: {
+    read: (root) => ipcRenderer.invoke('memory:read', root),
+    append: (root, entry) => ipcRenderer.invoke('memory:append', root, entry), // { at, pedidos, built, audits, notes }
+    learn: (root, facts) => ipcRenderer.invoke('memory:learn', root, facts), // [string]
+    forget: (root) => ipcRenderer.invoke('memory:forget', root),
   },
   onMenuAction: on('menu:action'), // ({ action: 'newProject'|'openProject'|'openRecent'|'closeProject', root? }) => ...
   onChanged: on('fs:changed'), // (paths) => ...

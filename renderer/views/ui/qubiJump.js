@@ -1,12 +1,12 @@
-// Remi jumps across the interface: from the "Reparar" button, hop by hop, into the map.
+// Qubi jumps across the interface: from the "Reparar" button, hop by hop, into the map.
 // Resolves when he lands (right away with reduced motion), so the 3D walk starts there.
-import { drawSprite, SPRITE_H, SPRITE_W } from '../remiSprite.js';
+import { drawSprite, SPRITE_H, SPRITE_W } from '../qubiSprite.js';
 
 const SCALE = 3;
 const HOPS = 3;
 const MS = 900;
 
-export function remiJump(fromEl, toEl) {
+export function qubiJump(fromEl, toEl) {
   const from = fromEl?.getBoundingClientRect();
   const to = toEl?.getBoundingClientRect();
   if (!from || !to || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return Promise.resolve();
@@ -14,7 +14,7 @@ export function remiJump(fromEl, toEl) {
   const canvas = document.createElement('canvas');
   canvas.width = SPRITE_W * SCALE;
   canvas.height = SPRITE_H * SCALE;
-  canvas.className = 'remi-jumper';
+  canvas.className = 'qubi-jumper';
   const ctx = canvas.getContext('2d');
   ctx.imageSmoothingEnabled = false;
   drawSprite(ctx, 'hammerUp', SCALE);

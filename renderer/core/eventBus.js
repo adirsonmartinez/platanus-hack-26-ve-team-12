@@ -16,12 +16,17 @@ export const EVENTS = Object.freeze({
   repairTool: 'repair:tool',           // { path, name }
   repairChanged: 'repair:changed',     // { path, change } the agent wrote a file (approved)
   repairFinished: 'repair:finished',   // { entry } history entry with its final status
-  agentAwaiting: 'agent:awaiting',     // { path, waiting, diff? } the agent waits for the person to approve a change
+  auditFinished: 'audit:finished',     // { cause, before, after, fixed: [paths], worse: [paths] } an audit the person or a repair asked for
+  agentAwaiting: 'agent:awaiting',     // { path, waiting, diff?, worker? } the agent waits for the person to approve a change
+                                       // (worker: a run of Qubi's team, teamViewModel.js; the chat ignores those)
   robotLanded: 'robot:landed',         // { path, kind: 'folder'|'project', name, files?, red, yellow } the person dropped the robot there
   tourStarted: 'tour:started',         // {} the tour of the open project is being prepared
   tourStep: 'tour:step',               // { index, total, step, writing, source, agent, architecture }
   tourEnded: 'tour:ended',
-  agentChanged: 'agent:changed',       // { path, reason, diff, … } the agent saved a change (approved or by the permissions mode)
+  agentChanged: 'agent:changed',       // { path, reason, created, diff, worker?, … } the agent saved a change (approved or by the
+                                       // permissions mode); worker: which of Qubi's team saved it (teamViewModel.js)
+  callStarted: 'call:started',         // { simulated } the voice call with Qubi opened (callViewModel.js)
+  callEnded: 'call:ended',             // { reason: 'hang-up' | 'remote' | 'error' } it ended, whoever ended it
 });
 
 export function createEventBus() {

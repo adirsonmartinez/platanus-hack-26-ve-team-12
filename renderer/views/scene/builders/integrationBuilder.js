@@ -1,6 +1,8 @@
-// An integration node in the band at the top of the map (Vercel, GitHub, Clerk, PostHog): a dark platform
-// like Supabase's, a small silver emblem that hints at the service (it spins while there is a connection)
-// and a light: purple when connected, amber with an incident, off when disconnected.
+// An integration node in the band at the top of the map (Vercel, GitHub, Clerk, PostHog, and any other
+// service main detects: Stripe, Sentry…): a dark platform like Supabase's, a small silver emblem that
+// hints at the service (a plug for the ones without their own) and a light: purple when connected, amber
+// with an incident, off when disconnected. A disconnected node looks unplugged: its emblem is dull, sunk
+// a little and still, so it reads "off" at a glance (docs/features/servicios/README.md).
 // Origin at the center of the platform, on the ground.
 import * as THREE from 'three';
 import { box, cylinder, materials as M } from '../materials.js';
@@ -53,7 +55,23 @@ const EMBLEMS = {
   },
 };
 
+// Any other service: a plug (a body and two prongs), standing
+function genericEmblem(g) {
+  const e = new THREE.Group();
+  e.position.y = BASE;
+  g.add(e);
+  box(e, M.bodyLight, 1.1, 0.9, 1.1, 0, 0, 0);
+  box(e, M.body, 0.8, 0.12, 0.8, 0, 0.9, 0);
+  [-0.22, 0.22].forEach((x) => box(e, M.white, 0.12, 0.55, 0.12, x, 1.02, 0));
+  return e;
+}
+
 const LIGHT = { connected: () => M.accentSolid, incident: () => M.warnSolid, disconnected: () => M.slab };
+
+// The unplugged look: one dull, see-through grey for every piece of the emblem (shared, never edited)
+let offMaterial = null;
+const unplugged = () => (offMaterial ??= new THREE.MeshStandardMaterial({ color: 0x5b6169, roughness: 0.9, metalness: 0, transparent: true, opacity: 0.55 }));
+const SUNK = 0.18;
 
 export function buildIntegration(key, status = 'connected') {
   const g = new THREE.Group();
@@ -61,11 +79,19 @@ export function buildIntegration(key, status = 'connected') {
   box(g, M.slab, PLATFORM - 0.4, 0.25, PLATFORM - 0.4, 0, 0.3, 0);
   const led = box(g, (LIGHT[status] ?? LIGHT.connected)(), 0.5, 0.06, 0.12, 0, BASE, PLATFORM / 2 - 0.45);
   led.castShadow = false;
-  const emblem = EMBLEMS[key]?.(g) ?? null;
+  const emblem = (EMBLEMS[key] ?? genericEmblem)(g);
 
   const live = status !== 'disconnected';
+  if (!live) {
+    emblem.traverse((o) => { if (o.isMesh) { o.material = unplugged(); o.castShadow = false; } });
+    emblem.position.y -= SUNK;
+    emblem.rotation.y = 0.35; // turned a little off its line, still
+  }
+  // The whole node answers a click (the connect modal); hit tests walk up to this
+  g.userData.pick = { type: 'integration', key };
+
   function update(t) {
-    if (emblem && live) emblem.rotation.y = t * 0.5;
+    if (live) emblem.rotation.y = t * 0.5;
   }
 
   return { group: g, update, labelY: BASE + 3 };

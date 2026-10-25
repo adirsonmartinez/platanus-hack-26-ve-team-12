@@ -1,10 +1,10 @@
-// Optional 3D model for Remi: renderer/assets/remi/remi.glb (or scene.gltf from a glTF download).
-// Scaled to Remi's height, standing on y = 0 and facing +z. Resolves to null when there is no model,
-// so the blocky Remi from remiBuilder.js is used instead.
+// Optional 3D model for Qubi: renderer/assets/qubi/qubi.glb (or scene.gltf from a glTF download).
+// Scaled to Qubi's height, standing on y = 0 and facing +z. Resolves to null when there is no model,
+// so the blocky Qubi from qubiBuilder.js is used instead.
 import * as THREE from 'three';
 
-const CANDIDATES = ['assets/remi/remi.glb', 'assets/remi/scene.gltf'];
-const HEIGHT = 2.4; // same as the blocky Remi
+const CANDIDATES = ['assets/qubi/qubi.glb', 'assets/qubi/scene.gltf'];
+const HEIGHT = 2.4; // same as the blocky Qubi
 
 export async function loadRemiModel() {
   let loader;

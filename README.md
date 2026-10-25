@@ -10,7 +10,7 @@ team-12
 - Hendry Desire Varela Pérez ([@sirevarr](https://github.com/sirevarr))
 - Génesis Angelina Zapata López ([@zagenesis19](https://github.com/zagenesis19))
 
-## Platanus
+## Qubbot
 
 IDE visual: tu proyecto se ve como un mapa isométrico. La carpeta raíz es el edificio principal, cada carpeta un edificio, y al abrir uno ves sus archivos por piso como cubitos con un semáforo de seguridad. Un agente de IA crea y corrige el código, y lo peligroso (borrar, sobrescribir) necesita tu aprobación.
 
@@ -33,7 +33,7 @@ En la app (guía completa en [`docs/INTERFAZ.md`](docs/INTERFAZ.md)):
 - **Tarjeta de seguridad**: puntaje y totales. Se mueve, se minimiza y se ancla sobre el chat fijado; sus números de riesgo abren la lista de Riesgos.
 - **Mover el mapa**: arrastrar con clic izquierdo rota e inclina; clic derecho o Shift + arrastrar mueve; rueda acerca; flechas o WASD desplazan; Q / E giran 90°. La ruta de arriba a la izquierda dice en qué carpeta estás.
 - **Vibe / Dev** (arriba a la derecha y en el explorador): Vibe es una guía con nombres sencillos; Dev muestra todas las carpetas, rutas y reglas.
-- **Remi y las reparaciones**: "Reparar" hace que Remi camine al edificio mientras tu agente revisa el archivo; cada cambio pide tu permiso y se puede deshacer. Todo queda en el historial de Reparaciones.
+- **Qubi y las reparaciones**: "Reparar" hace que Qubi camine al edificio mientras tu agente revisa el archivo; cada cambio pide tu permiso y se puede deshacer. Todo queda en el historial de Reparaciones.
 - **Conecta tu agente**: usa tu suscripción de Claude Code, Grok o Codex (modelo y esfuerzo ajustables, o dos agentes a la vez para comparar), o conecta tu editor al servidor MCP local (la dirección, con su llave privada, se copia desde ese panel).
 
 En el chat:
@@ -81,9 +81,9 @@ electron/            proceso principal: ventana, IPC, confirmaciones, límites d
 renderer/
   main.js            arma Models -> ViewModels -> Views
   models/            datos y reglas (proyecto, semáforo, Supabase, agente, etiquetas, modo Vibe/Dev)
-  viewmodels/        estado de pantalla y acciones (mapa, edificio abierto, cámara, chat, shell, grafo, Remi)
-  views/scene/       three.js (mapa, edificio, grietas, Remi 3D, Supabase, mouse y teclado)
-  views/ui/          HTML (shell, chat, selector de agente, grafo, mapa del proyecto, tarjeta de Remi)
+  viewmodels/        estado de pantalla y acciones (mapa, edificio abierto, cámara, chat, shell, grafo, Qubi)
+  views/scene/       three.js (mapa, edificio, grietas, Qubi 3D, Supabase, mouse y teclado)
+  views/ui/          HTML (shell, chat, selector de agente, grafo, mapa del proyecto, tarjeta de Qubi)
   services/          puente con Electron (disco, agentes, MCP)
   styles/            main.css (mapa) + shell.css (IDE de vidrio) + chat.css (tarjetas, orbes, borde de luz)
   vendor/            efectos de libraries.dev ya preparados (orbes, borde de luz); `npm run vendor`

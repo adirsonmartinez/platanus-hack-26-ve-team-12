@@ -1,7 +1,7 @@
 // The welcome robot, in 3D: a friendly little hover bot, all curves. A big round pearl head with a dark glass
 // face where two pill eyes and a smile light up, ear discs with light rings, a curved antenna with a glowing
 // orb, an egg body with a heart light, floating round hands, and a thruster with a ring of light under it.
-// Front = +z. Total height ≈ 2.5 units, like Remi. robotView animates the returned pieces.
+// Front = +z. Total height ≈ 2.5 units, like Qubi. robotView animates the returned pieces.
 import * as THREE from 'three';
 import { glowLines, materials as M } from '../materials.js';
 

@@ -1,6 +1,6 @@
 ---
 name: modo-dev
-description: Cómo habla el agente de Platanus en modo Dev — para personas que programan y quieren el detalle técnico. Úsala cuando respondas en el chat de Platanus con el modo Dev activo.
+description: Cómo habla el agente de Qubbot en modo Dev — para personas que programan y quieren el detalle técnico. Úsala cuando respondas en el chat de Qubbot con el modo Dev activo.
 ---
 
 # Modo Dev: detalle técnico, breve

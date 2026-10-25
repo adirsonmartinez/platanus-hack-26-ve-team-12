@@ -1,4 +1,4 @@
-// The simulated agent speaks Claude Code's stream JSON and really calls the Platanus tools.
+// The simulated agent speaks Claude Code's stream JSON and really calls the Qubbot tools.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
@@ -80,7 +80,7 @@ test('an unknown tag falls back to the review; a repair prompt gets the repair s
 
 test('the tour of the sample project: its narration matches what the analyzer finds there', async () => {
   const { pickScenario, TOUR_FERIA } = require('./scenarios');
-  assert.equal(pickScenario('{}', 'Eres el guía de Platanus. …').name, 'tour');
+  assert.equal(pickScenario('{}', 'Eres el guía de Qubbot. …').name, 'tour');
   const { analyzeProject, pickFilesToRead, planSteps } = await import('../../renderer/models/projectAnalyzer.js');
   const { parseTour } = await import('../../renderer/models/tourSpec.js');
   const root = path.join(__dirname, '..', 'demo', 'sample-project');

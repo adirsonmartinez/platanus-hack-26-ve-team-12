@@ -87,7 +87,7 @@ function isLocalAddress(address) {
 }
 
 // One row per process and port (IPv4 + IPv6 together, with the widest exposure); exposed first, then by port.
-// `paused`: pids that Platanus paused; `managed`: pids that Platanus started (Sets or Maps keyed by pid).
+// `paused`: pids that Qubbot paused; `managed`: pids that Qubbot started (Sets or Maps keyed by pid).
 function toServers(entries, paused = new Set(), managed = new Set()) {
   const byKey = new Map();
   for (const e of entries) {
@@ -124,7 +124,7 @@ async function readEntries({ platform = process.platform, run = runFile, systemR
   throw listError('unsupported');
 }
 
-// `paused`: the Map of pids Platanus paused (pids that are gone are dropped from it); `managed`: pids it started.
+// `paused`: the Map of pids Qubbot paused (pids that are gone are dropped from it); `managed`: pids it started.
 // `onEntries(entries)`: the raw sockets with their pids, for the main process only.
 async function listServers({ paused = new Map(), managed = new Set(), onEntries = () => {}, ...options } = {}) {
   const entries = await readEntries(options);
@@ -190,7 +190,7 @@ function launchCommand(platform, app, url) {
 }
 
 // Starts the browser and lets it run on its own. macOS: `open -a` returns at once and fails if the app is
-// missing. Windows: the browser is started detached, so closing Platanus does not close it.
+// missing. Windows: the browser is started detached, so closing Qubbot does not close it.
 function launchApp(app, url, platform = process.platform) {
   const [file, args] = launchCommand(platform, app, url);
   return new Promise((resolve, reject) => {
@@ -231,7 +231,7 @@ const targetsOn = (entries, port) => [...new Map(entries.filter((e) => e.port ==
 
 const signalError = (err, fallback) => listError(err?.code === 'EPERM' ? 'notAllowed' : err?.code === 'ESRCH' ? 'notRunning' : fallback);
 
-// The processes on a port that Platanus may touch: never itself nor a system process
+// The processes on a port that Qubbot may touch: never itself nor a system process
 async function touchableTargets(port, read, ownPid) {
   if (!isPort(port)) throw listError('invalidPort');
   const targets = targetsOn(await read(), port);
@@ -277,9 +277,9 @@ async function stopServer(port, { read = readEntries, confirm, kill = (pid) => t
 
 const PS_SIGNAL = (fn, pid) => [
   "$ErrorActionPreference='Stop'",
-  "Add-Type -Namespace Platanus -Name Proc -MemberDefinition '[DllImport(\"ntdll.dll\")] public static extern int NtSuspendProcess(IntPtr h); [DllImport(\"ntdll.dll\")] public static extern int NtResumeProcess(IntPtr h);'",
+  "Add-Type -Namespace Qubbot -Name Proc -MemberDefinition '[DllImport(\"ntdll.dll\")] public static extern int NtSuspendProcess(IntPtr h); [DllImport(\"ntdll.dll\")] public static extern int NtResumeProcess(IntPtr h);'",
   `$p = Get-Process -Id ${pid}`,
-  `if ([Platanus.Proc]::${fn}($p.Handle) -ne 0) { exit 3 }`,
+  `if ([Qubbot.Proc]::${fn}($p.Handle) -ne 0) { exit 3 }`,
 ].join('; ');
 
 // action: 'pause' | 'resume'. The pid is an integer checked here; the PowerShell script is fixed.
@@ -304,7 +304,7 @@ function powershellSignal(pid, action, systemRoot) {
   return [ps, ['-NoProfile', '-NonInteractive', '-Command', PS_SIGNAL(action === 'pause' ? 'NtSuspendProcess' : 'NtResumeProcess', pid)]];
 }
 
-// No dialog: pausing is undone with "Reanudar", and Platanus resumes everything it paused when it quits
+// No dialog: pausing is undone with "Reanudar", and Qubbot resumes everything it paused when it quits
 async function pauseServer(port, { read = readEntries, signal = signalProcess, paused, ownPid = process.pid }) {
   const targets = await touchableTargets(port, read, ownPid);
   for (const { pid } of targets) {
@@ -318,7 +318,7 @@ async function pauseServer(port, { read = readEntries, signal = signalProcess, p
   return { port, processes: targets.map((x) => x.process).filter(Boolean) };
 }
 
-// Only processes that Platanus itself paused on that port
+// Only processes that Qubbot itself paused on that port
 async function resumeServer(port, { read = readEntries, signal = signalProcess, paused }) {
   if (!isPort(port)) throw listError('invalidPort');
   const targets = targetsOn(await read(), port).filter((x) => paused.has(x.pid));
@@ -334,8 +334,8 @@ async function resumeServer(port, { read = readEntries, signal = signalProcess, 
   return { port, processes: targets.map((x) => x.process).filter(Boolean) };
 }
 
-// Called when Platanus quits: nothing stays frozen. On Windows the resume runs detached, so it finishes
-// even though Platanus is closing.
+// Called when Qubbot quits: nothing stays frozen. On Windows the resume runs detached, so it finishes
+// even though Qubbot is closing.
 function resumeAll(paused, { platform = process.platform, systemRoot = process.env.SystemRoot || 'C:\\Windows' } = {}) {
   for (const pid of paused.keys()) {
     if (platform === 'win32') {
@@ -348,9 +348,9 @@ function resumeAll(paused, { platform = process.platform, systemRoot = process.e
   paused.clear();
 }
 
-// --- Stop, then reactivate inside Platanus (macOS) ---
-// A reactivated server is a child of Platanus: no Terminal window, its output is kept here and shown in
-// the app, and it stops when Platanus quits (a hidden server left listening would be a risk).
+// --- Stop, then reactivate inside Qubbot (macOS) ---
+// A reactivated server is a child of Qubbot: no Terminal window, its output is kept here and shown in
+// the app, and it stops when Qubbot quits (a hidden server left listening would be a risk).
 
 const MAX_COMMAND = 2000;
 
@@ -367,7 +367,7 @@ async function captureRestart(pid, { platform = process.platform, run = runFile 
 
 // The user's login shell (zsh or bash, so PATH, nvm, pyenv… are the ones of their terminal) runs a fixed
 // script, `exec "$@"`, and the command words go as separate arguments: nothing in them ($, ;, |, backticks)
-// is read as shell code, and exec makes the server itself the child of Platanus.
+// is read as shell code, and exec makes the server itself the child of Qubbot.
 function managedLaunch(command, cwd, { shell = process.env.SHELL } = {}) {
   const file = /^\/bin\/bash$/.test(String(shell)) ? '/bin/bash' : '/bin/zsh';
   const words = String(command).trim().split(/\s+/);
@@ -394,8 +394,8 @@ function createOutputBuffer(maxLines = OUTPUT_LINES) {
   };
 }
 
-// The servers Platanus started. onExit(entry, { code, signal, expected, output }) runs once per process;
-// `expected` is true when Platanus itself stopped it.
+// The servers Qubbot started. onExit(entry, { code, signal, expected, output }) runs once per process;
+// `expected` is true when Qubbot itself stopped it.
 function createManagedServers({ spawn: spawnFn = spawn, shell = process.env.SHELL, onExit }) {
   const running = new Map(); // pid -> { pid, port, process, restart, output, expected }
   return {
@@ -454,7 +454,7 @@ const STOPPED_MAX = 20;
 const STOPPED_ID = /^[a-f0-9]{16}$/;
 const STATES = new Set(['stopped', 'starting', 'exited']);
 
-// Servers stopped from Platanus (or started by it and closed) in this session. The command, folder and
+// Servers stopped from Qubbot (or started by it and closed) in this session. The command, folder and
 // output stay here; the page gets { id, port, process, canRestart, state, exitCode, hasOutput, at } and
 // sends back only the id. state: 'stopped' | 'starting' (reactivated, not listening yet) | 'exited' (closed on its own).
 function createStoppedRegistry({ newId = () => require('node:crypto').randomBytes(8).toString('hex'), now = Date.now } = {}) {
@@ -496,7 +496,7 @@ function reconcileStarting(registry, entries) {
   }
 }
 
-// Asks first (the dialog shows the folder and the command, secrets hidden), then starts it inside Platanus.
+// Asks first (the dialog shows the folder and the command, secrets hidden), then starts it inside Qubbot.
 // The row stays as "starting" until the server listens (reconcileStarting) or closes (it turns "exited").
 async function restartServer(id, { registry, confirm, start, isPortBusy, platform = process.platform }) {
   const row = registry.get(id);

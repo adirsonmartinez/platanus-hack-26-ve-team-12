@@ -29,7 +29,8 @@ function addTip(button, title, info) {
   button.appendChild(tip);
 }
 
-export function createShellView({ shellViewModel: vm, modeModel, approval = null, repairViewModel, repairHistory, serversViewModel, actions }) {
+// auditViewModel / securityModel (optional): the security audit's score, history and "Auditar de nuevo"
+export function createShellView({ shellViewModel: vm, modeModel, approval = null, repairViewModel, repairHistory, serversViewModel, actions, auditViewModel = null, securityModel = null }) {
   const $ = (id) => document.getElementById(id);
   const body = document.body;
   const devTree = createDevTree({
@@ -221,11 +222,53 @@ export function createShellView({ shellViewModel: vm, modeModel, approval = null
     return b;
   }
 
+  // The audit: the project's score, when it was read, "Auditar de nuevo" and how the score moved
+  const A = S.audit;
+  function auditHead() {
+    if (!auditViewModel?.available || !securityModel) return [];
+    const sec = securityModel.store.state;
+    const { status, last } = auditViewModel.store.state;
+    const box = el('div', 'audit-head');
+    const top = el('div', 'audit-top');
+    const score = el('strong', `audit-score ${sec.counts?.red ? 'red' : sec.counts?.yellow ? 'yellow' : 'green'}`, sec.score == null ? '–' : `${sec.score}%`);
+    const when = el('span', 'audit-when', status === 'auditing' ? A.auditing : sec.at ? A.when(strings.repair.history.ago(sec.at)) : A.never);
+    const again = el('button', 'pill active', status === 'auditing' ? A.auditing : A.again);
+    again.type = 'button';
+    again.disabled = status === 'auditing';
+    again.addEventListener('click', (e) => { e.stopPropagation(); auditViewModel.auditNow(); });
+    top.append(score, el('span', 'audit-label', A.label), when, again);
+    box.appendChild(top);
+    if (status === 'error') box.appendChild(el('p', 'task-error', A.error));
+    if (last) box.appendChild(el('p', 'side-summary', A.lastChange(last)));
+    const history = (sec.history ?? []).slice(-8).reverse();
+    if (history.length > 1) {
+      const details = el('details', 'audit-history');
+      details.appendChild(el('summary', '', A.history));
+      const list = el('ol');
+      history.forEach((h, i) => {
+        const prev = history[i + 1];
+        const delta = prev ? h.score - prev.score : 0;
+        const row = el('li', delta > 0 ? 'up' : delta < 0 ? 'down' : '');
+        row.append(
+          el('strong', '', `${h.score}%`),
+          el('span', 'audit-delta', delta ? `${delta > 0 ? '+' : ''}${delta}` : ''),
+          el('span', '', `${A.causes[h.cause] ?? h.cause}${h.paths?.length ? ` · ${h.paths.map((p) => p.split('/').pop()).join(', ')}` : ''}`),
+          el('small', '', strings.repair.history.ago(h.at)),
+        );
+        list.appendChild(row);
+      });
+      details.appendChild(list);
+      box.appendChild(details);
+    }
+    return [box];
+  }
+
   function renderRisks(state) {
     if (!state.open) return [el('p', 'side-empty', S.sidebar.noProject)];
-    if (!state.risks.length) return [el('p', 'side-empty', S.sidebar.noRisks)];
+    if (!state.risks.length) return [...auditHead(), el('p', 'side-empty', S.sidebar.noRisks)];
     const red = state.risks.filter((r) => r.level === 'red').length;
     return [
+      ...auditHead(),
       el('p', 'side-summary', S.sidebar.risksSummary(red, state.risks.length - red)),
       ...state.risks.map((file) => {
         const card = el('div', `risk-card ${file.level}`);
@@ -234,10 +277,28 @@ export function createShellView({ shellViewModel: vm, modeModel, approval = null
         const badge = el('span', `risk-icon ${file.level}`);
         badge.innerHTML = file.level === 'red' ? RISK_ICON.red : RISK_ICON.yellow; // static SVG, no project data
         head.append(badge, el('span', 'risk-level', LEVEL_LABEL[file.level]), repairButton(file));
+        const first = file.findings?.[0];
         const reason = modeModel.tech
-          ? strings.security.techReasons[file.reasonKey] ?? file.reason
+          ? (first ? strings.security.atLine(first.line, strings.security.techReasons[first.rule] ?? first.rule) : strings.security.techReasons[file.reasonKey] ?? file.reason)
           : file.reason || strings.security.reasons[file.reasonKey] || '';
         card.append(head, el('strong', 'risk-path', file.path), el('span', 'risk-reason', reason));
+        // every finding of the audit with its line (the first one is already the reason)
+        if (file.findings?.length > 1) {
+          const list = el('ul', 'risk-findings');
+          for (const f of file.findings) {
+            const text = modeModel.tech ? strings.security.techReasons[f.rule] : strings.security.reasons[f.rule];
+            list.appendChild(el('li', f.level, strings.security.atLine(f.line, text ?? f.rule)));
+          }
+          card.appendChild(list);
+        }
+        // a yellow finding the person looked at can be accepted as it is (red ones must be repaired)
+        if (file.level === 'yellow' && file.by === 'audit' && auditViewModel?.available) {
+          const ok = el('button', 'pill', A.accept);
+          ok.type = 'button';
+          ok.title = A.acceptTitle;
+          ok.addEventListener('click', (e) => { e.stopPropagation(); auditViewModel.accept(file.path); });
+          card.appendChild(ok);
+        }
         card.addEventListener('click', () => vm.showFile(file.path));
         return card;
       }),
@@ -403,7 +464,7 @@ export function createShellView({ shellViewModel: vm, modeModel, approval = null
 
   const clock = (at) => new Date(at).toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
 
-  // A row in "Detenidos": stopped by the person, starting again inside Platanus, or closed on its own
+  // A row in "Detenidos": stopped by the person, starting again inside Qubbot, or closed on its own
   function stoppedCard(row, state) {
     const { openMenu, busy } = state;
     const starting = row.state === 'starting';
@@ -466,7 +527,7 @@ export function createShellView({ shellViewModel: vm, modeModel, approval = null
     });
   }, { passive: true });
 
-  // --- Repair history: a task list of what Remi and the agent did ---
+  // --- Repair history: a task list of what Qubi and the agent did ---
   const H = strings.repair.history;
   const expanded = new Set(); // entries opened by the person (the newest unfinished one opens by itself)
 
@@ -516,6 +577,8 @@ export function createShellView({ shellViewModel: vm, modeModel, approval = null
       body.appendChild(details);
     }
     if (entry.error || entry.interrupted) body.appendChild(el('p', 'task-error', entry.interrupted ? H.interrupted : entry.error));
+    if (entry.stillRisky && entry.status !== 'verified') body.appendChild(el('p', 'task-error', entry.stillRisky));
+    if (entry.verifiedBy === 'audit') body.appendChild(el('p', 'task-reason', H.byAudit(entry.audit?.score)));
     const buttons = el('div', 'task-actions');
     const button = (label, run, primary = false) => {
       const b = el('button', `pill${primary ? ' active' : ''}`, label);
@@ -523,7 +586,7 @@ export function createShellView({ shellViewModel: vm, modeModel, approval = null
       b.addEventListener('click', (e) => run(e.currentTarget));
       buttons.appendChild(b);
     };
-    if (entry.status === 'fixed' || entry.status === 'planned') button(H.verify, () => repairViewModel.markFixed(entry.id), true);
+    if (entry.status === 'fixed' || entry.status === 'planned') button(repairViewModel.audited ? strings.repair.auditAgain : H.verify, () => repairViewModel.markFixed(entry.id), true);
     if (entry.status === 'failed') button(H.retry, (b) => actions.repair(entry.path, b), true);
     button(H.open, () => vm.showFile(entry.path));
     body.appendChild(buttons);
@@ -639,7 +702,7 @@ export function createShellView({ shellViewModel: vm, modeModel, approval = null
     const job = repairViewModel.store.state.job;
     status.replaceChildren(
       ...(state.open ? [] : [el('span', 'status-strong', S.status.noProject)]), // when open, the breadcrumb names it
-      ...(job ? [el('span', 'status-remi', `${strings.repair.name}: ${(job.source === 'agent' ? strings.repair.stepsAgent(job.agentLabel) : strings.repair.steps)[job.step]}`)] : []),
+      ...(job ? [el('span', 'status-qubi', `${strings.repair.name}: ${(job.source === 'agent' ? strings.repair.stepsAgent(job.agentLabel) : strings.repair.steps)[job.step]}`)] : []),
       el('span', 'status-mode', `${strings.mode.title}: ${strings.mode[modeModel.store.state.mode]}`),
       // Only when changes are not approved one by one, so the person always knows
       ...(approval && approval.store.state.mode !== 'manual'
@@ -664,5 +727,7 @@ export function createShellView({ shellViewModel: vm, modeModel, approval = null
   approval?.store.subscribe(() => render(vm.store.state));
   repairViewModel.store.subscribe(() => render(vm.store.state));
   repairHistory.store.subscribe(() => render(vm.store.state));
+  auditViewModel?.store.subscribe(() => (vm.store.state.side === 'risks' ? render(vm.store.state) : null));
+  securityModel?.store.subscribe(() => (vm.store.state.side === 'risks' ? render(vm.store.state) : null));
   serversViewModel.store.subscribe(() => (vm.store.state.side === 'servers' ? render(vm.store.state) : syncServerMenu()));
 }

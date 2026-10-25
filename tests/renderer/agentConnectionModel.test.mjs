@@ -21,12 +21,12 @@ function fakeService() {
 }
 const tick = () => new Promise((r) => setTimeout(r, 0));
 
-test('runs are serialized: the second starts only after the first is done', async () => {
+test('runs of one session are serialized: the second starts only after the first is done', async () => {
   const svc = fakeService();
   const m = new AgentConnectionModel(svc);
   await m.refresh();
   m.select('claude');
-  const first = m.ask('uno', 'sys');
+  const first = m.ask('uno', 'sys', { session: 'repair' });
   const second = m.ask('dos', 'sys', { session: 'repair' });
   await tick();
   assert.equal(svc.runs.length, 1);
@@ -275,4 +275,78 @@ test('a read-only question reaches the main process as readOnly (its agent gets 
   svc.finish(svc.runs.at(-1).runId, 'ok');
   await normal;
   localStorage.clear();
+});
+
+test('the line is per agent and session: workers never wait for the chat nor for each other', async () => {
+  localStorage.clear();
+  const svc = fakeService();
+  const m = new AgentConnectionModel(svc);
+  await m.refresh();
+  m.select('claude');
+  const chat = m.ask('hola', '');
+  const w1 = m.ask('parte 1', '', { session: 'worker-1', worker: 'w1-abc123', scope: ['apps/web'] });
+  const w2 = m.ask('parte 2', '', { session: 'worker-2', worker: 'w2-def456', scope: ['apps/api'] });
+  const chatAgain = m.ask('otra', '');
+  await tick();
+  assert.deepEqual(svc.runs.map((r) => r.req.session), ['chat', 'worker-1', 'worker-2'], 'the second chat question waits its turn');
+  for (const r of [...svc.runs]) svc.finish(r.runId, 'ok');
+  await Promise.all([chat, w1, w2]);
+  await tick();
+  assert.equal(svc.runs.length, 4);
+  svc.finish('4', 'ok');
+  await chatAgain;
+  localStorage.clear();
+});
+
+test('chat, repair, tour and review of one agent share one line (a repair only sees its own writes); workers do not wait for it', async () => {
+  localStorage.clear();
+  const svc = fakeService();
+  const m = new AgentConnectionModel(svc);
+  await m.refresh();
+  m.select('claude');
+  const chat = m.ask('hola', '');
+  const repair = m.ask('arregla', '', { session: 'repair' });
+  const review = m.ask('revisa', '', { session: 'review', readOnly: true });
+  const w1 = m.ask('parte 1', '', { session: 'worker-1', worker: 'w1-abc123', scope: ['apps/web'] });
+  await tick();
+  assert.deepEqual(svc.runs.map((r) => r.req.session), ['chat', 'worker-1']);
+  svc.finish('1', 'ok');
+  await chat;
+  await tick();
+  assert.deepEqual(svc.runs.map((r) => r.req.session), ['chat', 'worker-1', 'repair']);
+  svc.finish('3', 'ok');
+  await repair;
+  await tick();
+  assert.equal(svc.runs.at(-1).req.session, 'review');
+  svc.finish('4', 'ok'); svc.finish('2', 'ok');
+  await Promise.all([review, w1]);
+  localStorage.clear();
+});
+
+test('a worker run carries its id and its folders to the main process; other runs carry neither', async () => {
+  localStorage.clear();
+  const svc = fakeService();
+  const m = new AgentConnectionModel(svc);
+  await m.refresh();
+  m.select('claude');
+  const w = m.ask('parte 1', '', { session: 'worker-1', worker: 'w1-abc123', scope: ['apps/web'] });
+  const chat = m.ask('hola', '');
+  await tick();
+  const [worker, plain] = svc.runs.map((r) => r.req);
+  assert.equal(worker.worker, 'w1-abc123');
+  assert.deepEqual(worker.scope, ['apps/web']);
+  assert.equal(worker.continued, false, 'a worker starts its own conversation');
+  assert.ok(!('worker' in plain) && !('scope' in plain));
+  svc.finish('1', 'ok'); svc.finish('2', 'ok');
+  await Promise.all([w, chat]);
+  localStorage.clear();
+});
+
+test('the agent service hands the whole run request (worker, scope) to the bridge', async () => {
+  const { createAgentService } = await import('../../renderer/services/agentService.js');
+  let sent = null;
+  const bridge = { agents: { run: async (req) => { sent = req; return { ok: true, data: '1' }; } }, mcp: {} };
+  await createAgentService(bridge).run({ agent: 'claude', session: 'worker-1', worker: 'w1-abc123', scope: ['apps/web'] });
+  assert.equal(sent.worker, 'w1-abc123');
+  assert.deepEqual(sent.scope, ['apps/web']);
 });

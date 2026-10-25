@@ -1,6 +1,6 @@
 // Servers listening on this computer and their traffic light (spec/001-running-servers.md).
 // Rule: reachable from the network = yellow; only this computer = green (calm, no glow).
-// Also the servers stopped from Platanus in this session, which it can reactivate (they then run inside it).
+// Also the servers stopped from Qubbot in this session, which it can reactivate (they then run inside it).
 import { Observable } from '../core/observable.js';
 
 const MAX_SERVERS = 200;
@@ -19,7 +19,7 @@ function normalize(row) {
     address: typeof row.address === 'string' ? row.address : '',
     exposed,
     paused: row.paused === true,
-    managed: row.managed === true, // started by Platanus: it stops when the app closes
+    managed: row.managed === true, // started by Qubbot: it stops when the app closes
     level: exposed ? 'yellow' : 'green',
   };
 }
@@ -82,7 +82,7 @@ export class ServersModel {
     return this.#then(this.#service.resume(port));
   }
 
-  // Reactivates a stopped server inside Platanus (the main process asks first)
+  // Reactivates a stopped server inside Qubbot (the main process asks first)
   restart(id) {
     return this.#then(this.#service.restart(id));
   }
@@ -91,7 +91,7 @@ export class ServersModel {
     return this.#then(this.#service.cancelStart(id));
   }
 
-  // Last lines printed by a server Platanus started: key = its port (running) or its row id (Detenidos)
+  // Last lines printed by a server Qubbot started: key = its port (running) or its row id (Detenidos)
   async output(key) {
     const response = await Promise.resolve(this.#service.output(key)).catch(() => null);
     return response?.ok && typeof response.data === 'string' ? response.data : '';

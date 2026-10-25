@@ -4,7 +4,7 @@ import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { Observable } from '../../renderer/core/observable.js';
 import { createEventBus, EVENTS } from '../../renderer/core/eventBus.js';
-import { RobotViewModel, HOME } from '../../renderer/viewmodels/robotViewModel.js';
+import { RobotViewModel, HOME, SAY_MS } from '../../renderer/viewmodels/robotViewModel.js';
 
 function setup({ welcome = false, tour = false, open = true } = {}) {
   const bus = createEventBus();
@@ -176,4 +176,27 @@ test('while held it marks where it would land (folders of the open tree too); th
     assert.equal(vm.store.state.place.path, 'src/routes');
     assert.equal(vm.store.state.place.event.yellow, 0);
   } finally { mock.timers.reset(); }
+});
+
+test('say: a short line of the app with buttons, only while it waits; a button or the time takes it away', () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const { vm } = setup();
+    let ran = 0;
+    assert.equal(vm.say('Este proyecto usa Stripe.', [{ kind: 'connect', label: 'Conectar', run: () => ran++ }, { label: 'sin run' }]), true);
+    assert.equal(vm.store.state.bubble.text, 'Este proyecto usa Stripe.');
+    assert.equal(vm.store.state.bubble.said, true);
+    assert.deepEqual(vm.store.state.bubble.actions.map((a) => a.label), ['Conectar'], 'only buttons that can run');
+    vm.quiet(); // a button answered it
+    assert.equal(vm.store.state.bubble, null);
+    vm.say('Otra vez');
+    mock.timers.tick(SAY_MS);
+    assert.equal(vm.store.state.bubble, null, 'it goes by itself');
+    assert.equal(vm.say('   '), false, 'nothing to say');
+    vm.grab();
+    assert.equal(vm.say('Hola'), false, 'never while the person holds it');
+    assert.equal(ran, 0);
+  } finally {
+    mock.timers.reset();
+  }
 });

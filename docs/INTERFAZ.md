@@ -1,4 +1,4 @@
-# Interfaz de Platanus
+# Interfaz de Qubbot
 
 Guía de cómo está armada la interfaz y dónde vive cada cosa en el código. Para arrancar la app, ver el
 [README](../README.md); para las reglas del código (MVVM, textos, git flow), ver [CLAUDE.md](../CLAUDE.md).
@@ -12,10 +12,10 @@ El **mapa ocupa toda la ventana**. Todo lo demás flota encima y se puede plegar
 | Barra de íconos | Arriba, centrada en el mapa (no se mueve al abrir el panel o el chat) | Paneles (Explorador, Riesgos, Reparaciones, Conecta tu agente) y vistas (Mapa, Git). Solo íconos: el nombre y la descripción salen al pasar el mouse. **Se ordena arrastrando** (o Alt+← / Alt+→) y el orden se recuerda. |
 | Botón del panel | Arriba a la izquierda del mapa | Abre o cierra el panel lateral del ícono marcado. |
 | Ruta | Al lado del botón del panel | El proyecto y la carpeta abierta (`team-12 / src`; tocar el proyecto o Esc la cierra) y sus archivos por semáforo: en riesgo, por revisar, seguros. |
-| Panel lateral | Flota a la izquierda | Explorador (Vibe: guía con nombres sencillos; Dev: árbol completo con búsqueda), Riesgos (la única lista de riesgos), Reparaciones (historial de Remi y del agente), Conecta tu agente. Queda fijo junto al dock; el "–" de su encabezado lo cierra, como el del chat. |
+| Panel lateral | Flota a la izquierda | Explorador (Vibe: guía con nombres sencillos; Dev: árbol completo con búsqueda), Riesgos (la única lista de riesgos), Reparaciones (historial de Qubi y del agente), Conecta tu agente. Queda fijo junto al dock; el "–" de su encabezado lo cierra, como el del chat. |
 | Chat | Fijo abajo a la derecha (no se arrastra) | **Pin** 📌: lo fija como columna y el mapa le deja su espacio. **Borde izquierdo**: cambia el ancho (300–720 px, doble clic lo resetea). Minimizado o cerrado, queda el botón flotante del agente (abajo a la derecha) con su menú. |
 | Tarjeta de seguridad | Fija arriba a la izquierda del mapa, en una fila compacta (reemplaza al antiguo semáforo) | Puntaje, archivos, en riesgo, por revisar, commits. Sus números de riesgo abren la lista de Riesgos. No se mueve ni se minimiza. |
-| Menú de arriba (macOS) | Barra del sistema | Solo Platanus, Edición y Ventana: los menús de la app (Archivo, Ver, Agente…) están dentro de la ventana. |
+| Menú de arriba (macOS) | Barra del sistema | Solo Qubbot, Edición y Ventana: los menús de la app (Archivo, Ver, Agente…) están dentro de la ventana. |
 
 Cada cosa aparece **una sola vez**: la lista de riesgos está en el panel, los totales en la tarjeta de
 seguridad y la ruta solo cuenta la carpeta actual.
@@ -32,7 +32,7 @@ seguridad y la ruta solo cuenta la carpeta actual.
     `login.js`…"), luego cada paso ("Leí `login.js`", "Marqué `db.js` en rojo" con su punto de color;
     al tocar el nombre se abre el archivo en el chat) y, al terminar, la lista se pliega en un resumen ("Leí 3 archivos · 1 en
     rojo") y dice cuánto tardó. Sin modelo, razonamiento ni tokens (`renderer/models/runStory.js`).
-  - En **Dev** muestra el modelo, un cronómetro, los pasos técnicos (herramientas de Platanus con el
+  - En **Dev** muestra el modelo, un cronómetro, los pasos técnicos (herramientas de Qubbot con el
     archivo que tocan; subagentes con sus pasos anidados), el razonamiento plegado y al final tiempo,
     turnos y tokens. Cambiar de modo redibuja las tarjetas que ya están.
 - **Comparar respuestas:** la misma pregunta a dos agentes a la vez (selector del chat o el panel).
@@ -85,14 +85,14 @@ seguridad y la ruta solo cuenta la carpeta actual.
     `electron/main.js`.
 - **Mapa → chat como tarjetas:** abrir una carpeta muestra su semáforo como barra (rojo/amarillo/verde)
   con "Ver los riesgos", "Reparar lo más grave" y "Explícame esta carpeta"; tocar un archivo muestra su
-  nivel, el motivo y "¿Qué es este archivo?", "Reparar con Remi", "Auditar en el chat".
+  nivel, el motivo y "¿Qué es este archivo?", "Reparar con Qubi", "Auditar en el chat".
 - **Mientras trabaja** (efectos de [libraries.dev](https://libraries.dev)):
   - **Orbe:** aparece desde el primer momento, en lugar de los tres puntos, en el avatar, en
-    "Pensando…" y en cada paso del agente o de Remi ("Leyendo un archivo…"). Su forma dice qué hace:
+    "Pensando…" y en cada paso del agente o de Qubi ("Leyendo un archivo…"). Su forma dice qué hace:
     buscar, leer, escribir o coordinar ayudantes.
   - Hay un solo orbe por actividad: el paso en curso. Si no hay ninguno, lo lleva la cabecera de la
     tarjeta, la fila "Pensando…" o el avatar. Los pasos anteriores quedan con su ícono y un check.
-  - Los nueve estados de la librería tienen su tarea en Platanus (`STEP_ORB`):
+  - Los nueve estados de la librería tienen su tarea en Qubbot (`STEP_ORB`):
 
     | Estado | Tarea |
     |---|---|
@@ -134,7 +134,7 @@ seguridad y la ruta solo cuenta la carpeta actual.
   - Mientras espera tu aprobación (modo Manual) muestra el **cambio propuesto**, así ves qué apruebas.
     Al guardarse muestra el **cambio aplicado**, y si lo rechazas, "No aprobado".
   - En Dev viene abierto. En Vibe va plegado ("Ver lo que cambió · 2 líneas nuevas · 1 quitada").
-  - Funciona igual en las reparaciones de Remi.
+  - Funciona igual en las reparaciones de Qubi.
 - **Encabezado del chat:** el logo y el nombre del agente conectado, y cómo está conectado ("Con tu
   suscripción" o "Con clave de API ··1234"). El modelo y el esfuerzo están en el botón de la caja de texto.
 - **Menú del agente** (botón de la caja de texto: logo, modelo y barras de esfuerzo):
@@ -145,7 +145,7 @@ seguridad y la ruta solo cuenta la carpeta actual.
   - **Más opciones**, plegado: modelo, cuánto piensa y comparar respuestas.
   - La primera vez, la app elige sola el mejor agente conectado (Claude, ChatGPT · Codex, Grok).
 - **Más agentes** (investigados en la documentación oficial y el código fuente de cada uno, y verificados):
-  - **OpenCode** responde dentro del chat, encerrado en las herramientas de Platanus (`electron/opencode.js`):
+  - **OpenCode** responde dentro del chat, encerrado en las herramientas de Qubbot (`electron/opencode.js`):
     - Lleva su propia configuración, con un agente `platanus` que niega todo salvo `platanus_*`, y
       apaga los agentes de OpenCode.
     - Corre en un entorno sin variables `OPENCODE_*` heredadas, con la configuración global aislada y
@@ -166,10 +166,10 @@ seguridad y la ruta solo cuenta la carpeta actual.
     `ANTHROPIC_API_KEY`, `OPENAI_API_KEY` o `XAI_API_KEY`.
   - Una clave con formato equivocado no se guarda, y si el sistema no puede cifrar, tampoco.
 
-- **Una reparación = una tarjeta:** Remi y el agente, con lo que hacen ahora ("Leí secrets.test.mjs",
+- **Una reparación = una tarjeta:** Qubi y el agente, con lo que hacen ahora ("Leí secrets.test.mjs",
   "Marqué secrets.test.mjs en verde"), la explicación del agente y el resultado al pie.
   - Al terminar, los pasos se pliegan en un resumen ("Leí 1 archivo · 1 en verde").
-  - Mientras dura, el mapa no publica tarjetas de carpeta o archivo, aunque Remi lo mueva.
+  - Mientras dura, el mapa no publica tarjetas de carpeta o archivo, aunque Qubi lo mueva.
   - Una pregunta que espera a que el agente termine otra cosa dice "Esperando turno…" con un orbe lento.
   - El texto que el agente escribe después de usar una herramienta empieza un párrafo nuevo.
 - **Conecta tu agente:** tarjetas por agente (sesión, versión, uso, último error, Usar / Entrar / Probar),
@@ -203,12 +203,12 @@ Detalle: `docs/features/recorrido/README.md`. Grabación para el video del produ
 
 Las palabras de la persona nunca se copian al prompt: solo se usan para elegir pistas del JSON.
 
-## Reparaciones (Remi)
+## Reparaciones (Qubi)
 
-"Reparar" (en Riesgos, en el chat o "Reparar lo más grave") hace que Remi salte al mapa y camine a la
+"Reparar" (en Riesgos, en el chat o "Reparar lo más grave") hace que Qubi salte al mapa y camine a la
 carpeta. Si hay un agente conectado, el agente lee el archivo y puede proponer un arreglo con
 `platanus_write_file`: **cada cambio pide permiso en un cuadro de diálogo** y guarda una copia para
-deshacerlo. El chat explica qué encontró, qué cambió y qué falta. Sin agente, Remi deja un plan.
+deshacerlo. El chat explica qué encontró, qué cambió y qué falta. Sin agente, Qubi deja un plan.
 Cada trabajo queda en **Reparaciones** con su estado: trabajando, plan listo, por verificar, verificado,
 falló. Desde ahí se marca como verificado, se deshace un cambio o se reintenta.
 
@@ -229,11 +229,11 @@ falló. Desde ahí se marca como verificado, se deshace un cambio o se reintenta
 | `views/ui/agentPickerView.js`, `effortSlider.js`, `chatMenuView.js` | Selector de agente/modelo/esfuerzo/comparar, barra de esfuerzo, menú "+" y del botón flotante. |
 | `views/ui/agentConnectView.js` | Panel "Conecta tu agente". |
 | `views/ui/devTreeView.js` | Explorador en modo Dev (búsqueda, filtros, teclado). |
-| `views/ui/repairPanelView.js`, `remiJump.js`, `views/scene/remiView.js` | Remi: tarjeta, salto por la interfaz y personaje 3D en el mapa. |
+| `views/ui/repairPanelView.js`, `qubiJump.js`, `views/scene/qubiView.js` | Qubi: tarjeta, salto por la interfaz y personaje 3D en el mapa. |
 | `views/ui/hudView.js`, `panelsView.js` | Tarjeta de seguridad, ruta, esquema de Supabase y resumen de Git. |
 | `models/agentConnectionModel.js` | Qué agente, modelo y esfuerzo; una pregunta a la vez por agente; estadísticas; actividad MCP. |
 | `viewmodels/chatViewModel.js` | Conversación, tarjetas de respuesta (pasos, subagentes, resultado), sugerencias. |
-| `viewmodels/repairViewModel.js`, `models/repairHistoryModel.js` | Trabajo de Remi y su historial. |
+| `viewmodels/repairViewModel.js`, `models/repairHistoryModel.js` | Trabajo de Qubi y su historial. |
 | `electron/agentEvents.js` | Traduce la salida de cada CLI (Claude/Grok/Codex) a eventos del chat. Probado aparte. |
 
 Estilos: `styles/main.css` (mapa y escena), `shell.css` (la interfaz de vidrio, al final están las
@@ -270,7 +270,7 @@ MCP, solo legible por tu usuario). Las copias de los cambios del agente van a `~
 
 ## Seguridad (resumen)
 
-- El agente solo actúa con las herramientas de Platanus (MCP local); Claude con `--tools ""`, Grok y Codex
+- El agente solo actúa con las herramientas de Qubbot (MCP local); Claude con `--tools ""`, Grok y Codex
   sin terminal ni edición propia. No aflojar esas opciones.
 - Secretos (`.env*`, llaves, `.git/`, `.ssh/`, `.npmrc`, `credentials.json`…) nunca se leen ni se
   escriben, tampoco a través de enlaces simbólicos.

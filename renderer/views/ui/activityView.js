@@ -1,4 +1,4 @@
-// Rows that tell what is happening in the chat outside an agent's run card: Remi's and the agent's
+// Rows that tell what is happening in the chat outside an agent's run card: Qubi's and the agent's
 // steps ("Leyendo un archivo…") and the result of a repair. A working step shows a thinking orb
 // (libraries.dev: one per active step, from the first moment, its state names the activity); a finished
 // one its tool icon with a check. Results show their own icon. Text only (textContent): never parsed as HTML.

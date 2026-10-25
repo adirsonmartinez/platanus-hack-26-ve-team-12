@@ -1,8 +1,8 @@
-# Remi 3D model
+# Qubi 3D model
 
-Put the character model here and the map uses it instead of the blocky Remi:
+Put the character model here and the map uses it instead of the blocky Qubi:
 
-- `remi.glb` (Sketchfab: Download 3D model → glTF "Autoconverted format (glb)"), or
+- `qubi.glb` (Sketchfab: Download 3D model → glTF "Autoconverted format (glb)"), or
 - the unzipped glTF download (`scene.gltf` with its `scene.bin` and `textures/`).
 
 Current source: "Fix It Felix" by patrick.ambrose2840 on Sketchfab

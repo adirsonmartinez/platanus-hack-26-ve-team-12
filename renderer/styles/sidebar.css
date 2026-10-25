@@ -58,7 +58,7 @@
 .side-row .chevron { transition: transform .24s cubic-bezier(.2, .8, .2, 1); }
 .side-row.folder.open .chevron { transform: rotate(90deg); }
 
-/* ---------- Repair pill: hammer strike on hover, shimmer while Remi works ---------- */
+/* ---------- Repair pill: hammer strike on hover, shimmer while Qubi works ---------- */
 .risk-head .pill.repair::before {
   content: "🔨";
   display: inline-block;

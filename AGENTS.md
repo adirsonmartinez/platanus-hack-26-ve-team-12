@@ -1,4 +1,4 @@
-# AGENTS.md — Platanus (team-12)
+# AGENTS.md — Qubbot (team-12)
 
 > Before working, read `MEMORY.md` (the project's live state) and the skill `.claude/skills/platanus-ade/`. At the end of every task, update `MEMORY.md` with what changed and what you learned.
 
@@ -6,7 +6,7 @@ Instructions for AI coding agents working on this repo (Claude Code, Codex, Curs
 The full conventions are in [`CLAUDE.md`](CLAUDE.md); read it first. Key points:
 
 - **Code in English, user-facing text in simple Spanish**, only in `renderer/i18n/es.js` and
-  `electron/strings.js`. The people using Platanus are not developers: no jargon.
+  `electron/strings.js`. The people using Qubbot are not developers: no jargon.
 - **MVVM** in the renderer (models → view models → views); tests first in `tests/renderer/`; `npm test`.
 - **Security rules for the agents are not negotiable** (see CLAUDE.md → "Agents and repairs").
 - **Git flow**: work on a `feature/*` branch, merge into `develop` with `--no-ff`. Releases only when asked.

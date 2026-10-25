@@ -1,5 +1,5 @@
-// How to connect an editor or another agent CLI to Platanus' local MCP server (the "Conecta tu agente"
-// panel and the agent menu). Agents that cannot be locked to the Platanus tools inside the chat (Cursor,
+// How to connect an editor or another agent CLI to Qubbot' local MCP server (the "Conecta tu agente"
+// panel and the agent menu). Agents that cannot be locked to the Qubbot tools inside the chat (Cursor,
 // Gemini, Qwen; Kimi until it is installed and checked) connect this way from their own app.
 // Install commands and config files: official docs, checked in the agent research (docs/INTERFAZ.md).
 

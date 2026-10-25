@@ -63,8 +63,10 @@ export class AgentConnectionModel {
   #service;
   #hadChoice = false;
   #turns = new Map(); // "agent:session" -> messages sent (to continue the conversation)
-  #queues = new Map(); // agent -> promise: one run at a time per agent (chat and Remi never talk over
-                       // each other); different agents (compare) run at the same time
+  #queues = new Map(); // agent (or "agent:worker-N") -> promise: chat, repair, tour and review of one
+                       // agent run one at a time (they never talk over each other, and a repair only
+                       // sees its own writes); each of Qubi's workers has its own line, and main puts
+                       // in line the agents that cannot run at once (Grok)
 
   // agents: [{ id, label, installed, loggedIn: true | false | null }]
   // stats: { [agent]: { runs, tokens, lastUsedAt, lastError } } · activity: MCP calls, newest first
@@ -173,15 +175,18 @@ export class AgentConnectionModel {
   }
 
   // Runs one message with the selected agent. Resolves with { text, error } (never rejects).
-  // onTool(name) is called each time the agent uses a Platanus tool; onText(delta) as the answer streams.
-  // session: 'chat' (continues the conversation) or 'repair' (Remi's jobs, a separate conversation).
+  // onTool(name) is called each time the agent uses a Qubbot tool; onText(delta) as the answer streams.
+  // session: 'chat' (continues the conversation), 'repair' (Qubi's jobs, a separate conversation),
+  // 'worker-1'…'worker-3' (Qubi's team, teamViewModel.js) or 'review' (its read-only audit).
   // signal (AbortSignal): a waiting question never starts; a running one stops its CLI.
   // onStart(runId): called when the CLI actually starts (after waiting in line).
   // agent / model / effort: another agent than the selected one (compare, "Probar")
   // voice: { mode: 'vibe'|'dev', recent: [the person's last messages] } -> the main process builds the
   // prompt from agent/voice.json and the mode's skill (systemPrompt then only replaces the base rules)
   // readOnly: this run gets the read-only MCP address (explaining, the tour): it can look, not change
-  ask(prompt, systemPrompt, { onTool, onText, onThinking, onEvent, onStart, signal, session = 'chat', voice = null, readOnly = false, ...choice } = {}) {
+  // worker / scope: a run of Qubi's team (session 'worker-N'): its id ('w1-abc123') and the folders it
+  // may write in; main gives it an MCP address that refuses writes anywhere else
+  ask(prompt, systemPrompt, { onTool, onText, onThinking, onEvent, onStart, signal, session = 'chat', voice = null, readOnly = false, worker = null, scope = null, ...choice } = {}) {
     // The choice is taken now: a question waiting in line keeps the agent it was asked to
     const state = this.store.state;
     const agent = choice.agent ?? state.selected;
@@ -189,14 +194,15 @@ export class AgentConnectionModel {
     const catalog = CATALOG[agent];
     const model = choice.model ?? (own ? state.model : '');
     const effort = choice.effort ?? (own ? state.effort : catalog?.efforts.includes(state.effort) ? state.effort : catalog?.defaultEffort ?? 'low');
-    const run = () => this.#run(prompt, systemPrompt, { onTool, onText, onThinking, onEvent, onStart, signal, session, agent, model, effort, voice, readOnly });
-    const queue = this.#queues.get(agent) ?? Promise.resolve();
+    const run = () => this.#run(prompt, systemPrompt, { onTool, onText, onThinking, onEvent, onStart, signal, session, agent, model, effort, voice, readOnly, worker, scope });
+    const line = session.startsWith('worker-') ? `${agent}:${session}` : agent;
+    const queue = this.#queues.get(line) ?? Promise.resolve();
     const result = queue.then(run, run);
-    this.#queues.set(agent, result.catch(() => {}));
+    this.#queues.set(line, result.catch(() => {}));
     return result;
   }
 
-  async #run(prompt, systemPrompt, { onTool, onText, onThinking, onEvent, onStart, signal, session, agent, model, effort, voice, readOnly }) {
+  async #run(prompt, systemPrompt, { onTool, onText, onThinking, onEvent, onStart, signal, session, agent, model, effort, voice, readOnly, worker, scope }) {
     if (signal?.aborted) return { text: '', error: 'cancelled' };
     const key = `${agent}:${session}`;
     const turns = this.#turns.get(key) ?? 0;
@@ -221,7 +227,7 @@ export class AgentConnectionModel {
         if (!runId) return void early.push(e);
         if (e.runId === runId) handle(e);
       });
-      this.#service.run({ agent, prompt, systemPrompt, model, effort, session, continued: session === 'chat' && turns > 0, ...(voice ? { voice } : {}), ...(readOnly ? { readOnly: true } : {}) }).then((r) => {
+      this.#service.run({ agent, prompt, systemPrompt, model, effort, session, continued: session === 'chat' && turns > 0, ...(voice ? { voice } : {}), ...(readOnly ? { readOnly: true } : {}), ...(worker ? { worker, scope: scope ?? [] } : {}) }).then((r) => {
         if (!r.ok) { off(); return resolve(finish({ text: '', error: r.error })); }
         runId = r.data;
         onStart?.(runId);

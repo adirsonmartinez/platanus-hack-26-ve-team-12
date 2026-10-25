@@ -1,7 +1,7 @@
 // Scenarios of the simulated agent (scripts/sim/fakeAgent.js). Each one is a list of steps, played in
 // order with realistic pauses:
 //   { think }            reasoning                      { say }    a piece of the answer (streams in chunks)
-//   { tool, input }      a Platanus tool, really called  { task, steps }  a helper (subagent) and its steps
+//   { tool, input }      a Qubbot tool, really called  { task, steps }  a helper (subagent) and its steps
 //   { crash }            the CLI dies with this exit code
 // Pick one by writing "[sim:nombre]" in the message. A repair prompt gets `repair`; the "Mejorar mi
 // mensaje" prompt gets `refine`; anything else gets `revision`.
@@ -9,8 +9,8 @@
 // A small file the runner (run.mjs) creates before the change scenarios and deletes afterwards
 const FIXTURE = {
   path: 'platanus-sim/nota.txt',
-  before: 'Nota de prueba de Platanus\nversion: 1\nclave: (vacía)\nautor: simulador\n',
-  after: 'Nota de prueba de Platanus\nversion: 2\nclave: (vacía)\nautor: simulador\nrevisado: sí\n',
+  before: 'Nota de prueba de Qubbot\nversion: 1\nclave: (vacía)\nautor: simulador\n',
+  after: 'Nota de prueba de Qubbot\nversion: 2\nclave: (vacía)\nautor: simulador\nrevisado: sí\n',
 };
 
 const TOUR_FERIA = {
@@ -71,7 +71,7 @@ const scenarios = {
 
   secreto: () => [
     { tool: 'read_file', input: { path: '.env' } },
-    { say: 'Platanus no me deja abrir `.env`, y está bien: ahí se guardan claves.\n\n> [!idea] Lo importante\n> Que ese archivo nunca se suba a internet. Puedo revisar si está protegido.' },
+    { say: 'Qubbot no me deja abrir `.env`, y está bien: ahí se guardan claves.\n\n> [!idea] Lo importante\n> Que ese archivo nunca se suba a internet. Puedo revisar si está protegido.' },
     { say: SUGGEST(['¿Está protegido mi .env?']) },
   ],
 
@@ -168,7 +168,7 @@ function pickScenario(prompt, systemPrompt = '', fallback = process.env.PLATANUS
   const tag = /\[sim:([a-z]+)\]/i.exec(prompt)?.[1]?.toLowerCase();
   if (tag && scenarios[tag]) return { name: tag, steps: scenarios[tag](prompt) };
   if (/asistente de escritura/i.test(systemPrompt)) return { name: 'refine', steps: scenarios.refine(prompt) };
-  if (/guía de Platanus/i.test(systemPrompt)) return { name: 'tour', steps: scenarios.tour(prompt) };
+  if (/guía de Qubbot/i.test(systemPrompt)) return { name: 'tour', steps: scenarios.tour(prompt) };
   if (/^\s*repara/i.test(prompt) || /repara(r)? el archivo/i.test(prompt)) return { name: 'repair', steps: scenarios.repair(prompt) };
   if (fallback && scenarios[fallback]) return { name: fallback, steps: scenarios[fallback](prompt) };
   return { name: 'revision', steps: scenarios.revision(prompt) };

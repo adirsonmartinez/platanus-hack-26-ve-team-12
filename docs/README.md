@@ -1,6 +1,6 @@
 # Documentación de funciones
 
-Cada función de Platanus tiene su página en `docs/features/<nombre>/README.md`: cómo se usa, sus estados, sus reglas de seguridad, los archivos que la componen y cómo probarla. La spec de cada una (qué tiene que hacer y por qué) está en `spec/`.
+Cada función de Qubbot tiene su página en `docs/features/<nombre>/README.md`: cómo se usa, sus estados, sus reglas de seguridad, los archivos que la componen y cómo probarla. La spec de cada una (qué tiene que hacer y por qué) está en `spec/`.
 
 | Función | Documentación | Spec | Rama |
 |---|---|---|---|

@@ -1,4 +1,4 @@
-// History of repairs, like a task list: what Remi (and the user's agent) worked on, what changed and
+// History of repairs, like a task list: what Qubi (and the user's agent) worked on, what changed and
 // what is still pending. Remembered per project in this computer (localStorage).
 import { Observable } from '../core/observable.js';
 

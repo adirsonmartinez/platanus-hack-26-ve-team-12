@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8" />
   <!-- Only local code is loaded: no remote scripts inside the app ('unsafe-inline' is for the import map) -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://api.elevenlabs.io wss://api.elevenlabs.io wss://api.x.ai" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Platanus</title>
+  <title>Qubbot</title>
   <link rel="stylesheet" href="styles/main.css" />
   <link rel="stylesheet" href="styles/shell.css" />
   <link rel="stylesheet" href="styles/sidebar.css" />
@@ -21,6 +21,8 @@
   <link rel="stylesheet" href="styles/panel.css" />
   <link rel="stylesheet" href="styles/editor.css" />
   <link rel="stylesheet" href="styles/titlebar.css" />
+  <link rel="stylesheet" href="styles/call.css" />
+  <link rel="stylesheet" href="styles/services.css" />
   <script type="importmap">
     { "imports": { "three": "../node_modules/three/build/three.module.js", "three/addons/": "../node_modules/three/examples/jsm/", "thinking-orbs/engine": "./vendor/thinking-orbs/engine.es.js", "@mediapipe/tasks-vision": "../node_modules/@mediapipe/tasks-vision/vision_bundle.mjs" } }
   </script>
@@ -36,7 +38,7 @@
   </svg>
   <header id="titlebar">
     <div class="brand">
-      <span class="brand-mark" aria-hidden="true">P</span>
+      <img class="brand-mark" src="images/logo.png" alt="" aria-hidden="true" width="24" height="24">
       <span id="brand-name" class="brand-name"></span>
       <span id="project-chip" class="project-chip" hidden><i></i><span id="project-chip-name"></span></span>
     </div>
@@ -72,7 +74,10 @@
     <button type="button" draggable="true" role="tab" data-stage="git"><i data-icon="gitBranch"></i><span data-i18n="stageTabs.git"></span><em class="tab-badge"></em><span class="tip"></span></button>
   </div>
   <div id="hover-card" class="hover-card" hidden></div>
-  <div id="remi-layer" class="remi-layer"></div>
+  <div id="qubi-layer" class="qubi-layer"></div>
+  <!-- Call with Qubi (views/ui/callBarView.js), only during a call: a panel above Qubi's head that follows him;
+       at the bottom center of the map when he is not on screen -->
+  <div id="call-bar" class="call-bar" hidden></div>
   <div id="controls">
     <div class="group">
       <button id="zoom-in" data-i18n-title="controls.zoomIn" data-i18n-aria="controls.zoomIn">
@@ -152,6 +157,9 @@
         <strong data-i18n="chat.agentName"></strong>
         <span data-i18n="chat.online"></span>
       </div>
+      <button class="chat-toggle chat-call" id="chat-call" type="button" data-i18n-title="call.button" data-i18n-aria="call.button">
+        <i data-icon="call"></i>
+      </button>
       <button class="chat-toggle chat-pin" id="chat-pin" type="button" aria-pressed="false">
         <i data-icon="pin"></i>
       </button>
@@ -193,6 +201,9 @@
     </nav>
     <div id="status-items"></div>
   </footer>
+
+  <!-- «Qubi está fuera de conexión»: how to connect a voice service (views/ui/voiceConnectView.js) -->
+  <div id="voice-connect" class="voice-connect" hidden></div>
 
   <script type="module" src="main.js"></script>
 </body>

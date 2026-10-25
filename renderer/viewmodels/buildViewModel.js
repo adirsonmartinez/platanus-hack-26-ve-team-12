@@ -4,6 +4,8 @@
 // new. Explaining runs (read-only) build nothing; a card that disappears lets its work go. A folder the map does not draw (the map only shows problems) appears as a temporary "site"
 // while the work lasts (views/scene/buildSiteView.js); the robot is driven through `guide`
 // (views/scene/robotView.js), like the tour. One file at a time, in the order the agent wrote them.
+// Qubi's team is not built here: its cards (run.worker) and its saves (agent:changed with `worker`, which
+// this view model never listens to) belong to teamViewModel.js.
 import { Observable } from '../core/observable.js';
 import { clamp } from '../core/format.js';
 import { strings } from '../i18n/es.js';
@@ -55,7 +57,8 @@ export class BuildViewModel {
     const seen = new Set();
     for (const m of state.messages) {
       const run = m.run;
-      if (!run) continue;
+      // a worker of Qubi's team (run.worker) has its own mini robot (teamViewModel.js, teamView.js)
+      if (!run || run.worker) continue;
       for (const s of run.steps ?? []) {
         if (s.name !== 'write_file' || !s.target) continue;
         const key = `${m.id}:${s.id}`;
