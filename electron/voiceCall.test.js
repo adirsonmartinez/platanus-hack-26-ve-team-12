@@ -242,7 +242,7 @@ test('a voice that cannot be added (full slots) does not stop the call: Qubi kee
   const result = await createVoiceCall({ getKey: ONLY_ELEVEN, file, makeClient: () => client }).start({ ...REQ, voice: 'maggie' });
   assert.equal(result.ok, true);
   assert.equal(result.voiceId, null);
-  assert.equal(voicesCache(file).ids[maggie.id], undefined, 'not cached: tried again next time');
+  assert.equal(voicesCache(file).ids[maggie.id], undefined, 'no id cached');
 
   // a network failure while checking the voice is the call's failure
   const offline = fakeClient({ fail: { voiceGet: [Object.assign(new Error('fetch failed'), { cause: { code: 'ENOTFOUND' } })] } });
@@ -477,6 +477,44 @@ test('Grok: errors map like ElevenLabs ones and never carry the key', async () =
   }
   const noFetch = createVoiceCall({ getKey: keys({ grok: XKEY }), file: tmp(), fetchFn: null });
   assert.deepEqual(await noFetch.start(REQ), { ok: false, reason: 'network' });
+});
+
+test('a voice the account refused (free plan) is not asked again for an hour: the call starts fast', async () => {
+  const file = tmp();
+  fs.writeFileSync(file, JSON.stringify({ agentId: 'agent_1', hash: HASH, voiceMode: 'realtime' }));
+  let now = 1_000_000;
+  const paid = () => httpError(400, { detail: { status: 'free_users_not_allowed', code: 'paid_plan_required' } });
+  const client = fakeClient({ missing: [JUAN], fail: { voiceShare: [paid(), paid(), paid()] } });
+  const call = createVoiceCall({ getKey: ONLY_ELEVEN, file, makeClient: () => client, now: () => now });
+  assert.equal((await call.start(REQ)).ok, true);
+  const first = client.ops().filter((op) => op === 'voiceGet' || op === 'voiceShare');
+  assert.deepEqual(first, ['voiceGet', 'voiceShare'], 'tried once per start, not once for the agent and again for the call');
+  client.calls.length = 0;
+  assert.equal((await call.start(REQ)).ok, true);
+  assert.deepEqual(client.ops(), ['signedUrl'], 'the next call goes straight to the signed URL');
+  // another app start (same file) remembers it too
+  const again = fakeClient({ missing: [JUAN] });
+  await createVoiceCall({ getKey: ONLY_ELEVEN, file, makeClient: () => again, now: () => now }).start(REQ);
+  assert.deepEqual(again.ops(), ['signedUrl']);
+  // an hour later it tries again (the plan may have changed)
+  now += 60 * 60 * 1000 + 1;
+  client.calls.length = 0;
+  await call.start(REQ);
+  assert.ok(client.ops().includes('voiceGet'));
+});
+
+test('warm: loads the client ahead of the first call (no network), and only with an ElevenLabs key', async () => {
+  let made = 0;
+  const client = fakeClient();
+  await createVoiceCall({ getKey: ONLY_ELEVEN, file: tmp(), makeClient: () => { made++; return client; } }).warm();
+  assert.equal(made, 1);
+  assert.deepEqual(client.calls, [], 'nothing is asked to ElevenLabs');
+  let none = 0;
+  await createVoiceCall({ getKey: keys({ grok: XKEY }), file: tmp(), makeClient: () => { none++; return client; } }).warm();
+  await createVoiceCall({ getKey: keys({}), file: tmp(), makeClient: () => { none++; return client; } }).warm();
+  assert.equal(none, 0);
+  // a failing load is not the app's problem: the call will report it
+  await createVoiceCall({ getKey: ONLY_ELEVEN, file: tmp(), makeClient: () => { throw new Error('boom'); } }).warm();
 });
 
 test('the agent falls back to a premade voice when Juan cannot be added (a key without voices_write)', async () => {

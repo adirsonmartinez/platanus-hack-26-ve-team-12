@@ -15,7 +15,7 @@ import { createHandTrackingService } from './services/handTrackingService.js';
 import { createVoiceService } from './services/voiceService.js';
 import { createRunService } from './services/runService.js';
 import { createSecurityService } from './services/securityService.js';
-import { openSession, openSimulatedSession } from './models/callSession.js';
+import { openSession, openSimulatedSession, warmSession } from './models/callSession.js';
 import { createProjectMemory, memoryText } from './models/projectMemoryModel.js';
 
 import { ProjectModel } from './models/projectModel.js';
@@ -373,6 +373,8 @@ robotDialogViewModel.store.subscribe(async ({ phase }, prev) => {
   if (!ready?.elevenlabs?.ready && !ready?.grok?.ready) return;
   if (robotDialogViewModel.store.state.phase === 'interview') callViewModel.start({ welcome: true });
 });
+// The voice SDK loads while the person looks at the start screen, so the first call does not wait for it
+if (callViewModel.canUseVoice) setTimeout(() => warmSession(), 2500);
 // …and the other way: Vibe / Dev in the app sets Qubi's technical level
 modeModel.store.subscribe(({ mode }) => callViewModel.syncMode(mode === 'tech'), { immediate: true });
 // The Simulator agent (PLATANUS_SIM=1) no longer turns the simulated call on by itself: the person saw

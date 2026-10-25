@@ -48,6 +48,7 @@ const VOICE_WORDS = { juan: 'juan', julio: 'julio', josemanuel: 'josemanuel', 'j
 const providerOfVoice = (voice) => Object.keys(VOICE_GROUPS).find((p) => VOICE_GROUPS[p].includes(voice)) ?? null;
 export const MANUAL_MS = 8000;         // seguir_manual: the call ends by then even if Qubi says no goodbye
 export const RING_MS = 0;              // no phone ring: Qubi talks as soon as the session is ready
+export const READY_MS = 4000;          // the panel stops loading by then even if Qubi has not spoken yet
 // The voice platform gives these tools 60 s (electron/voiceCall.js PERMISSION_WAIT). The person's yes must
 // come well before that, so the action itself still fits; a tool past 60 s is reported as failed to Qubi
 export const PERMISSION_MS = 45_000;   // a permission with no answer is a no
@@ -235,6 +236,7 @@ export class CallViewModel {
   #manualTimer = null;
 
   // status: 'idle' | 'ringing' | 'connecting' | 'live' | 'ending' | 'error' · mode: 'listening' | 'speaking'
+  // ready: Qubi has started talking (or READY_MS passed since the session opened): the panel stops loading
   // error: null | 'offline' | 'weak-keychain' | 'mic' | 'auth' | 'quota' | 'network' | 'failed' | 'noProject' (keys of strings.call.errors)
   // lines: the last MAX_LINES [{ id, who: 'qubi' | 'person' | 'system', text }] ('system': permissions, where Qubi goes)
   // task: null | { messageId, kind: 'build' | 'ask', pedido, status: 'running' | 'waiting' | 'done' | 'error', created, changed }
@@ -246,7 +248,7 @@ export class CallViewModel {
   // gesture: null | { name, id } the last gesture Qubi made (models/gestures.js); robotView plays each new id
   // settings: { provider: 'auto' | 'elevenlabs' | 'grok', voice } (also the `settings` getter)
   // link: null | { port, url } the project running (ejecutar_app), for the person to open
-  store = new Observable({ status: 'idle', mode: 'listening', muted: false, simulated: false, voiceMode: null, provider: null, error: null, lines: [], task: null, cardId: null, permission: null, guide: null, gesture: null, link: null, settings: { ...DEFAULT_SETTINGS } });
+  store = new Observable({ status: 'idle', ready: false, mode: 'listening', muted: false, simulated: false, voiceMode: null, provider: null, error: null, lines: [], task: null, cardId: null, permission: null, guide: null, gesture: null, link: null, settings: { ...DEFAULT_SETTINGS } });
 
   // securityModel is optional (the semáforo falls back to the demo rules); actions.showFolder or
   // actions.locate moves the map for mostrar_carpeta and ir_a (else mapViewModel.show)
@@ -396,7 +398,7 @@ export class CallViewModel {
     this.#built = new Set();
     this.#audits = new Map();
     this.#alwaysOpen = false;
-    this.store.set({ status: 'ringing', mode: 'listening', muted: false, simulated: false, voiceMode: null, provider: null, error: null, lines: [], task: null, cardId: null, permission: null, guide: null, link: null });
+    this.store.set({ status: 'ringing', ready: false, mode: 'listening', muted: false, simulated: false, voiceMode: null, provider: null, error: null, lines: [], task: null, cardId: null, permission: null, guide: null, link: null });
     const project = this.#project.store.state;
     if (!project.open) return this.#fail('noProject');
     this.#root = String(project.root ?? project.name ?? '') || null;
@@ -503,6 +505,7 @@ export class CallViewModel {
     if (status === 'idle') return;
     this.#gen++;
     clearTimeout(this.#silenceTimer);
+    clearTimeout(this.#readyTimer);
     clearTimeout(this.#manualTimer);
     this.#manualBye = null;
     const session = this.#session;
@@ -560,7 +563,7 @@ export class CallViewModel {
     const mine = (fn) => (...args) => { if (gen === this.#gen) fn(...args); };
     return {
       status: mine((s) => {
-        if (s === 'connected' && this.store.state.status === 'connecting') { this.store.set({ status: 'live' }); this.#syncCard(); this.#armSilence(); this.#gesture('saludar'); }
+        if (s === 'connected' && this.store.state.status === 'connecting') { this.store.set({ status: 'live' }); this.#syncCard(); this.#armSilence(); this.#armReady(); this.#gesture('saludar'); }
       }),
       mode: mine((mode) => {
         if (mode !== 'speaking' && mode !== 'listening') return;
@@ -570,12 +573,12 @@ export class CallViewModel {
           else if (this.#manualBye.spoke) return this.hangUp();
         }
         this.store.set({ mode });
-        if (mode === 'speaking') clearTimeout(this.#silenceTimer); else this.#armSilence();
+        if (mode === 'speaking') { clearTimeout(this.#silenceTimer); this.#markReady(); } else this.#armSilence();
       }),
       line: mine(({ who, text, final = true }) => {
         const said = String(text ?? '').trim();
         if (!said || final === false || (who !== 'qubi' && who !== 'person')) return;
-        if (who === 'person') { this.#heard = { turn: ++this.#turn, at: this.#now() }; this.#armSilence(); }
+        if (who === 'person') { this.#heard = { turn: ++this.#turn, at: this.#now() }; this.#armSilence(); } else this.#markReady();
         this.store.set({ lines: [...this.store.state.lines, { id: ++this.#lineId, who, text: said }].slice(-MAX_LINES) });
         this.#syncCard();
         // the person's next phrase answers a pending permission ("sí, dale" / "no, espera"); Qubi's never does
@@ -1018,6 +1021,19 @@ export class CallViewModel {
     if (level || style) this.#session?.sendContext?.(A.context({ level: level && A.levels[level], style: style && A.styles[style] }));
     this.#system(A.done([level && C.settings.levels[level], style && C.settings.styles[style], voice && C.settings.voices[voice]].filter(Boolean).join(' · ')));
     return { ok: true, aplicado: { ...(level ? { nivel: level } : {}), ...(style ? { estilo: style } : {}), ...(voice ? { voz: voice, desde: 'la-proxima-llamada' } : {}) } };
+  }
+
+  // --- Loading: the panel shows only a loader until Qubi starts talking (READY_MS at most) ---
+  #readyTimer = null;
+  #markReady() {
+    clearTimeout(this.#readyTimer);
+    if (!this.store.state.ready && this.store.state.status === 'live') this.store.set({ ready: true });
+  }
+  #armReady() {
+    clearTimeout(this.#readyTimer);
+    const gen = this.#gen;
+    this.#readyTimer = setTimeout(() => { if (gen === this.#gen) this.#markReady(); }, this.#timing.readyMs ?? READY_MS);
+    this.#readyTimer?.unref?.();
   }
 
   // --- 20 s without an answer: Qubi hangs up (not while the agent, the team or a permission is pending) ---

@@ -3,7 +3,9 @@
 // - During a call the compact panel floats ABOVE QUBI'S HEAD on the map. It follows him every frame (when
 //   he walks, builds or is thrown), clamped inside the stage and out of the floating chat's way. When Qubi
 //   is not on screen (hidden, the tour, the git view) it falls back to the bottom center of the map.
-// - Contents: Qubi's face, «En vivo · 0:42» (or «Llamando…» while it rings), the voice wave, a permission
+// - Loading first: until Qubi starts talking (callViewModel `ready`) the panel shows only his face,
+//   «Conectando con Qubi…» and a progress bar; the buttons come once his voice is there.
+// - Contents: Qubi's face, «En vivo · 0:42», the voice wave, a permission
 //   request when Qubi asks for one, and round buttons (settings, chat, microphone, hang up in red). What
 //   was said is not shown here: it covered the map and the welcome; the chat keeps it.
 // - No phone ring: while it connects the panel says «Conectando…» and Qubi talks as soon as it is ready.
@@ -35,10 +37,16 @@ export function pickVoice(provider, voice) {
   return keys.includes(voice) ? voice : keys[0];
 }
 
-// The panel's title: «Conectando…» until Qubi is there (it is not a phone call), then the live timer
+// Loading: from the first moment until Qubi starts talking (the session may already be open)
+export function isLoading(state) {
+  const s = state?.status;
+  return s === 'ringing' || s === 'connecting' || (s === 'live' && !state.ready);
+}
+
+// The panel's title: «Conectando con Qubi…» while it loads (it is not a phone call), then the live timer
 export function titleText(state, seconds = 0) {
   const C = strings.call;
-  if (state.status === 'ringing' || state.status === 'connecting') return C.state.connecting;
+  if (isLoading(state)) return C.state.connecting;
   if (state.status === 'ending') return C.state.ended;
   return C.live(C.timer(seconds));
 }
@@ -230,9 +238,15 @@ export function createCallBarView({
   simLabel.append(simBox, el('span', '', S.simulate));
   pop.append(popTitle, builderRow, levelField.wrap, styleField.wrap, providerField.wrap, voiceField.wrap, connectBtn, simLabel);
 
+  // While it loads: an indeterminate bar under the head (the buttons are hidden until Qubi talks)
+  const loader = el('div', 'call-loader');
+  loader.setAttribute('role', 'progressbar');
+  loader.setAttribute('aria-label', C.state.preparing);
+  loader.append(el('i'));
+
   const tail = el('span', 'call-tail');
   tail.setAttribute('aria-hidden', 'true');
-  panel.append(perm, head, linkBtn, actions, pop, tail);
+  panel.append(perm, head, loader, linkBtn, actions, pop, tail);
 
   // Errors: the reason in plain words, with "try again" and close
   const errorBox = el('div', 'call-error');
@@ -497,7 +511,7 @@ export function createCallBarView({
   }
 
   function statusText(s) {
-    if (s.status === 'ringing' || s.status === 'connecting') return C.state.connecting;
+    if (isLoading(s)) return C.state.preparing;
     if (s.status === 'ending') return C.state.ended;
     if (s.muted) return C.state.muted;
     if (s.mode === 'speaking') return C.state.speaking;
@@ -546,6 +560,10 @@ export function createCallBarView({
     }
     container.dataset.status = s.status;
     container.dataset.mode = s.mode;
+    const loading = isLoading(s);
+    container.dataset.loading = String(loading);
+    container.setAttribute('aria-busy', String(loading));
+    if (loading && !pop.hidden) openPop(false);
     const failed = s.status === 'error';
     panel.hidden = failed;
     errorBox.hidden = !failed;

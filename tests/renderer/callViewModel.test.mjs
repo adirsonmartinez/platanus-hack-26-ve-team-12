@@ -4,7 +4,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { Observable } from '../../renderer/core/observable.js';
 import { createEventBus, EVENTS } from '../../renderer/core/eventBus.js';
-import { CallViewModel, RING_MS, contextFor, CONTEXT_MAX, MAX_LINES, SETTINGS_KEY, settingsOf, voiceAnswer, pickScript, PERMISSION_MS, TOOL_ANSWER_MS } from '../../renderer/viewmodels/callViewModel.js';
+import { CallViewModel, RING_MS, READY_MS, contextFor, CONTEXT_MAX, MAX_LINES, SETTINGS_KEY, settingsOf, voiceAnswer, pickScript, PERMISSION_MS, TOOL_ANSWER_MS } from '../../renderer/viewmodels/callViewModel.js';
 import { ChatViewModel } from '../../renderer/viewmodels/chatViewModel.js';
 import { strings } from '../../renderer/i18n/es.js';
 import { memoryText } from '../../renderer/models/projectMemoryModel.js';
@@ -121,6 +121,36 @@ test('a call rings first, then connects, then is live with the real voice; the c
 
 test('no phone ring by default: Qubi starts talking as soon as the session is ready', () => {
   assert.equal(RING_MS, 0);
+});
+
+test('ready: false while it connects and until Qubi first speaks; then true for the rest of the call', async () => {
+  const t = setup();
+  const started = t.vm.start();
+  assert.equal(t.vm.store.state.ready, false);
+  await started;
+  assert.equal(t.vm.store.state.status, 'live');
+  assert.equal(t.vm.store.state.ready, false, 'the session is open but Qubi has not said a word yet');
+  t.on().mode('speaking');
+  assert.equal(t.vm.store.state.ready, true);
+  t.on().mode('listening');
+  assert.equal(t.vm.store.state.ready, true, 'it stays ready');
+  t.vm.hangUp();
+  await t.vm.start();
+  assert.equal(t.vm.store.state.ready, false, 'a new call starts loading again');
+});
+
+test('ready: a line from Qubi counts too, and a silent start is ready after readyMs (never stuck loading)', async () => {
+  const t = setup();
+  await t.vm.start();
+  t.on().line({ who: 'qubi', text: 'Hola', final: true });
+  assert.equal(t.vm.store.state.ready, true);
+
+  const quiet = setup({ timing: { readyMs: 20 } });
+  await quiet.vm.start();
+  assert.equal(quiet.vm.store.state.ready, false);
+  await new Promise((r) => setTimeout(r, 40));
+  assert.equal(quiet.vm.store.state.ready, true);
+  assert.ok(READY_MS >= 2000 && READY_MS <= 6000);
 });
 
 test('the ring lasts at least ringMs even when main answers at once; Qubi picks up only after it', async () => {

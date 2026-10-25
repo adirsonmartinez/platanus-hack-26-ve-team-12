@@ -17,7 +17,11 @@ Fases: 1) llamada + voz + delegar en un agente (este documento); 2) trabajadores
 5. Barra de llamada flotante (abajo al centro del mapa): logo de Qubi, onda de voz, Ajustes, Chat, Micrófono, Colgar (rojo).
 6. La transcripción entra **solo** al chat (el panel flotante no la muestra) como **una tarjeta de llamada** que se actualiza en su sitio. Lo que Qubi delega aparece como una tarjeta de trabajo normal (la de siempre, con pasos y cambios) y el robot construye en vivo.
 7. **Qubi habla corto:** una o dos frases por turno (sección `# Brevedad` del prompt y saludos cortos en `electron/strings.js` → `voice`). Para cambiar cómo habla, se edita ese archivo.
-8. Mientras el agente trabaja, la app le cuenta el avance a la voz (`sendContextualUpdate`) y, cuando termina o necesita permiso, le pide que lo diga (`sendUserMessage` con un aviso marcado `[aviso de Qubbot]`, que la tarjeta no muestra como frase de la persona).
+8. **Arranque rápido y con carga** (2026-10-25): el panel muestra solo la cara de Qubi, «Conectando con Qubi… / Preparando su voz…» y una barra hasta que Qubi empieza a hablar (`ready` en `callViewModel`, `READY_MS` = 4 s como máximo); recién ahí salen los botones. Para que tarde poco:
+   - el SDK de ElevenLabs se carga 2,5 s después de abrir la ventana, en main (`voiceCall.warm()`, su `require` tarda ~1,7 s) y en la ventana (`warmSession()`);
+   - una voz de biblioteca que la cuenta rechaza (plan gratis: `paid_plan_required`) se recuerda una hora en `voice-agent.json` (`voices.failed`), así no se piden dos solicitudes fallidas en cada llamada;
+   - medido: primera llamada tras abrir la app ~2,5 s (el micrófono la primera vez ~0,9 s y la conexión de ElevenLabs ~0,9 s); las siguientes ~1,2 s. Antes: ~7 s.
+9. Mientras el agente trabaja, la app le cuenta el avance a la voz (`sendContextualUpdate`) y, cuando termina o necesita permiso, le pide que lo diga (`sendUserMessage` con un aviso marcado `[aviso de Qubbot]`, que la tarjeta no muestra como frase de la persona).
 
 Sin clave, sin red o en la versión web: **llamada simulada** (mismo adaptador, sin audio ni micrófono, guion fijo y texto escrito) para la demo y las pruebas.
 

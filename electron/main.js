@@ -76,6 +76,9 @@ function createWindow() {
   const demo = process.env.PLATANUS_DEMO === '1' && !app.isPackaged;
   win.loadFile(path.join(__dirname, '..', 'renderer', 'index.html'), demo ? { query: { demo: '1' } } : {});
   if (process.argv.includes('--dev')) win.webContents.openDevTools({ mode: 'detach' });
+  // The voice SDK takes ~1.7 s to load the first time (a blocking require): load it once the window is up,
+  // so the first call with Qubi (the welcome of a new project) does not wait for it
+  win.webContents.once('did-finish-load', () => setTimeout(() => voice().warm(), VOICE_WARM_MS));
 
   // External links never open new windows inside the app
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
@@ -1131,6 +1134,7 @@ const REALTIME = { mini: 'eleven_realtime_v1_mini', max: 'eleven_realtime_v1_max
 const realtimeChoice = voiceEnv('PLATANUS_VOICE_REALTIME') ?? 'mini';
 const realtime = Object.hasOwn(REALTIME, realtimeChoice) ? REALTIME[realtimeChoice] : REALTIME.mini;
 let voiceCall = null;
+const VOICE_WARM_MS = 2500;
 const voice = () => (voiceCall ??= createVoiceCall({
   // provider: 'elevenlabs' | 'grok' -> its key or null (keychain, then process.env, then devEnv)
   getKey: (provider) => keys().keyFor(provider),

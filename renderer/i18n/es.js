@@ -779,9 +779,9 @@ export const strings = {
       chip: 'Abrir en el navegador',
     },
     state: {
-      ringing: 'Llamando…',
       live: 'En vivo',
       connecting: 'Conectando con Qubi…',
+      preparing: 'Preparando su voz…',
       listening: 'Qubi te escucha',
       speaking: 'Qubi está hablando',
       muted: 'Micrófono apagado',
