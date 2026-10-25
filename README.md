@@ -16,7 +16,7 @@ IDE visual: tu proyecto se ve como un mapa isométrico. La carpeta raíz es el e
 
 ## Probar Qubbot
 
-- **Landing:** carpeta `landing/`, publicada en Render con `render.yaml`.
+- **Landing:** https://qubbot-tka9.onrender.com (carpeta `landing/`, publicada en Render con `render.yaml`).
 - **Descargar la app (Mac o Windows):** [última versión](https://github.com/adirsonmartinez/platanus-hack-26-ve-team-12/releases/latest).
 
 ## Arrancar

@@ -9,7 +9,7 @@ ADE de escritorio (Electron) para personas no técnicas: el proyecto se ve como 
 
 ## Entrega (Platanus Hack, 2026-10-25)
 - Repo de jurado: `platanus-hack/platanus-hack-26-ve-team-12` (`main`), mismo historial que este. Formulario lleno en `platanus-hack-project.jsonc`, texto de votación en `project-description.md`, track 3D en el README.
-- `deploy-url` = release `v0.2.0` (instaladores .dmg y .exe que arma `release.yml` al subir la etiqueta).
+- `deploy-url` = landing en Render (https://qubbot-tka9.onrender.com); sus botones bajan el release `v0.2.0` (.dmg y .exe que arma `release.yml` al subir la etiqueta).
 - Landing estática en `landing/`, publicada en Render con `render.yaml` (Render no corre Electron; solo la página).
 
 ## Ramas
