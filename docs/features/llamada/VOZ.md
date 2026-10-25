@@ -99,3 +99,7 @@ Implementa la misma interfaz `Session` que `callSession.js`: `end`, `setMuted`, 
 - **Ajustes** en `localStorage` `platanus.call.v1` (`{ provider, voice }`). Con `auto`, primero el servicio de la voz elegida, después ElevenLabs y después Grok.
 - **Grok** (`grokSession.js` + `audio/pcmCapture.worklet.js`): hecho con fakes. Sin verificar contra xAI: el saludo con `force_message` (si falla o no responde en 2,5 s se usa un ítem de sistema + `response.create`) y los nombres de voz `Rex`, `Eve`, `Ara`.
 - **CSP:** `connect-src` incluye `wss://api.x.ai`.
+
+## Voces que ElevenLabs no deja en agentes (2026-10-25)
+
+Algunas voces de la biblioteca tienen «moderación en vivo» y ElevenLabs las rechaza en un agente (`voice_live_moderated_not_allowed`). Le pasó a Juan, la voz venezolana, al pasar al plan Starter: la llamada fallaba al actualizar el agente. Ahora `voiceCall.js` la recuerda para siempre (`voices.moderated` en `voice-agent.json`), vuelve a escribir el agente con la voz de respaldo en la misma llamada y no la pide como voz de la llamada.

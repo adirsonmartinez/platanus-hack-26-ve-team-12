@@ -72,18 +72,23 @@
 #stage .editor-save:active:not(:disabled) { transform: scale(.97); }
 #stage .editor-save:disabled { background: var(--lg-chip); box-shadow: var(--lg-rim); color: var(--lg-faint); }
 
-/* Código / Vista previa: a small segmented pill, the active side lit like the chat's chips */
-#stage .editor-views { display: flex; flex: none; padding: 2px; border-radius: 999px; background: var(--lg-chip); box-shadow: var(--lg-rim); }
-#stage .editor-views[hidden] { display: none; }
-#stage .editor-view-btn { height: 22px; padding: 0 10px; border: 0; border-radius: 999px; background: none; color: var(--lg-muted); font: 600 11px var(--lg-font); cursor: pointer; }
-#stage .editor-view-btn[aria-pressed="true"] { background: var(--lg-chip-hover); color: var(--lg-text); box-shadow: var(--lg-rim); }
-#stage .editor-icon-btn[hidden] { display: none; }
+/* «Vista previa» (editor) and «Código» (browser): a small glass chip, like the chat's */
+#stage .editor-chip { flex: none; height: 24px; padding: 0 11px; border: 0; border-radius: 999px; background: var(--lg-chip); box-shadow: var(--lg-rim); color: var(--lg-text); font: 600 11px var(--lg-font); cursor: pointer; }
+#stage .editor-chip:hover { background: var(--lg-chip-hover); }
+#stage .editor-chip[hidden], #stage .editor-icon-btn[hidden] { display: none; }
 
-/* The preview: the page on a white sheet, as a browser shows it */
-/* The glass's SVG filter (backdrop-filter) blurs an iframe inside it too: a preview gets a solid window */
-#stage .editor.is-previewing { -webkit-backdrop-filter: none; backdrop-filter: none; background: #121212; }
-#stage .editor-preview { flex: 1; min-width: 0; border: 0; background: #fff; border-radius: 0 0 var(--lg-r-panel) var(--lg-r-panel); }
-#stage .editor-preview[hidden] { display: none; }
+/* The browser window (browserView.js): the editor's look. The glass's SVG filter (backdrop-filter)
+   would blur the page inside it, so this window is solid */
+#stage .browser { -webkit-backdrop-filter: none; backdrop-filter: none; background: #121212; }
+/* The scene's vignette (main.css, body::after) lies over everything: it would darken the page's edges */
+body:has(#browser:not([hidden]))::after { display: none; }
+#stage .browser-frame { flex: 1; min-width: 0; border: 0; background: #fff; border-radius: 0 0 var(--lg-r-panel) var(--lg-r-panel); }
+
+/* Placed in a zone by Qubi or the app (windowsView.js): a short glide there */
+#stage .editor.zoned { transition: left .26s var(--lg-ease), top .26s var(--lg-ease), width .26s var(--lg-ease), height .26s var(--lg-ease); }
+#stage .editor.dragging { transition: none; }
+/* Full screen covers the other window: solid, so the page behind does not show through the glass */
+#stage .editor[data-zone="completa"] { -webkit-backdrop-filter: none; backdrop-filter: none; background: #121212; }
 
 /* Changed on disk: an amber line with a glass chip to reload */
 #stage .editor-notice { padding: 8px 16px; background: rgba(255, 194, 74, .08); border-bottom: 1px solid rgba(255, 194, 74, .2); font: 12px var(--lg-font); }
@@ -100,3 +105,7 @@
 #stage .editor .cm-scroller::-webkit-scrollbar-track, #stage .editor .cm-scroller::-webkit-scrollbar-corner { background: transparent; }
 #stage .editor .cm-scroller::-webkit-scrollbar-thumb { border: 3px solid transparent; border-radius: 99px; background: rgba(255, 255, 255, .14) padding-box; }
 #stage .editor .cm-scroller::-webkit-scrollbar-thumb:hover { background-color: rgba(255, 255, 255, .26); }
+
+@media (prefers-reduced-motion: reduce) {
+  #stage .editor.zoned { transition: none; }
+}

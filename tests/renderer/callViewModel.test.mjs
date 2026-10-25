@@ -894,6 +894,31 @@ function actingSetup(extra = {}) {
   return { ...t, opened, previews, ran, shown, runService };
 }
 
+test('abrir_archivo: a page opens in the browser window unless Qubi asks for its code (vista codigo)', async () => {
+  const calls = [];
+  const open = (path, opts) => { calls.push([path, opts]); return { ok: true, en: opts?.view === 'codigo' ? 'editor' : 'navegador' }; };
+  const s = setup({ actions: { openFile: open } });
+  await s.vm.start();
+  // the person's own «ábrelo» is the permission (no question)
+  s.say('ábrelo');
+  assert.deepEqual(await s.tools().abrir_archivo({ ruta: 'src/app.js' }), { ok: true, en: 'navegador' });
+  s.say('muéstrame el código');
+  assert.deepEqual(await s.tools().abrir_archivo({ ruta: 'src/app.js', vista: 'código' }), { ok: true, en: 'editor' });
+  assert.deepEqual(calls.map(([, o]) => o.view), ['pagina', 'codigo']);
+});
+
+test('acomodar_ventanas: Qubi places the editor and the browser (only what is seen: no permission)', async () => {
+  const placed = [];
+  const s = setup({ actions: { arrangeWindows: (ventana, zona) => { placed.push([ventana, zona]); return { ok: true, ventana: 'navegador', zona: 'derecha' }; } } });
+  await s.vm.start();
+  assert.deepEqual(await s.tools().acomodar_ventanas({ ventana: 'el juego', zona: 'derecha' }), { ok: true, ventana: 'navegador', zona: 'derecha' });
+  assert.deepEqual(placed, [['el juego', 'derecha']]);
+  assert.equal(s.vm.store.state.permission, null);
+  const none = setup();
+  await none.vm.start();
+  assert.deepEqual(await none.tools().acomodar_ventanas({ ventana: 'editor', zona: 'izquierda' }), { ok: false, motivo: 'falló' });
+});
+
 test('abrir_archivo asks first: the button allows it, the file opens; the card keeps system lines', async () => {
   const t = actingSetup();
   await t.vm.start();

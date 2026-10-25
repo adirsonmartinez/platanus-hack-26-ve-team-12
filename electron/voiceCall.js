@@ -109,7 +109,9 @@ const toolSpecs = (v = t.voice) => [
   // the person reshapes Qubi by talking: level, style, voice (all optional: only what was asked)
   ['ajustar_qubi', 10, { type: 'object', required: [], properties: { nivel: text(v.tools.ajustarNivel), estilo: text(v.tools.ajustarEstilo), voz: text(v.tools.ajustarVoz) } }],
   ['revisar_archivo', 15, strings({ ruta: v.tools.revisarArchivoRuta, pregunta: v.tools.revisarArchivoPregunta })],
-  ['abrir_archivo', PERMISSION_WAIT, strings({ ruta: v.tools.abrirArchivoRuta })],
+  ['abrir_archivo', PERMISSION_WAIT, { type: 'object', required: ['ruta'], properties: { ruta: text(v.tools.abrirArchivoRuta), vista: text(v.tools.abrirArchivoVista) } }],
+  // the editor and the browser windows in a zone of the screen (only what is seen: no permission)
+  ['acomodar_ventanas', 10, strings({ ventana: v.tools.acomodarVentana, zona: v.tools.acomodarZona })],
   ['ejecutar_app', PERMISSION_WAIT],
   ['abrir_en_navegador', PERMISSION_WAIT],
   // the security audit: read the project again (only reads), or repair a file (changes files: after a yes)
@@ -224,6 +226,8 @@ const fill = (template, values) => template.replace(/\{\{(\w+)\}\}/g, (whole, na
 
 const notFound = (error) => error?.statusCode === 404;
 // ElevenLabs answers an unknown voice with a 400 whose code is voice_not_found, not a 404
+// ElevenLabs will not put this voice in an agent (a library voice with live moderation): permanent
+const voiceModerated = (error) => /voice_live_moderated_not_allowed/.test(JSON.stringify(error?.body ?? ''));
 const voiceMissing = (error) => notFound(error) || /voice_not_found/.test(JSON.stringify(error?.body ?? ''));
 const httpError = (status, body) => Object.assign(new Error(`Status code: ${status}`), { statusCode: status, body });
 
@@ -250,7 +254,8 @@ function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = g
   let ensuring = null; // one creation at a time: two quick calls must not make two agents
   const sharing = new Map(); // library voice id -> its pending check, so a voice is added only once
 
-  // The saved file: { agentId, hash, voiceMode, voices: { account, ids: { libraryId: accountId }, failed: { libraryId: at } } }
+  // The saved file: { agentId, hash, voiceMode,
+  //   voices: { account, ids: { libraryId: accountId }, failed: { libraryId: at }, moderated: [libraryId] } }
   const load = () => {
     try {
       const saved = JSON.parse(fs.readFileSync(file, 'utf8'));
@@ -281,6 +286,21 @@ function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = g
 
   // --- ElevenLabs ---
 
+  // The voices entry of this account (another key's cache is dropped), with one change
+  function rememberVoices(key, change) {
+    const account = accountOf(key);
+    const voices = load().voices;
+    const own = voices?.account === account ? voices : {};
+    const ids = own.ids && typeof own.ids === 'object' ? own.ids : {};
+    const failed = own.failed && typeof own.failed === 'object' ? own.failed : {};
+    const moderated = Array.isArray(own.moderated) ? own.moderated : [];
+    store({ voices: { account, ids, failed, moderated, ...change({ ids, failed, moderated }) } });
+  }
+  const moderatedVoice = (key, name) => {
+    const voices = load().voices;
+    return voices?.account === accountOf(key) && Array.isArray(voices.moderated) && voices.moderated.includes(VOICES.elevenlabs[name].id);
+  };
+
   // Makes sure one listed library voice is in the account: voices.get, and voices.share when it is missing. Cached
   // per account in the file, so it is checked once. -> the id to use, or null when it could not be added
   // (a free plan, full voice slots, a key without that permission…): the agent then speaks with its own voice,
@@ -291,17 +311,11 @@ function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = g
     const account = accountOf(key);
     const cached = load().voices;
     const mine = cached?.account === account ? cached : null;
+    if (Array.isArray(mine?.moderated) && mine.moderated.includes(spec.id)) return Promise.resolve(null);
     if (typeof mine?.ids?.[spec.id] === 'string') return Promise.resolve(mine.ids[spec.id]);
     const failedAt = mine?.failed?.[spec.id];
     if (Number.isFinite(failedAt) && now() - failedAt < VOICE_RETRY_MS) return Promise.resolve(null);
-    // the voices entry of this account (another key's cache is dropped), with one change
-    const remember = (change) => {
-      const voices = load().voices;
-      const own = voices?.account === account ? voices : {};
-      const ids = own.ids && typeof own.ids === 'object' ? own.ids : {};
-      const failed = own.failed && typeof own.failed === 'object' ? own.failed : {};
-      store({ voices: { account, ...change({ ids, failed }) } });
-    };
+    const remember = (change) => rememberVoices(key, change);
     const refused = () => {
       remember(({ ids, failed }) => ({ ids, failed: { ...failed, [spec.id]: now() } }));
       return null;
@@ -351,8 +365,20 @@ function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = g
   // The id of an agent with this configuration: the saved one, updated if its configuration changed,
   // or a new one when there is none or it was deleted from the account (404). Before writing the agent,
   // its default voice is made sure to be in the account (best effort).
+  // A default voice ElevenLabs refuses for agents (live moderation) is remembered for good and the agent is
+  // written again, in the same call, with the fallback voice.
   async function ensureAgent(client, key, { fresh = false } = {}) {
     if (!customVoice) useVoice((await ensureVoice(client, key, DEFAULT_VOICE.elevenlabs)) ?? FALLBACK_VOICE_ID);
+    try {
+      return await writeAgent(client, fresh);
+    } catch (error) {
+      if (customVoice || !voiceModerated(error) || moderatedVoice(key, DEFAULT_VOICE.elevenlabs)) throw error;
+      const juan = VOICES.elevenlabs[DEFAULT_VOICE.elevenlabs].id;
+      rememberVoices(key, ({ moderated }) => ({ moderated: [...new Set([...moderated, juan])] }));
+      return ensureAgent(client, key, { fresh });
+    }
+  }
+  async function writeAgent(client, fresh) {
     const saved = fresh ? null : read();
     if (saved?.hash === hash) return saved.agentId;
     if (!saved) return create(client);
@@ -382,7 +408,9 @@ function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = g
       if (!notFound(error)) throw error;
       url = await signedUrl(client, await agentId(client, key, { fresh: true })); // the saved agent was deleted
     }
-    return { ok: true, provider: 'elevenlabs', signedUrl: url, dynamicVariables, voiceMode: read()?.voiceMode ?? 'custom', voiceId: voiceIdForCall };
+    // a voice found refused for agents while the agent was written is not asked for this call either
+    const voiceId = !customVoice && moderatedVoice(key, chosen) ? null : voiceIdForCall;
+    return { ok: true, provider: 'elevenlabs', signedUrl: url, dynamicVariables, voiceMode: read()?.voiceMode ?? 'custom', voiceId };
   }
 
   // --- Grok Voice (xAI) ---

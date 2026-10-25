@@ -161,88 +161,32 @@ test('opening or closing a project closes every tab', async () => {
   assert.equal(vm.store.state.tabs.length, 0);
 });
 
-// --- Preview («Vista previa»): pages and images of the project, and the project running on localhost ---
+// --- Preview: pages and images go to the browser window (browserViewModel); the editor keeps the code ---
 
-function previewSetup(disk = {}) {
+test('preview: a page or image clicked on the map goes to the browser; the page code stays one click away', async () => {
   const bus = createEventBus();
-  const workspace = fakeWorkspace({
-    'index.html': { content: '<h1>hola</h1>', mtime: 1 },
-    'src/a.ts': { content: 'const a = 1;\n', mtime: 10 },
-    'logo.svg': { content: '<svg/>', mtime: 2 },
-    ...disk,
-  });
-  const vm = new EditorViewModel({ workspace, bus, preview: true });
-  return { bus, workspace, vm };
-}
-
-test('preview: a page opens in its preview, with the code one click away; code files have none', async () => {
-  const { vm } = previewSetup();
+  const workspace = fakeWorkspace({ 'index.html': { content: '<h1>hola</h1>', mtime: 1 }, 'src/a.ts': { content: 'x', mtime: 2 } });
+  const previewed = [];
+  const vm = new EditorViewModel({ workspace, bus, preview: (path) => { previewed.push(path); return /\.(html?|svg|png)$/.test(path); } });
+  bus.emit(EVENTS.fileSelected, { path: 'index.html', level: 'green' });
+  bus.emit(EVENTS.fileSelected, { path: 'img/logo.png', level: 'green' });
+  bus.emit(EVENTS.fileSelected, { path: 'src/a.ts', level: 'green' });
+  await flush();
+  assert.deepEqual(previewed, ['index.html', 'img/logo.png', 'src/a.ts']);
+  assert.deepEqual(vm.store.state.tabs.map((t) => t.path), ['src/a.ts'], 'only the code file opened here');
+  // the code of a page: opened in the editor on purpose, with its preview button
   await vm.open('index.html');
-  const page = tab(vm, 'index.html');
-  assert.equal(page.view, 'preview');
-  assert.equal(page.canPreview, true);
-  assert.equal(page.content, '<h1>hola</h1>', 'the code is read too, for the code view');
-  assert.equal(vm.previewUrl('index.html'), 'qubbot-preview://project/index.html?v=0');
-  vm.setView('index.html', 'code');
-  assert.equal(tab(vm, 'index.html').view, 'code');
-  await vm.open('src/a.ts');
-  assert.equal(tab(vm, 'src/a.ts').view, 'code');
+  assert.equal(tab(vm, 'index.html').canPreview, true);
   assert.equal(tab(vm, 'src/a.ts').canPreview, false);
-  vm.setView('src/a.ts', 'preview');
-  assert.equal(tab(vm, 'src/a.ts').view, 'code', 'nothing to preview');
-  assert.equal(vm.previewUrl('src/a.ts'), null);
+  assert.equal(vm.showPreview('index.html'), true);
+  assert.deepEqual(previewed.at(-1), 'index.html');
+  assert.equal(vm.showPreview('src/a.ts'), false);
 });
 
-test('preview: an image is preview only (its bytes are not read as text); paths are encoded', async () => {
-  const { vm, workspace } = previewSetup();
-  await vm.open('img/mi foto.png');
-  const image = tab(vm, 'img/mi foto.png');
-  assert.equal(image.status, 'ready');
-  assert.equal(image.view, 'preview');
-  assert.equal(image.previewOnly, true);
-  assert.ok(!workspace.calls.open.includes('img/mi foto.png'));
-  assert.equal(vm.previewUrl('img/mi foto.png'), 'qubbot-preview://project/img/mi%20foto.png?v=0');
-  vm.setView('img/mi foto.png', 'code');
-  assert.equal(tab(vm, 'img/mi foto.png').view, 'preview');
-});
-
-test('preview: refresh, and any change on disk, reloads the pages in preview (CSS or scripts may have changed)', async () => {
-  const { vm, bus } = previewSetup();
-  await vm.open('index.html');
-  vm.refresh('index.html');
-  assert.equal(vm.previewUrl('index.html'), 'qubbot-preview://project/index.html?v=1');
-  bus.emit(EVENTS.diskChanged, { paths: ['css/site.css'] });
-  assert.equal(vm.previewUrl('index.html'), 'qubbot-preview://project/index.html?v=2');
-  vm.setView('index.html', 'code');
-  bus.emit(EVENTS.diskChanged, { paths: ['css/site.css'] });
-  assert.equal(vm.previewUrl('index.html'), 'qubbot-preview://project/index.html?v=2', 'not while the code is shown');
-});
-
-test('preview: the project running on this computer opens as a preview tab; only localhost addresses', () => {
-  const { vm } = previewSetup();
-  assert.equal(vm.openUrl('http://localhost:3000'), true);
-  const web = tab(vm, 'http://localhost:3000');
-  assert.equal(web.kind, 'web');
-  assert.equal(web.name, 'localhost:3000');
-  assert.equal(web.view, 'preview');
-  assert.equal(web.previewOnly, true);
-  assert.equal(vm.store.state.active, 'http://localhost:3000');
-  assert.equal(vm.previewUrl('http://localhost:3000'), 'http://localhost:3000/');
-  vm.refresh('http://localhost:3000');
-  assert.equal(vm.previewUrl('http://localhost:3000'), 'http://localhost:3000/', 'the view reloads the frame itself');
-  assert.equal(tab(vm, 'http://localhost:3000').stamp, 1);
-  assert.equal(vm.openUrl('http://127.0.0.1:5173/app'), true);
-  for (const bad of ['https://example.com', 'http://localhost', 'file:///etc/passwd', 'http://localhost.evil.com:3000', 'javascript:alert(1)', 'http://localhost:99999']) {
-    assert.equal(vm.openUrl(bad), false, bad);
-  }
-  assert.equal(vm.openUrl('http://localhost:3000'), true, 'the same address again: the same tab');
-  assert.equal(vm.store.state.tabs.filter((t) => t.kind === 'web').length, 2);
-});
-
-test('preview: off (the web version, no desktop) -> pages open as code, no localhost tabs', async () => {
-  const { vm } = setup({ 'index.html': { content: '<h1>x</h1>', mtime: 1 } });
-  await vm.open('index.html');
-  assert.equal(tab(vm, 'index.html').view, 'code');
+test('preview: off (the web version) -> every file opens here as code', async () => {
+  const { vm, bus } = setup({ 'index.html': { content: '<h1>x</h1>', mtime: 1 } });
+  bus.emit(EVENTS.fileSelected, { path: 'index.html', level: 'green' });
+  await flush();
+  assert.equal(tab(vm, 'index.html').status, 'ready');
   assert.equal(tab(vm, 'index.html').canPreview, false);
-  assert.equal(vm.openUrl('http://localhost:3000'), false);
 });

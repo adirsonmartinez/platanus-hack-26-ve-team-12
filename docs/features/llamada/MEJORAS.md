@@ -33,6 +33,7 @@ Qubi actúa en el proyecto solo con permiso de la persona.
 | `ir_a({ ruta })` | Qubi camina hasta la carpeta o el archivo, la cámara lo sigue, señala y dice dónde está | No (solo mueve el mapa) |
 | `volver()` | Qubi vuelve a su lugar | No |
 | `abrir_archivo({ ruta })` | Abre el archivo en el editor flotante (`editorViewModel.open`) | **Sí** |
+| `acomodar_ventanas(ventana, zona)` | Pone el editor o el navegador a la izquierda, a la derecha, arriba, abajo o en pantalla completa; la otra ventana toma la otra mitad (`windowsViewModel.place`) | No: solo cambia lo que se ve |
 | `ejecutar_app()` | Arranca el proyecto con su script `dev` o `start` del `package.json` (nunca otro comando) y abre la vista previa en el navegador cuando aparece el puerto | **Sí**, y además main muestra su propio diálogo nativo |
 | `abrir_en_navegador()` | Abre en el navegador un servidor del proyecto que ya está corriendo | **Sí** |
 

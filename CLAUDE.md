@@ -60,6 +60,9 @@ renderer/
     robot (the map's robot companion: grab, drag or throw it onto a folder, it asks what to do there),
     build (building live: the robot carries each file an agent saves to its folder),
     editor (files clicked on the map as tabs: edit, save with the read mtime, disk changes reload or mark stale),
+    browser (the browser window: pages, images and localhost in tabs; disk changes reload them),
+    windows (where the editor and the browser go: halves when both open, Qubi's acomodar_ventanas zones, a drag wins;
+    zones in models/windowLayout.js),
     call (the voice call with Qubi: ring, permissions, ir_a / volver, settings; docs/features/llamada/),
     team (Qubi's workers and their audit), services (the project's external services and the connect modal;
     docs/features/servicios/)
@@ -72,7 +75,7 @@ renderer/
                   (libraries.dev orbs over the package engine), agentPicker
                   (+ effortSlider), chatMenu, agentConnect, devTree, hoverCard, hud,
                   callBar (the call panel above Qubi, no phone ring), voiceConnect (voice connection modal), serviceConnect,
-                  repairPanel, qubiJump, editor (floating file editor with tabs, CodeMirror with syntax colors; secrets open flagged; Código / Vista previa for pages, images and the project on localhost), panels (breadcrumb, schema, git), controls, handControl (hand button + camera preview + "?" with the gestures),
+                  repairPanel, qubiJump, editor (floating file editor with tabs, CodeMirror with syntax colors; secrets open flagged; a page's «Vista previa»), browser (sandboxed iframe of qubbot-preview:// or localhost), windows (moves both to their zone), panels (breadcrumb, schema, git), controls, handControl (hand button + camera preview + "?" with the gestures),
                   handCursor (white cursor + hold-still ring; holding still or a quick pinch selects like a click), handTargets (what the cursor may
                   select: 3D picks, and in panels anything clickable except data-gesture="never"), labels
                   floating layout: iconBar (reorderable icons), draggable (the file editor by

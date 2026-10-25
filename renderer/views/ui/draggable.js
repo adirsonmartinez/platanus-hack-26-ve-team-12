@@ -1,9 +1,11 @@
 // Lets a floating card (the side panel, the chat) be dragged by its header anywhere in an area.
 // The position is remembered; double-clicking the header docks it back in its place.
 // While moved, the body gets the class `${key}-moved` (so the rest of the layout stops making room for it).
+// onGrab(): the person started dragging it (a window placed in a zone by Qubi is then theirs again).
+// Returns { apply }: puts the remembered place back (after windowsView let go of the window).
 const KEY = (key) => `platanus.drag.v1:${key}`;
 
-export function makeDraggable({ el, handle, key, area, disabled = () => false }) {
+export function makeDraggable({ el, handle, key, area, disabled = () => false, onGrab = () => {} }) {
   let state = { x: null, y: null, h: null };
   try { state = { ...state, ...JSON.parse(localStorage.getItem(KEY(key)) ?? '{}') }; } catch { /* nothing saved */ }
   const save = () => { try { localStorage.setItem(KEY(key), JSON.stringify(state)); } catch { /* private mode */ } };
@@ -32,7 +34,8 @@ export function makeDraggable({ el, handle, key, area, disabled = () => false })
     const box = area.getBoundingClientRect();
     const r = el.getBoundingClientRect();
     drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, box };
-    if (state.x === null) state.h = r.height; // keep its size when it leaves its place
+    if (state.x === null || el.dataset.zone) state.h = r.height; // keep its size when it leaves its place (or its zone)
+    onGrab();
     try { handle.setPointerCapture(e.pointerId); } catch { /* synthetic event */ }
     el.classList.add('dragging');
   });
@@ -58,6 +61,7 @@ export function makeDraggable({ el, handle, key, area, disabled = () => false })
     apply();
     save();
   });
-  window.addEventListener('resize', () => { clamp(); apply(); });
+  window.addEventListener('resize', () => { if (!el.dataset.zone) { clamp(); apply(); } });
   apply();
+  return { apply };
 }

@@ -49,6 +49,8 @@ import { RobotViewModel } from './viewmodels/robotViewModel.js';
 import { BuildViewModel } from './viewmodels/buildViewModel.js';
 import { HandControlViewModel } from './viewmodels/handControlViewModel.js';
 import { EditorViewModel } from './viewmodels/editorViewModel.js';
+import { BrowserViewModel } from './viewmodels/browserViewModel.js';
+import { WindowsViewModel } from './viewmodels/windowsViewModel.js';
 import { CallViewModel } from './viewmodels/callViewModel.js';
 import { TeamViewModel } from './viewmodels/teamViewModel.js';
 import { ServicesViewModel } from './viewmodels/servicesViewModel.js';
@@ -86,6 +88,8 @@ import { createServiceConnectView } from './views/ui/serviceConnectView.js';
 import { createRepairPanelView } from './views/ui/repairPanelView.js';
 import { createHoverCardView } from './views/ui/hoverCardView.js';
 import { createEditorView } from './views/ui/editorView.js';
+import { createBrowserView } from './views/ui/browserView.js';
+import { createWindowsView } from './views/ui/windowsView.js';
 import { qubiJump } from './views/ui/qubiJump.js';
 import { applyStrings } from './views/ui/domStrings.js';
 import { applyIcons } from './views/icons.js';
@@ -127,9 +131,13 @@ const shellViewModel = new ShellViewModel({ projectModel, securityModel, mapView
 const repairViewModel = new RepairViewModel({ securityModel, mapViewModel, cameraViewModel, connection, history: repairHistory, agentService, bus, voiceMode: () => (modeModel.tech ? 'dev' : 'vibe'), audit: auditViewModel });
 const serversViewModel = new ServersViewModel({ serversModel });
 // files clicked on the map open as tabs; on the desktop pages, images and localhost also show as a preview
-const editorViewModel = new EditorViewModel({ workspace, bus, preview: workspace.isDesktop });
-// The project running on this computer: a preview tab of the editor (the person's browser when it cannot)
-const showLocal = (port) => editorViewModel.openUrl(`http://localhost:${port}`) || serversModel.open(port);
+// The browser window (desktop): pages and images clicked on the map, and the project on localhost
+const browserViewModel = new BrowserViewModel({ bus });
+const editorViewModel = new EditorViewModel({ workspace, bus, preview: workspace.isDesktop ? (path) => browserViewModel.openFile(path) : null });
+// The project running on this computer: a tab of the browser window (the person's browser in the web version)
+const showLocal = (port) => (workspace.isDesktop && browserViewModel.openUrl(`http://localhost:${port}`)) || serversModel.open(port);
+// Where the two windows go: halves when both are open, or the zone Qubi gives them (acomodar_ventanas)
+const windowsViewModel = new WindowsViewModel({ windows: { editor: editorViewModel, navegador: browserViewModel } });
 const handTracking = createHandTrackingService();
 // The tour of the open project ("Recorrido"): the analyzer decides the stops, the agent narrates them
 const tourViewModel = new TourViewModel({ projectModel, workspace, connection, modeModel, camera: cameraViewModel, mapViewModel, repairViewModel, bus });
@@ -347,7 +355,14 @@ const callViewModel = new CallViewModel({
     // mostrar_carpeta and ir_a: only visual, the map flies to the folder (the project root goes back home)
     showFolder: (path) => { shellViewModel.setStage('map'); return path ? mapViewModel.show(path) : (mapViewModel.home(), true); },
     // abrir_archivo (after the person's permission): the floating editor, as a click on the map
-    openFile: (path) => editorViewModel.open(path),
+    // a page or an image shows in the browser window, unless Qubi asked for the code
+    openFile: (path, { view } = {}) => {
+      if (view !== 'codigo' && workspace.isDesktop && browserViewModel.openFile(path)) return { ok: true, en: 'navegador' };
+      editorViewModel.open(path);
+      return { ok: true, en: 'editor' };
+    },
+    // acomodar_ventanas: the editor and the browser in a zone (models/windowLayout.js)
+    arrangeWindows: (ventana, zona) => windowsViewModel.place(ventana, zona),
     // abrir_en_navegador: servers Qubbot started (managed) or Qubi started in this window. The server
     // list knows no projects, so any other port (a database, another app) is never offered
     async projectServers() {
@@ -456,7 +471,7 @@ if (isDemo) {
   // the recorder (and checks) can drive the robot and find 3D things on screen
   window.__platanus = {
     robotViewModel, robotDialogViewModel, tourViewModel, mapViewModel, buildViewModel, chatViewModel, callViewModel, teamViewModel, servicesViewModel,
-    cameraViewModel, projectModel, connectViewModel, editorViewModel,
+    cameraViewModel, projectModel, connectViewModel, editorViewModel, browserViewModel, windowsViewModel,
     screenOf: (point) => { const r = stage.getBoundingClientRect(); const s = sceneView.toScreen(point); return { x: r.left + s.x, y: r.top + s.y }; },
   };
 }
@@ -465,11 +480,15 @@ appViewModel.store.subscribe(({ view }) => {
   sceneView.setActiveLayer(view);
   labels.setActiveLayer(view);
 }, { immediate: true });
-createEditorView({
-  stage, editorViewModel,
-  // «Abrir en el navegador»: a localhost tab in the person's browser, a file with its default app
+const editorWindow = createEditorView({ stage, editorViewModel, onGrab: () => windowsViewModel.grab('editor') });
+const browserWindow = createBrowserView({
+  stage, browserViewModel,
+  onShowCode: (path) => editorViewModel.open(path),
+  // «Abrir en tu navegador»: a localhost tab in the person's browser, a file with its default app
   onOpenOutside: (tab) => (tab.kind === 'web' ? serversModel.open(Number(new URL(tab.path).port)) : workspace.open(tab.path, 'default')),
+  onGrab: () => windowsViewModel.grab('navegador'),
 });
+createWindowsView({ stage, windowsViewModel, windows: { editor: editorWindow, navegador: browserWindow } });
 const hoverCard = createHoverCardView({ card: document.getElementById('hover-card'), stage, mapViewModel, modeModel });
 
 // Clicks, hover and Esc go to the view on screen

@@ -671,7 +671,9 @@ export class CallViewModel {
       revisar_archivo: mine(({ ruta, pregunta }) => this.#reviewFile(ruta, pregunta)),
       // the person reshapes Qubi by talking: level and style apply now, the voice from the next call
       ajustar_qubi: mine((params) => this.#adjust(params)),
-      abrir_archivo: mine(({ ruta }) => this.#openFile(ruta, gen)),
+      abrir_archivo: mine(({ ruta, vista }) => this.#openFile(ruta, gen, vista)),
+      // the editor and the browser windows in a zone (only what is seen: no permission)
+      acomodar_ventanas: mine(({ ventana, zona }) => this.#arrange(ventana, zona)),
       ejecutar_app: mine(() => this.#runApp(gen)),
       abrir_en_navegador: mine(() => this.#openBrowser(gen)),
       // the voice model reads text it does not control (notices, names): a change needs the person's own say-so
@@ -877,7 +879,8 @@ export class CallViewModel {
   }
 
   // abrir_archivo: a file of the project in the floating editor. Secrets never open, not even with permission
-  async #openFile(ruta, gen) {
+  // vista: 'codigo' opens a page's code in the editor; otherwise a page or an image shows in the browser window
+  async #openFile(ruta, gen, vista) {
     const path = cleanPath(ruta);
     if (!path) return { ok: false, motivo: 'no-existe' };
     if (isSecretFile(path)) return { ok: false, motivo: 'secreto' };
@@ -889,8 +892,10 @@ export class CallViewModel {
     if (refused) return refused;
     if (gen !== this.#gen) return { ok: false, motivo: 'sin-llamada' };
     try {
-      const res = await this.#actions.openFile(path);
-      return res === false || res?.ok === false ? { ok: false, motivo: 'falló' } : { ok: true };
+      const view = /^c[oó]digo$/i.test(String(vista ?? '').trim()) ? 'codigo' : 'pagina';
+      const res = await this.#actions.openFile(path, { view });
+      if (res === false || res?.ok === false) return { ok: false, motivo: 'falló' };
+      return res?.en ? { ok: true, en: res.en } : { ok: true };
     } catch {
       return { ok: false, motivo: 'falló' };
     }
@@ -946,6 +951,16 @@ export class CallViewModel {
     try {
       const res = await this.#actions.openPreview(port);
       return res === false || res?.ok === false ? { ok: false, motivo: 'falló' } : { ok: true, puerto: port };
+    } catch {
+      return { ok: false, motivo: 'falló' };
+    }
+  }
+
+  // acomodar_ventanas -> what windowsViewModel.place answers ({ ok, ventana, zona } | { ok: false, motivo })
+  #arrange(ventana, zona) {
+    if (!this.#actions.arrangeWindows) return { ok: false, motivo: 'falló' };
+    try {
+      return this.#actions.arrangeWindows(String(ventana ?? ''), String(zona ?? '')) ?? { ok: false, motivo: 'falló' };
     } catch {
       return { ok: false, motivo: 'falló' };
     }

@@ -103,11 +103,8 @@ export const strings = {
     reload: 'Recargar del disco',
     // Preview: pages and images rendered, and the project running on this computer
     preview: {
-      views: 'Ver código o vista previa',
-      code: 'Código',
       show: 'Vista previa',
-      refresh: 'Recargar la vista previa',
-      outside: 'Abrir en el navegador',
+      showHint: 'Ver la página en el navegador de Qubbot',
     },
     // CodeMirror's own texts (search panel, folding), by its English phrase
     phrases: {
@@ -127,6 +124,16 @@ export const strings = {
       'desktop-only': 'Disponible en la app de escritorio.',
       failed: 'No se pudo abrir el archivo.',
     },
+  },
+  // The browser window: pages and images of the project, and the project running on this computer
+  browser: {
+    title: 'Navegador',
+    close: 'Cerrar el navegador',
+    closeTab: 'Cerrar pestaña',
+    code: 'Código',
+    codeHint: 'Ver el código de esta página en el editor',
+    refresh: 'Recargar',
+    outside: 'Abrir en tu navegador',
   },
 
   panels: {

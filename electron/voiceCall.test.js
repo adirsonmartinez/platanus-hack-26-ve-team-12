@@ -249,6 +249,30 @@ test('a voice that cannot be added (full slots) does not stop the call: Qubi kee
   assert.deepEqual(await createVoiceCall({ getKey: ONLY_ELEVEN, file: tmp(), makeClient: () => offline }).start(REQ), { ok: false, reason: 'network' });
 });
 
+test('a voice ElevenLabs will not put in an agent (live moderation) falls back at once and is never tried again', async () => {
+  const file = tmp();
+  fs.writeFileSync(file, JSON.stringify({ agentId: 'agent_1', hash: 'old', voiceMode: 'realtime' }));
+  const moderated = () => httpError(400, { detail: { status: 'voice_live_moderated_not_allowed', param: 'conversation_config.tts.voice_id' } });
+  const client = fakeClient({ fail: { update: [moderated()] } }); // Juan is in the account, but agents refuse it
+  const call = createVoiceCall({ getKey: ONLY_ELEVEN, file, makeClient: () => client });
+  const result = await call.start(REQ);
+  assert.equal(result.ok, true, 'the same call goes on with the fallback voice');
+  assert.equal(result.voiceId, null, 'and never asks for Juan as the call voice');
+  const updates = client.calls.filter(([op]) => op === 'update');
+  assert.equal(updates.length, 2);
+  assert.equal(updates[0][2].conversationConfig.tts.voiceId, JUAN);
+  assert.notEqual(updates[1][2].conversationConfig.tts.voiceId, JUAN);
+  assert.ok(voicesCache(file).moderated.includes(JUAN), 'remembered for good');
+  // later calls (and another app start) skip Juan entirely: no voice requests, no failing update
+  client.calls.length = 0;
+  assert.equal((await call.start(REQ)).ok, true);
+  assert.deepEqual(client.ops(), ['signedUrl']);
+  const again = fakeClient();
+  const next = await createVoiceCall({ getKey: ONLY_ELEVEN, file, makeClient: () => again }).start({ ...REQ, voice: 'juan' });
+  assert.equal(next.voiceId, null);
+  assert.ok(!again.ops().includes('update'), 'its saved agent already has the fallback voice');
+});
+
 test('a fixed development voice (PLATANUS_VOICE_ID) is used as it is, without voice requests', async () => {
   const client = fakeClient();
   const call = createVoiceCall({ getKey: ONLY_ELEVEN, file: tmp(), makeClient: () => client, voiceId: 'abcdefghij1234567890' });
@@ -300,10 +324,10 @@ test('the project memory goes in its own variable, cleaned and capped at 800', a
   assert.deepEqual(LIMITS, { projectName: 120, context: 2500, builder: 40, memory: 800 });
 });
 
-const TOOL_NAMES = ['ver_proyecto', 'construir', 'preguntar', 'ver_avance', 'mostrar_carpeta', 'repartir', 'ver_equipo', 'ir_a', 'volver', 'ajustar_qubi', 'revisar_archivo', 'abrir_archivo', 'ejecutar_app', 'abrir_en_navegador', 'auditar', 'reparar', 'gesto', 'elegir_experiencia', 'marcar_tecnologia', 'empezar_proyecto', 'seguir_manual'];
+const TOOL_NAMES = ['ver_proyecto', 'construir', 'preguntar', 'ver_avance', 'mostrar_carpeta', 'repartir', 'ver_equipo', 'ir_a', 'volver', 'ajustar_qubi', 'revisar_archivo', 'abrir_archivo', 'acomodar_ventanas', 'ejecutar_app', 'abrir_en_navegador', 'auditar', 'reparar', 'gesto', 'elegir_experiencia', 'marcar_tecnologia', 'empezar_proyecto', 'seguir_manual'];
 const REQUIRED = {
   ver_proyecto: [], construir: ['pedido'], preguntar: ['pregunta'], ver_avance: [], mostrar_carpeta: ['ruta'], repartir: ['tareas'], ver_equipo: [],
-  ir_a: ['ruta'], volver: [], ajustar_qubi: [], revisar_archivo: ['ruta', 'pregunta'], abrir_archivo: ['ruta'], ejecutar_app: [], abrir_en_navegador: [], auditar: [], reparar: ['ruta'], gesto: ['gesto'],
+  ir_a: ['ruta'], volver: [], ajustar_qubi: [], revisar_archivo: ['ruta', 'pregunta'], abrir_archivo: ['ruta'], acomodar_ventanas: ['ventana', 'zona'], ejecutar_app: [], abrir_en_navegador: [], auditar: [], reparar: ['ruta'], gesto: ['gesto'],
   elegir_experiencia: ['nivel'], marcar_tecnologia: ['tecnologia', 'elegir'], empezar_proyecto: [], seguir_manual: [],
 };
 // the tools that ask the person for permission first wait for the answer (MEJORAS.md §2)
