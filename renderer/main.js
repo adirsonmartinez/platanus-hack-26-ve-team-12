@@ -200,9 +200,11 @@ const actions = {
   // The welcome robot hands a ready-made request to the agent (scaffold, .gitignore, README). With no agent
   // connected (none logged in, so none picked automatically) the scripted demo would answer, so the request
   // waits until the person picks one
-  // Returns true when an agent got the request now, false when it waits for one
+  // Returns true when an agent got the request now, false when it waits for one. During the welcome call the
+  // base project goes through the call, so Qubi tells the person how the work goes
   askAgent(prompt) {
     actions.openChat();
+    if (callViewModel.buildForWelcome(prompt)) return true;
     if (connection.live) {
       chatViewModel.send(prompt);
       return true;
@@ -223,6 +225,8 @@ const actions = {
   untrustFolder: () => trustModel.revoke(),
   // Someone who already programs: the app talks in Dev mode
   devMode: () => modeModel.set('tech'),
+  // The person answered the welcome with a tap: they went manual, so the welcome call (if any) ends
+  welcomeTouched: () => callViewModel.manual(),
   // The integrations the welcome robot is setting up: "Por conectar" on the map once their files arrive
   prepareSetup(integrations) {
     setupModel.prepare(projectModel.store.state.root, integrations);
@@ -320,7 +324,8 @@ const runService = (() => {
       const res = await run.start(id);
       if (res?.ok && Number.isInteger(res.port)) {
         startedPorts.add(res.port);
-        serversModel.open(res.port);
+        // the welcome call leaves the link for the person to open (callViewModel.link); otherwise it opens now
+        if (!callViewModel.welcomeCall) serversModel.open(res.port);
       }
       return res;
     },
@@ -328,8 +333,14 @@ const runService = (() => {
 })();
 const callViewModel = new CallViewModel({
   voiceService, runService, openSession, openSimulatedSession, chatViewModel, projectModel, mapViewModel, securityModel, connection, bus,
-  teamViewModel, memory: projectMemory,
+  teamViewModel, memory: projectMemory, welcome: robotDialogViewModel,
   actions: {
+    // the project running: a button in the chat that opens it in the browser
+    showLink(url) {
+      const address = url.replace(/^https?:\/\//, '');
+      const port = Number(address.split(':')[1]);
+      chatViewModel.sayFromMap({ text: strings.call.link.chat(address), chips: [{ label: strings.call.link.chip, run: () => serversModel.open(port), quiet: true }] });
+    },
     // mostrar_carpeta and ir_a: only visual, the map flies to the folder (the project root goes back home)
     showFolder: (path) => { shellViewModel.setStage('map'); return path ? mapViewModel.show(path) : (mapViewModel.home(), true); },
     // abrir_archivo (after the person's permission): the floating editor, as a click on the map
@@ -350,6 +361,17 @@ const callViewModel = new CallViewModel({
     setMode: (mode) => modeModel.set(mode),
   },
   simulate: false,
+});
+// The welcome by voice (docs/features/welcome-robot/): as soon as a new project's welcome starts, Qubi calls
+// on its own and asks the same questions; the bubble's buttons keep working. Only when a voice service is
+// connected and the window can use it: otherwise the welcome is just the buttons, with no error
+robotDialogViewModel.store.subscribe(async ({ phase }, prev) => {
+  if (phase !== 'interview' || prev?.phase !== 'off' || !callViewModel.canUseVoice) return;
+  if (callViewModel.store.state.status !== 'idle') return;
+  let ready = null;
+  try { ready = await voiceService.providers(); } catch { ready = null; }
+  if (!ready?.elevenlabs?.ready && !ready?.grok?.ready) return;
+  if (robotDialogViewModel.store.state.phase === 'interview') callViewModel.start({ welcome: true });
 });
 // …and the other way: Vibe / Dev in the app sets Qubi's technical level
 modeModel.store.subscribe(({ mode }) => callViewModel.syncMode(mode === 'tech'), { immediate: true });
@@ -384,7 +406,10 @@ const labels = createLabelLayer(document.getElementById('map-labels'), sceneView
 const mapView = createMapView({
   sceneView, labels, mapViewModel,
   nameOf: (key) => servicesViewModel.store.state.services.find((s) => s.key === key)?.name ?? null,
-  onIntegration: (key) => servicesViewModel.openConnect(key),
+  // one still "por conectar" (set up by the welcome) goes to its own flow ("Conectar mi cuenta" for Supabase)
+  onIntegration: (key) => (projectModel.store.state.integrationStatus?.[key] === 'pending'
+    ? mapViewModel.handlePick({ type: 'integration', key })
+    : servicesViewModel.openConnect(key)),
 });
 const supabaseView = createSupabaseView({ sceneView, labels, supabaseViewModel, supabaseModel });
 const gitView = createGitView({ sceneView, labels, gitViewModel });
@@ -419,7 +444,7 @@ const leadBox = () => {
   };
 };
 const teamView = createTeamView({ sceneView, labels, teamViewModel, origin: robotView.qubi, cameraViewModel, qubiBubble: leadBox });
-createWelcomeRobotView({ sceneView, labels, mapViewModel, robotDialogViewModel, tourViewModel, buildViewModel, callViewModel, teamViewModel });
+const welcomeRobotView = createWelcomeRobotView({ sceneView, labels, mapViewModel, robotDialogViewModel, tourViewModel, buildViewModel, callViewModel, teamViewModel });
 createConnectModalView({ connectViewModel });
 if (isDemo) {
   createDemoCursor(); // recording the product video (scripts/demo/)
@@ -494,10 +519,12 @@ const voiceConnect = createVoiceConnectView({ container: document.getElementById
 // center. "Chat" opens the chat at the call's card, where the person can write to Qubi
 createCallBarView({
   container: document.getElementById('call-bar'), callButton: document.getElementById('chat-call'), callViewModel, connection,
-  sceneView, voiceConnect,
+  sceneView, voiceConnect, onOpenLink: (port) => serversModel.open(port),
   // while Qubi builds his bubble stays (robotView 'build' job): the panel sits above it, not on it.
   // No head (hidden, the tour): docked, even if a bubble shows
   anchor: () => {
+    // the welcome's interview (the welcome call): above the welcome robot's bubble, never on its buttons
+    if (appViewModel.view === 'map' && robotDialogViewModel.store.state.phase === 'interview') return welcomeRobotView.bubble();
     const head = appViewModel.view === 'map' ? robotView.head() : null;
     return head ? robotView.bubble() ?? head : null;
   },

@@ -127,9 +127,10 @@ function field(labelText, id) {
 // element the panel must sit above (Qubi's bubble while he builds), see anchorPoint.
 // project(x, y, z): that point in stage pixels (defaults to sceneView.toScreen, as the map's labels).
 // voiceConnect: { open() } of voiceConnectView; when given it owns the «offline» error.
+// onOpenLink(port): opens the running project (the link Qubi leaves once it is up) in the browser.
 export function createCallBarView({
   container, callButton, callViewModel: vm, connection = null, onOpenChat = () => {},
-  sceneView = null, anchor = () => null, project = null, voiceConnect = null,
+  sceneView = null, anchor = () => null, project = null, voiceConnect = null, onOpenLink = () => {},
 }) {
   const C = strings.call;
   const S = C.settings;
@@ -165,6 +166,12 @@ export function createCallBarView({
   alwaysLabel.append(alwaysBox, el('span', '', C.permission.always));
   const permHint = el('small', 'call-perm-hint', C.permission.voiceHint);
   perm.append(permText, permActions, alwaysLabel, permHint);
+
+  // The project running (ejecutar_app): its address, one click away in the browser
+  const linkBtn = el('button', 'call-link');
+  linkBtn.type = 'button';
+  linkBtn.hidden = true;
+  linkBtn.addEventListener('click', () => { const link = vm.store.state.link; if (link) onOpenLink(link.port); });
 
   // Qubi's face: eyes and a mouth that opens with his voice (--talk, set every frame)
   const face = el('span', 'call-face');
@@ -239,7 +246,7 @@ export function createCallBarView({
 
   const tail = el('span', 'call-tail');
   tail.setAttribute('aria-hidden', 'true');
-  panel.append(perm, head, line, actions, pop, tail);
+  panel.append(perm, head, linkBtn, line, actions, pop, tail);
 
   // Errors: the reason in plain words, with "try again" and close
   const errorBox = el('div', 'call-error');
@@ -608,6 +615,12 @@ export function createCallBarView({
     tag.hidden = true;
     renderLine(s);
     renderPermission(s);
+    linkBtn.hidden = !s.link;
+    if (s.link && linkBtn.dataset.url !== s.link.url) {
+      linkBtn.dataset.url = s.link.url;
+      linkBtn.textContent = C.link.open(s.link.url.replace(/^https?:\/\//, ''));
+      linkBtn.title = C.link.hint;
+    }
     // Mic: on/off with its own icon and label (a simulated call has no microphone)
     if (micBtn.getAttribute('aria-pressed') !== String(Boolean(s.muted))) {
       micBtn.setAttribute('aria-pressed', String(Boolean(s.muted)));

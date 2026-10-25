@@ -117,6 +117,11 @@ const toolSpecs = (v = t.voice) => [
   ['reparar', 15, strings({ ruta: v.tools.repararRuta })],
   // Qubi's body language on the map while it talks (only what is seen)
   ['gesto', 10, strings({ gesto: v.tools.gestoGesto })],
+  // the welcome of a new project: the bubble's answers by voice (outside it they answer sin-bienvenida)
+  ['elegir_experiencia', 10, strings({ nivel: v.tools.elegirExperienciaNivel })],
+  ['marcar_tecnologia', 10, strings({ tecnologia: v.tools.marcarTecnologiaTecnologia, elegir: v.tools.marcarTecnologiaElegir })],
+  ['empezar_proyecto', 15],
+  ['seguir_manual', 10],
 ];
 
 // One client tool of the window for ElevenLabs: answers in the same turn (expectsResponse), never with
@@ -158,6 +163,7 @@ function agentConfig({ voiceId = DEFAULT_VOICE_ID, llm = DEFAULT_LLM } = {}) {
             tech_level: v.levels[v.defaults.level],
             speech_style: v.styles[v.defaults.style],
             greeting: fill(v.greetings[v.defaults.style][0], { project_name: v.defaults.projectName }),
+            welcome_mode: v.welcome.off,
           },
         },
         prompt: {
@@ -430,7 +436,8 @@ function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = g
     // -> ElevenLabs { ok, provider, signedUrl, dynamicVariables, voiceMode, voiceId }
     //  | Grok { ok, provider, token, expiresAt, model, session }
     //  | { ok: false, reason: 'no-key' | 'auth' | 'quota' | 'network' | 'failed' }   (never the key)
-    async start({ projectName, context, builder, memory, provider = 'auto', voice, level, style } = {}) {
+    // welcome: the welcome of a new project (its greeting and instructions instead of a normal pick-up)
+    async start({ projectName, context, builder, memory, provider = 'auto', voice, level, style, welcome = false } = {}) {
       const chosen = await pick(PROVIDERS.includes(provider) ? provider : 'auto');
       if (!chosen) return { ok: false, reason: 'no-key' };
       const d = t.voice.defaults;
@@ -444,7 +451,8 @@ function createVoiceCall({ getKey, file, makeClient = defaultClient, fetchFn = g
         // the instructions of the level the person picked (a key of LEVELS, never free text)
         tech_level: t.voice.levels[LEVELS.includes(level) ? level : d.level],
         speech_style: t.voice.styles[speech],
-        greeting: greeting(speech, name),
+        greeting: welcome === true ? fill(t.voice.welcome.greetings[speech], { project_name: name }) : greeting(speech, name),
+        welcome_mode: welcome === true ? t.voice.welcome.instructions : t.voice.welcome.off,
       };
       const voiceName = typeof voice === 'string' ? voice : '';
       try {

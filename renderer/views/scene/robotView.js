@@ -326,7 +326,8 @@ export function createRobotView({ sceneView, labels, mapViewModel, tourViewModel
       return;
     }
     stepId = null;
-    if (inCall() && mapReady()) {
+    // during the welcome's interview the welcome robot keeps the scene (its buttons), even in the welcome call
+    if (inCall() && mapReady() && robotDialogViewModel?.store.state.phase !== 'interview') {
       if (job !== 'call') {
         // back from a build or a tour it walks home; from the companion it stays; else it appears at home
         const home = robotViewModel?.store.state.at ?? HOME;

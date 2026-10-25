@@ -128,8 +128,8 @@ test('ElevenLabs: creates the agent once, keeps its id in the file and reuses it
   assert.equal(first.provider, 'elevenlabs');
   assert.match(first.signedUrl, /^wss:\/\//);
   assert.equal(first.voiceId, JUAN, 'Juan by default');
-  assert.deepEqual(Object.keys(first.dynamicVariables).sort(), ['builder_name', 'greeting', 'project_context', 'project_memory', 'project_name', 'speech_style', 'tech_level']);
-  assert.deepEqual({ ...first.dynamicVariables, project_memory: '', greeting: '' }, { project_name: 'Feria Online', project_context: 'Carpetas: web, api.', builder_name: 'Claude', project_memory: '', greeting: '', tech_level: t.voice.levels.basico, speech_style: t.voice.styles.pana });
+  assert.deepEqual(Object.keys(first.dynamicVariables).sort(), ['builder_name', 'greeting', 'project_context', 'project_memory', 'project_name', 'speech_style', 'tech_level', 'welcome_mode']);
+  assert.deepEqual({ ...first.dynamicVariables, project_memory: '', greeting: '' }, { project_name: 'Feria Online', project_context: 'Carpetas: web, api.', builder_name: 'Claude', project_memory: '', greeting: '', tech_level: t.voice.levels.basico, speech_style: t.voice.styles.pana, welcome_mode: t.voice.welcome.off });
   assert.ok(t.voice.greetings.pana.map((g) => g.replace('{{project_name}}', 'Feria Online')).includes(first.dynamicVariables.greeting), 'a pana greeting, with the project in');
   assert.ok(first.dynamicVariables.project_memory.length > 0, 'without a memory: the placeholder');
   assert.equal(madeWith[0], KEY, 'the key only goes to the client');
@@ -300,10 +300,11 @@ test('the project memory goes in its own variable, cleaned and capped at 800', a
   assert.deepEqual(LIMITS, { projectName: 120, context: 2500, builder: 40, memory: 800 });
 });
 
-const TOOL_NAMES = ['ver_proyecto', 'construir', 'preguntar', 'ver_avance', 'mostrar_carpeta', 'repartir', 'ver_equipo', 'ir_a', 'volver', 'ajustar_qubi', 'revisar_archivo', 'abrir_archivo', 'ejecutar_app', 'abrir_en_navegador', 'auditar', 'reparar', 'gesto'];
+const TOOL_NAMES = ['ver_proyecto', 'construir', 'preguntar', 'ver_avance', 'mostrar_carpeta', 'repartir', 'ver_equipo', 'ir_a', 'volver', 'ajustar_qubi', 'revisar_archivo', 'abrir_archivo', 'ejecutar_app', 'abrir_en_navegador', 'auditar', 'reparar', 'gesto', 'elegir_experiencia', 'marcar_tecnologia', 'empezar_proyecto', 'seguir_manual'];
 const REQUIRED = {
   ver_proyecto: [], construir: ['pedido'], preguntar: ['pregunta'], ver_avance: [], mostrar_carpeta: ['ruta'], repartir: ['tareas'], ver_equipo: [],
   ir_a: ['ruta'], volver: [], ajustar_qubi: [], revisar_archivo: ['ruta', 'pregunta'], abrir_archivo: ['ruta'], ejecutar_app: [], abrir_en_navegador: [], auditar: [], reparar: ['ruta'], gesto: ['gesto'],
+  elegir_experiencia: ['nivel'], marcar_tecnologia: ['tecnologia', 'elegir'], empezar_proyecto: [], seguir_manual: [],
 };
 // the tools that ask the person for permission first wait for the answer (MEJORAS.md §2)
 const ASKS_PERMISSION = new Set(['abrir_archivo', 'ejecutar_app', 'abrir_en_navegador']);
@@ -328,7 +329,7 @@ test('the agent: Spanish, Venezuelan greeting, private, voice override allowed, 
     assert.ok(agent.prompt.prompt.includes(section), section);
   }
   for (const variable of ['gesto', 'celebrar', 'auditar', 'reparar', 'la auditoría', '{{project_context}}', '{{builder_name}}', '{{project_memory}}', '[aviso de Qubbot]', 'repartir', 'ver_equipo']) assert.ok(agent.prompt.prompt.includes(variable), variable);
-  assert.deepEqual(Object.keys(agent.dynamicVariables.dynamic_variable_placeholders).sort(), ['builder_name', 'greeting', 'project_context', 'project_memory', 'project_name', 'speech_style', 'tech_level']);
+  assert.deepEqual(Object.keys(agent.dynamicVariables.dynamic_variable_placeholders).sort(), ['builder_name', 'greeting', 'project_context', 'project_memory', 'project_name', 'speech_style', 'tech_level', 'welcome_mode']);
   assert.equal(agent.prompt.builtInTools.endCall.params.systemToolType, 'end_call');
 
   const tools = agent.prompt.tools;
@@ -514,4 +515,42 @@ test('greetings: picked from the chosen style, never the same twice in a row', a
   // an unknown style falls back to pana; the random number never picks outside the list
   const odd = createVoiceCall({ getKey: ONLY_ELEVEN, file: tmp(), makeClient: () => fakeClient(), random: always(0.999999) });
   assert.ok(fill('pana').includes((await odd.start({ ...REQ, style: 'raro' })).dynamicVariables.greeting));
+});
+
+// The welcome of a new project (docs/features/welcome-robot/): Qubi asks the interview by voice
+test('welcome: the call starts with the welcome greeting and its instructions; a normal call says it does not apply', async () => {
+  const client = fakeClient();
+  const call = createVoiceCall({ getKey: ONLY_ELEVEN, file: tmp(), makeClient: () => client });
+  const normal = await call.start(REQ);
+  assert.equal(normal.dynamicVariables.welcome_mode, t.voice.welcome.off);
+  const welcome = await call.start({ ...REQ, welcome: true });
+  assert.equal(welcome.dynamicVariables.welcome_mode, t.voice.welcome.instructions);
+  assert.equal(welcome.dynamicVariables.greeting, t.voice.welcome.greetings.pana.replace('{{project_name}}', 'Feria Online'));
+  const formal = await call.start({ ...REQ, welcome: true, style: 'formal' });
+  assert.equal(formal.dynamicVariables.greeting, t.voice.welcome.greetings.formal.replace('{{project_name}}', 'Feria Online'));
+  // anything but true is a normal call
+  assert.equal((await call.start({ ...REQ, welcome: 'yes' })).dynamicVariables.welcome_mode, t.voice.welcome.off);
+});
+
+test('welcome: every style has a greeting that says Qubi listens and the buttons work too; the prompt has its section', () => {
+  const { welcome } = t.voice;
+  assert.deepEqual(Object.keys(welcome.greetings).sort(), Object.keys(t.voice.styles).sort());
+  for (const [style, g] of Object.entries(welcome.greetings)) {
+    assert.match(g, /escucho|escuchando/i, style);
+    assert.match(g, /botones/i, style);
+    assert.match(g, /\?$/, `${style} ends asking`);
+  }
+  for (const tool of ['elegir_experiencia', 'marcar_tecnologia', 'empezar_proyecto', 'seguir_manual', 'ejecutar_app', 'end_call']) assert.ok(welcome.instructions.includes(tool), tool);
+  const { agent } = agentConfig().conversationConfig;
+  assert.ok(agent.prompt.prompt.includes('# Bienvenida') && agent.prompt.prompt.includes('{{welcome_mode}}'));
+  assert.equal(agent.dynamicVariables.dynamic_variable_placeholders.welcome_mode, welcome.off);
+});
+
+test('welcome: Grok gets the instructions and the greeting already filled', async () => {
+  const fetchFn = async () => ({ ok: true, json: async () => ({ value: 'ek_live_secret_123', expires_at: 1_900_000_000 }) });
+  const call = createVoiceCall({ getKey: keys({ grok: XKEY }), file: tmp(), makeClient: () => assert.fail('no ElevenLabs client'), fetchFn });
+  const { session } = await call.start({ ...REQ, provider: 'grok', welcome: true });
+  assert.equal(session.firstMessage, t.voice.welcome.greetings.pana.replace('{{project_name}}', 'Feria Online'));
+  assert.ok(session.instructions.includes(t.voice.welcome.instructions));
+  assert.ok(session.tools.some((tool) => tool.name === 'empezar_proyecto'));
 });

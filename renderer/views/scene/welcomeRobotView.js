@@ -91,7 +91,9 @@ function pillHtml(unread) {
 }
 
 export function createWelcomeRobotView({ sceneView, labels, mapViewModel, robotDialogViewModel: dialog, tourViewModel = null, buildViewModel = null, callViewModel = null, teamViewModel = null }) {
-  const inCall = () => ['connecting', 'live'].includes(callViewModel?.store.state.status);
+  // A call steps it aside, except during the interview: then Qubi asks its questions by voice (the welcome
+  // call) and this robot keeps the buttons on screen
+  const inCall = () => ['connecting', 'live'].includes(callViewModel?.store.state.status) && dialog.store.state.phase !== 'interview';
   const teamOn = () => Boolean(teamViewModel && teamViewModel.store.state.phase !== 'idle');
   const busy = () => Boolean(tourViewModel?.store.state.guide || buildViewModel?.store.state.guide || inCall() || teamOn());
   const robot = buildRobot();
@@ -255,4 +257,6 @@ export function createWelcomeRobotView({ sceneView, labels, mapViewModel, robotD
       }
     }
   });
+  // The bubble on screen (null when hidden): the welcome call's panel sits above it, never on its buttons
+  return { bubble: () => (on && !label.el.hidden ? label.el : null) };
 }

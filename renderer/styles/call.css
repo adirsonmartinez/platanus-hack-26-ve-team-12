@@ -140,6 +140,15 @@ body:not(.chat-closed):not(.chat-min):not(.chat-docked) #stage #call-bar:not([da
 }
 #call-bar .call-perm-text { margin: 0; font: 500 13px/1.4 var(--lg-font); color: var(--lg-text); overflow-wrap: anywhere; }
 #call-bar .call-perm-actions { display: flex; gap: 6px; }
+/* The running project's address: a white pill, the panel's primary action while it shows */
+#call-bar .call-link {
+  width: 100%; height: 34px; padding: 0 14px; border: 0; border-radius: 999px; cursor: pointer;
+  font: 600 13px/1 var(--lg-font); color: #121212; background: rgba(255, 255, 255, .92);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: background .2s var(--lg-ease);
+}
+#call-bar .call-link:hover { background: #fff; }
+#call-bar .call-link:focus-visible { outline: 2px solid rgba(255, 255, 255, .6); outline-offset: 2px; }
+#call-bar .call-link[hidden] { display: none; }
 #call-bar .call-perm-btn {
   flex: 1; height: 32px; padding: 0 12px; border: 0; border-radius: 999px; cursor: pointer;
   font: 600 13px/1 var(--lg-font); color: var(--lg-text); background: var(--lg-chip); box-shadow: var(--lg-rim);

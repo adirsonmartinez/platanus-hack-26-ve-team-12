@@ -1154,7 +1154,8 @@ function voiceRequest(req) {
   if (req.voice != null && !(typeof req.voice === 'string' && VOICE_KEYS.has(req.voice))) return null;
   if (req.level != null && !VOICE_LEVELS.includes(req.level)) return null;
   if (req.style != null && !VOICE_STYLES.includes(req.style)) return null;
-  return { ...Object.fromEntries(fields.map(([name]) => [name, req[name]])), provider, ...(req.voice != null ? { voice: req.voice } : {}), ...(req.level != null ? { level: req.level } : {}), ...(req.style != null ? { style: req.style } : {}) };
+  if (req.welcome != null && typeof req.welcome !== 'boolean') return null; // the welcome of a new project
+  return { ...Object.fromEntries(fields.map(([name]) => [name, req[name]])), provider, ...(req.voice != null ? { voice: req.voice } : {}), ...(req.level != null ? { level: req.level } : {}), ...(req.style != null ? { style: req.style } : {}), ...(req.welcome === true ? { welcome: true } : {}) };
 }
 
 ipcMain.handle('voice:status', () => voice().status());

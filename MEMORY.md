@@ -88,6 +88,8 @@ El equipo cambió el mapa: ya no es un radar, ahora es **un árbol de todo el pr
 - Delegar tareas acotadas a Pi (gentle-shell) cuando convenga, no a opencode.
 
 ## Pendiente o ideas acordadas
+- **Bienvenida por voz (2026-10-25, sin commit, sin probar con voz real):** Qubi llama solo al crear un proyecto y hace la entrevista hablando; botones siguen; tocar uno cuelga; link del proyecto al final (`docs/features/welcome-robot/` → «Bienvenida por voz»). Probar con `npm start` + VPN + `ELEVENLABS_API_KEY` en `.env.local` (cuenta gratis: puede fallar la voz de biblioteca). El agente de ElevenLabs se actualiza solo (cambió `configHash`).
+- **Arreglado tras la fusión:** el clic en una integración «por conectar» volvía a ir al modal de servicios de Rafa; ahora va a nuestro flujo (`onIntegration` en `main.js`).
 - **Conectar mi cuenta, lo que falta:** Vercel por su CLI (`vercel login/link/env add/deploy` desde main); tablas reales de Supabase en el mapa (`list_tables`); que la regla de seguridad entienda `.gitignore` (hoy `.env.local` queda verde solo en la sesión en que se conectó).
 - A futuro, más tarjetas en el catálogo (React Native/Expo, Clerk, AWS) con sus reglas.
 - **Llamada con Qubi**:
@@ -119,6 +121,7 @@ El equipo cambió el mapa: ya no es un radar, ahora es **un árbol de todo el pr
 - Commit y PR de `feature/recorrido` cuando el usuario lo pida.
 
 ## Aprendizajes (actualiza aquí; lo técnico detallado va en la skill)
+- **electron-builder descarta las carpetas `examples` de node_modules**: sin `node_modules/three/examples/jsm` (bloom, GLTFLoader) la app empaquetada se queda sin textos. Por eso `build.files` la copia con `{from, to}` (un patrón simple no basta). Verificar un instalador: `npx electron-builder --mac dir --arm64` y `npx @electron/asar list`.
 - **ElevenLabs**:
   - La clave está en `.env.local` (puesta por `npx @elevenlabs/cli onboard`, termina en 171e).
   - Main la lee con `util.parseEnv` en un objeto privado, nunca en `process.env`, para que los agentes no la hereden.

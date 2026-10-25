@@ -58,6 +58,21 @@ El robot se queda y reacciona al proyecto real. En orden de prioridad:
 - **Minimizar** lo deja como una pastilla "Guía" que late cuando llega un consejo nuevo. **×** cierra la guía.
 - Con "reducir movimiento" activado en el sistema, todo aparece sin animaciones.
 
+## Bienvenida por voz (Qubi)
+
+Apenas se crea el proyecto, si hay un servicio de voz conectado (ElevenLabs o Grok, ver `docs/features/llamada/VOZ.md`), Qubi llama solo y hace la misma entrevista hablando. La burbuja sigue igual, con sus botones, para quien no puede o no quiere hablar o escuchar.
+
+1. **Saludo:** «Te escucho: háblame cuando quieras, o si prefieres, usa los botones de la burbuja. Para empezar, ¿ya programas o estás empezando?» (`electron/strings.js` → `voice.welcome.greetings`, uno por estilo).
+2. **Entrevista por voz:** Qubi responde por la persona con las mismas acciones de los botones (`press(id, { by: 'voice' })`). Herramientas nuevas de la llamada: `elegir_experiencia` (empezando / programo), `marcar_tecnologia` (nextjs, vercel, supabase; si / no) y `empezar_proyecto` (necesita que la persona lo haya dicho, como `construir`). Cada una responde el paso de la burbuja (`voiceState()`): manda lo que haya en pantalla.
+3. **Manual:** si la persona toca una respuesta de la burbuja, o le dice a Qubi que prefiere los botones (`seguir_manual`), la llamada cuelga y todo sigue como siempre. Plegar o desplegar la burbuja no cuenta.
+4. **Construcción:** el pedido del proyecto base pasa por la llamada (`callViewModel.buildForWelcome`), así Qubi cuenta el avance con los avisos de siempre.
+5. **Listo:** Qubi arranca el proyecto con `ejecutar_app` (pide permiso). Con el puerto, el panel de la llamada muestra «Ver tu proyecto · localhost:3000» y el chat un botón «Abrir en el navegador»; en la bienvenida el navegador no se abre solo.
+6. **Sin voz:** sin clave, sin red o sin créditos no aparece ningún error ni tarjeta: queda la bienvenida con botones.
+
+Mientras dura la entrevista se queda el robot de bienvenida (sus botones) aunque haya llamada; el robot de la llamada aparece cuando empieza la obra. El panel de la llamada se pone encima de la burbuja, nunca sobre sus botones.
+
+Archivos: `renderer/viewmodels/callViewModel.js` (herramientas de bienvenida, `welcomeCall`, `manual()`, `link`), `robotDialogViewModel.js` (`voiceState`, `press(id, { by })`, `actions.welcomeTouched`), `electron/voiceCall.js` (`welcome` en `start`, variable `{{welcome_mode}}`), `renderer/main.js` (arranque automático, `askAgent`, link), `callBarView.js` (botón del link). Pruebas: `tests/renderer/callWelcome.test.mjs`, `robotDialogViewModel.test.mjs`, `electron/voiceCall.test.js`.
+
 ## Cambios de apoyo (fuera del robot)
 
 ### El agente en Windows y detrás de un proxy o VPN

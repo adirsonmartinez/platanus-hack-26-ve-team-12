@@ -771,6 +771,13 @@ export const strings = {
       return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
     },
     live: (time) => `En vivo · ${time}`,
+    // The project running (ejecutar_app): the address in the call panel and in the chat
+    link: {
+      open: (address) => `Ver tu proyecto · ${address}`,
+      hint: 'Abre tu proyecto en el navegador',
+      chat: (address) => `¡Tu proyecto está listo y corriendo en ${address}!`,
+      chip: 'Abrir en el navegador',
+    },
     state: {
       ringing: 'Llamando…',
       live: 'En vivo',

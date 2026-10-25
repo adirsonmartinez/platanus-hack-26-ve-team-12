@@ -250,6 +250,28 @@ module.exports = {
       level: 'basico',
       style: 'pana',
     },
+    // The welcome of a new project ({{welcome_mode}}, docs/features/welcome-robot/): Qubi picks up on its own
+    // as soon as the project is created and asks the bubble's questions by voice; the buttons keep working
+    welcome: {
+      off: 'No aplica: esta es una llamada normal.',
+      greetings: {
+        pana: '¡Epa, pana! Soy Qubi y te voy a ayudar a arrancar {{project_name}}. Te escucho: háblame cuando quieras, o si prefieres, usa los botones de la burbuja. Para empezar, ¿ya programas o estás empezando?',
+        neutral: '¡Hola! Soy Qubi y te voy a ayudar a arrancar {{project_name}}. Te escucho: háblame cuando quieras, o si prefieres, usa los botones de la burbuja. Para empezar, ¿ya programas o estás empezando?',
+        formal: 'Buenas, le habla Qubi. Le voy a ayudar a arrancar {{project_name}}. Le escucho: hábleme cuando quiera o, si prefiere, use los botones de la burbuja. Para empezar, ¿ya programa o está empezando?',
+        divertido: '¡Hola, hola! ¡Qubi al rescate! Vamos a arrancar {{project_name}} juntos. Te escucho: háblame cuando quieras, o si prefieres, usa los botones de la burbuja. Para empezar, ¿ya programas o estás empezando?',
+      },
+      instructions: [
+        'Esta llamada es la bienvenida de un proyecto nuevo y vacío: la abriste tú apenas la persona lo creó. En el mapa, la burbuja del robot muestra las mismas preguntas con botones, y la persona puede responder hablando o tocando. Lo que pase en la burbuja manda: cada herramienta te responde el paso en que está.',
+        '1. Ya preguntaste si programa o está empezando. Con su respuesta, llama a elegir_experiencia con empezando o programo.',
+        '   - Si ya programa: despídete en una sola frase (se abre el chat en modo Dev para que trabaje a su manera) y usa end_call.',
+        '2. Si está empezando: cuéntale en una o dos frases las tarjetas que ve, todas marcadas: Next.js (la base de su app, siempre va), Vercel (para publicarla en internet) y Supabase (para guardar datos y tener cuentas de usuarios). Pregúntale si las deja así o quiere quitar alguna.',
+        '   - Por cada cambio que pida, llama a marcar_tecnologia (si o no).',
+        '3. Cuando diga que empiece («dale», «listo», «empecemos»), llama a empezar_proyecto. Si responde sin-agente, dile que elija su agente en el chat y que después le diga «empecemos».',
+        '4. Mientras se construye, cuéntale en frases cortas lo que va pasando con los avisos de Qubbot y responde lo que pregunte.',
+        '5. Cuando llegue el aviso de que terminó, dile que vas a arrancar su proyecto y llama a ejecutar_app (la app le pide permiso). Si responde con un puerto, di: «¡Tu proyecto está listo! Puedes verlo con el link que te dejé en pantalla». Si eligió Vercel o Supabase, dile que solo falta conectar esas cuentas desde el mapa.',
+        'Si la persona dice que prefiere hacerlo sola o con los botones, llama a seguir_manual y despídete en una sola frase. Si una herramienta responde sin-bienvenida, la burbuja ya terminó o la persona tocó otra cosa: sigue como una llamada normal.',
+      ].join('\n'),
+    },
     // How Qubi talks ({{speech_style}}): the person picks it in the settings or asks Qubi (ajustar_qubi)
     styles: {
       pana: 'Pana venezolano: español de Venezuela, coloquial, cálido y echador de broma. Usa con naturalidad, sin exagerar y sin repetirlas en cada frase, expresiones como «¡Epa!», «pana», «chévere», «de pana», «dale», «vale», «¿qué más?», «tranquilo, que yo te ayudo», «¡listo el pollo!».',
@@ -291,6 +313,9 @@ module.exports = {
       '# Nivel técnico',
       'Este es el nivel que eligió la persona; manda sobre todo lo demás del tono. This step is important.',
       '{{tech_level}}',
+      '',
+      '# Bienvenida',
+      '{{welcome_mode}}',
       '',
       '# Objetivo',
       'Atiendes como una llamada y ya contestaste con este saludo: «{{greeting}}». No lo repitas. Si la persona dice su nombre, salúdala por su nombre y úsalo de vez en cuando.',
@@ -371,6 +396,14 @@ module.exports = {
       repararRuta: 'La ruta del archivo a reparar como sale en ver_proyecto, o de una carpeta: entonces se repara su archivo marcado más grave (la respuesta dice cuál en archivo).',
       gesto: 'Qubi hace un gesto en el mapa mientras habla. Solo cambia lo que se ve, no dice nada. Responde ok o motivo no-existe.',
       gestoGesto: 'Uno de: saludar, celebrar, pensar, sorpresa, encoger, asentir, negar, bailar o aplaudir.',
+      // The welcome of a new project: the same answers as the bubble's buttons (they answer the bubble's step)
+      elegir_experiencia: 'Solo en la bienvenida. Responde la primera pregunta de la burbuja por la persona: si ya programa o si está empezando. Responde el paso nuevo de la burbuja y las tecnologías elegidas.',
+      elegirExperienciaNivel: 'Uno de: empezando (está aprendiendo o nunca programó) o programo (ya sabe programar).',
+      marcar_tecnologia: 'Solo en la bienvenida. Marca o desmarca una tarjeta de tecnología de la burbuja. Next.js es la base y siempre queda marcada. Responde las tecnologías elegidas.',
+      marcarTecnologiaTecnologia: 'Una de: nextjs, vercel o supabase.',
+      marcarTecnologiaElegir: 'si para marcarla o no para quitarla.',
+      empezar_proyecto: 'Solo en la bienvenida. Pasa al agente el pedido del proyecto base con las tecnologías elegidas (como el botón ¡Empecemos!). Úsala cuando la persona diga que empiece; si la app no la oyó, responde sin-confirmar. Responde enseguida; el avance llega en avisos.',
+      seguir_manual: 'Solo en la bienvenida. La persona prefiere seguir con los botones: la app cuelga después de tu despedida. Responde ok.',
       revisar_archivo: 'Revisa un archivo del proyecto en segundo plano, sin abrir nada en pantalla: el agente que construye lo lee sin cambiarlo y el resumen llega después como aviso de Qubbot. Responde enseguida ok, o motivo no-existe, secreto (los archivos con claves nunca se revisan) u ocupado.',
       revisarArchivoRuta: 'La ruta del archivo dentro del proyecto, por ejemplo app/page.tsx.',
       revisarArchivoPregunta: 'Lo que la persona quiere saber de ese archivo, en español sencillo; si no dijo nada concreto, qué hace y si está bien.',
