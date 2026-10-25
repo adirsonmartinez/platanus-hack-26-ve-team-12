@@ -28,6 +28,10 @@
       "electron/**",
       "renderer/**",
       "agent/**",
+      {
+        "from": "node_modules/three/examples/jsm",
+        "to": "node_modules/three/examples/jsm"
+      },
       "package.json"
     ],
     "artifactName": "Qubbot-${version}-${os}-${arch}.${ext}",
