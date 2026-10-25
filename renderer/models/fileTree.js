@@ -28,20 +28,3 @@ export function findNode(tree, path) {
   };
   return walk(tree);
 }
-
-// One entry per folder (the folder itself plus every subfolder, depth first),
-// each with only its direct files. `label` is the path relative to `node`.
-export function collectFloors(node, rootName) {
-  const prefix = node.path ? `${node.path}/` : '';
-  const floors = [];
-  const walk = (current) => {
-    const children = current.children ?? [];
-    const label = current === node
-      ? `${node.path ? baseName(node.path) : rootName}/`
-      : `${current.path.slice(prefix.length)}/`;
-    floors.push({ path: current.path, label, files: children.filter((c) => c.type === 'file') });
-    children.filter((c) => c.type === 'dir').forEach(walk);
-  };
-  walk(node);
-  return floors;
-}

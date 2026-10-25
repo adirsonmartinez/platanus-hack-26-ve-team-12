@@ -1,0 +1,74 @@
+/* The Supabase side panel (shellView.js renderSupabase) in the chat's glass (tokens from chat-glass.css):
+   the project and its state, three numbers, a bar against what the plan includes, the biggest tables. Neutral:
+   only a database close to its limit turns the bar amber. */
+
+#sidebar .db-head { display: flex; align-items: center; gap: 10px; margin: 2px 6px 12px; }
+#sidebar .db-logo {
+  flex: none; width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center;
+  background: var(--lg-stage); box-shadow: inset 0 0 0 1px var(--lg-code-ring); color: var(--lg-icon);
+}
+#sidebar .db-logo svg { width: 18px; height: 18px; }
+#sidebar .db-title { flex: 1; min-width: 0; display: grid; gap: 3px; }
+#sidebar .db-title-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
+#sidebar .db-title strong { font: 600 14px/1.25 var(--lg-font); color: var(--lg-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#sidebar .db-title small { font: 11.5px/1.35 var(--lg-font); color: var(--lg-muted); }
+#sidebar .db-state {
+  flex: none; display: inline-flex; align-items: center; gap: 5px; padding: 2px 8px; border-radius: 999px;
+  background: var(--lg-chip); box-shadow: var(--lg-rim); font: 500 10.5px var(--lg-font); color: var(--lg-text-2);
+}
+#sidebar .db-state::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--lg-faint); }
+#sidebar .db-state.live::before { background: var(--ok); }
+
+#sidebar .db-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin: 0 4px 10px; }
+#sidebar .db-stat {
+  display: grid; gap: 2px; padding: 10px 10px 9px; border-radius: var(--lg-r-block);
+  background: var(--lg-card); box-shadow: var(--lg-rim);
+}
+#sidebar .db-stat b { font: 600 17px/1.15 var(--lg-font); letter-spacing: -.01em; font-variant-numeric: tabular-nums; color: var(--lg-text); }
+#sidebar .db-stat span { font-size: 11px; color: var(--lg-muted); }
+
+#sidebar .db-bar { height: 6px; margin: 4px 6px 6px; border-radius: 99px; overflow: hidden; background: rgba(255, 255, 255, .08); }
+#sidebar .db-bar i { display: block; height: 100%; border-radius: inherit; background: var(--lg-text); transition: width .6s var(--lg-ease); }
+#sidebar .db-bar.full i { background: var(--warn); }
+#sidebar .db-note { margin: 0 6px 8px; font-size: 11px; color: var(--lg-faint); }
+
+#sidebar .db-tables { display: grid; gap: 2px; margin: 0 4px 6px; }
+#sidebar .db-table {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: 10px;
+  padding: 7px 8px; border-radius: var(--lg-r-sm); font-size: 12px; color: var(--lg-text-2);
+}
+#sidebar .db-table:hover { background: var(--lg-chip); }
+#sidebar .db-table code { font: 12px var(--lg-mono); color: var(--lg-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#sidebar .db-table span { font-variant-numeric: tabular-nums; white-space: nowrap; }
+#sidebar .db-size { min-width: 52px; text-align: right; color: var(--lg-muted); }
+
+#sidebar .db-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 12px 4px 4px; }
+#sidebar .db-secondary, #sidebar .db-primary {
+  height: 30px; padding: 0 12px; border: 0; border-radius: 999px; cursor: pointer; font: 500 12px var(--lg-font);
+  background: var(--lg-chip); box-shadow: var(--lg-rim); color: var(--lg-text); transition: background .15s;
+}
+#sidebar .db-secondary:hover { background: var(--lg-chip-hover); }
+#sidebar .db-primary { margin: 0 6px; background: #fff; box-shadow: none; color: #121212; font-weight: 600; }
+#sidebar .db-primary:hover { background: rgba(255, 255, 255, .88); }
+#sidebar .db-secondary:focus-visible, #sidebar .db-primary:focus-visible { outline: 2px solid rgba(255, 255, 255, .5); outline-offset: 2px; }
+
+/* The schema card over the map ("Supabase · esquema public", while the 3D tables are open): the chat's clear
+   glass like the security card, no purple dot, and "Volver al mapa" as the chat's white pill */
+#stage #schema-panel {
+  border: 0; border-radius: 18px; padding: 10px 10px 10px 16px;
+  background: var(--lg-panel);
+  -webkit-backdrop-filter: url(#liquid-glass) blur(22px) saturate(175%) brightness(1.04);
+  backdrop-filter: url(#liquid-glass) blur(22px) saturate(175%) brightness(1.04);
+  box-shadow: var(--lg-rim-strong), var(--lg-shadow);
+  font-family: var(--lg-font); -webkit-font-smoothing: antialiased;
+}
+#stage #schema-panel strong { font: 600 13px/1.3 var(--lg-font); color: var(--lg-text); }
+#stage #schema-panel strong::before { display: none; }
+#stage #schema-panel span { color: var(--lg-muted); }
+#stage #schema-panel span.bad { color: var(--danger); }
+#stage #schema-panel button {
+  height: 32px; padding: 0 14px; border: 0; border-radius: 999px;
+  background: #fff; color: #121212; font: 600 12px var(--lg-font); transition: background .15s;
+}
+#stage #schema-panel button:hover { background: rgba(255, 255, 255, .88); }
+#stage #schema-panel button:focus-visible { outline: 2px solid rgba(255, 255, 255, .5); outline-offset: 2px; }

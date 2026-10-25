@@ -1,0 +1,94 @@
+/* Map controls (bottom left: zoom, turn, center, hand) and the hand camera preview, in the chat's clear
+   glass (tokens from chat-glass.css). Each group is a glass pill with round buttons; neutral like the chat:
+   hover and "on" are a light chip, never the accent. */
+
+#controls { position: fixed; left: 16px; bottom: 16px; z-index: 2; display: flex; gap: 8px; user-select: none; }
+
+#controls .group {
+  position: relative; display: flex; gap: 2px; padding: 4px; border-radius: 999px;
+  background: var(--lg-panel);
+  -webkit-backdrop-filter: url(#liquid-glass) blur(22px) saturate(175%) brightness(1.04);
+  backdrop-filter: url(#liquid-glass) blur(22px) saturate(175%) brightness(1.04);
+  box-shadow: var(--lg-rim-strong), var(--lg-shadow);
+}
+/* The glass edge: the chat's gradient rim */
+#controls .group::after, #hand-preview::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(150deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, .07) 28%, rgba(255, 255, 255, .02) 55%, rgba(255, 255, 255, .1));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+
+#controls button {
+  width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: transparent;
+  display: grid; place-items: center; cursor: pointer; color: var(--lg-icon-muted);
+  transition: background .2s var(--lg-ease), color .2s var(--lg-ease), transform .2s var(--lg-ease);
+}
+#controls svg { width: 17px; height: 17px; fill: none; stroke: currentColor; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+#controls button:hover { color: var(--lg-icon); background: var(--lg-chip-hover); }
+#controls button:active { background: var(--lg-chip-press); transform: scale(.94); }
+#controls button:focus-visible { outline: 2px solid rgba(255, 255, 255, .5); outline-offset: 1px; }
+/* On (the hand camera): a lit chip with the rim, like the chat's pressed toggles */
+#controls button[aria-pressed="true"] { color: var(--lg-text); background: var(--lg-chip-hover); box-shadow: var(--lg-rim); }
+
+/* ---------- Camera preview while the map is moved by hand (mirrored, like a mirror) ---------- */
+#hand-preview {
+  position: absolute; left: 0; bottom: 52px; width: 200px; padding: 6px;
+  display: flex; flex-direction: column; gap: 6px; border-radius: var(--lg-r-block);
+  background: var(--lg-panel);
+  -webkit-backdrop-filter: blur(22px) saturate(175%); backdrop-filter: blur(22px) saturate(175%);
+  box-shadow: var(--lg-rim-strong), var(--lg-shadow); font-family: var(--lg-font);
+}
+#hand-preview[hidden] { display: none; }
+#hand-preview.error { width: 240px; }
+.hand-video video { display: block; width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: var(--lg-r-sm); transform: scaleX(-1); background: #000; }
+#hand-preview.error .hand-video { display: none; }
+.hand-status { padding: 0 4px 2px; font-size: 11px; line-height: 1.3; color: var(--lg-muted); }
+.hand-status::before {
+  content: ""; display: inline-block; width: 6px; height: 6px; margin-right: 6px; vertical-align: middle;
+  border-radius: 50%; background: var(--lg-faint);
+}
+#hand-preview.hand .hand-status::before { background: var(--lg-text); }
+#hand-preview.pinching .hand-status { color: var(--lg-text); }
+#hand-preview.pinching .hand-status::before { background: var(--lg-text); box-shadow: 0 0 8px rgba(255, 255, 255, .7); }
+#hand-preview.error .hand-status { color: var(--danger); }
+#hand-preview.error .hand-status::before { background: var(--danger); }
+/* The status row with its "?" (the gestures), the slow-CPU note and, in dev, the frame rate
+   (spec/003-hand-gestures.md) */
+.hand-row { display: flex; align-items: flex-start; gap: 4px; }
+.hand-row .hand-status { flex: 1; }
+#controls .hand-help-button { width: 22px; height: 22px; flex: none; border-radius: 999px; }
+#controls .hand-help-button svg { width: 14px; height: 14px; }
+.hand-help { padding: 2px 4px 4px; font-size: 11px; line-height: 1.4; color: var(--lg-muted); }
+.hand-help strong { display: block; margin-bottom: 2px; color: var(--lg-text); font-weight: 600; }
+.hand-help p { margin: 2px 0; }
+.hand-slow { padding: 0 4px; font-size: 10.5px; line-height: 1.35; color: var(--lg-muted); }
+.hand-slow:empty { display: none; }
+.hand-fps { padding: 0 4px 2px; font: 10.5px var(--mono); color: var(--lg-faint); }
+
+/* ---------- The hand cursor: a purple dot over the whole window, and the ring that fills while it holds
+   still on something selectable. It lets every click through. ---------- */
+#hand-cursor {
+  position: fixed; left: 0; top: 0; z-index: 2147483000; pointer-events: none;
+  width: 0; height: 0; will-change: transform;
+}
+#hand-cursor[hidden] { display: none; }
+#hand-cursor .hand-dot {
+  position: absolute; left: -6px; top: -6px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--accent); box-shadow: 0 0 0 2px rgba(255, 255, 255, .85), 0 0 14px var(--accent);
+}
+#hand-cursor .hand-ring {
+  position: absolute; left: -17px; top: -17px; width: 34px; height: 34px; border-radius: 50%; opacity: 0;
+  background: conic-gradient(var(--accent) calc(var(--progress, 0) * 1turn), rgba(255, 255, 255, .18) 0);
+  -webkit-mask: radial-gradient(circle, transparent 12px, #000 13px); mask: radial-gradient(circle, transparent 12px, #000 13px);
+  transition: opacity .15s ease;
+}
+#hand-cursor.holding .hand-ring { opacity: 1; }
+@media (prefers-reduced-motion: reduce) {
+  #hand-cursor .hand-ring { transition: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #controls button { transition: none; }
+  #controls button:active { transform: none; }
+}

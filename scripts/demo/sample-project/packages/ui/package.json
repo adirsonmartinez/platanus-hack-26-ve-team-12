@@ -1,0 +1,6 @@
+{
+  "name": "@feria/ui",
+  "private": true,
+  "main": "src/index.ts",
+  "dependencies": { "react": "19.0.0" }
+}

@@ -3,5 +3,21 @@ dist/
 dist-electron/
 out/
 .DS_Store
-.env
 .vercel
+
+# Secrets never go to git (npm test also scans every tracked file: tests/secrets.test.mjs)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+id_rsa*
+id_ed25519*
+.npmrc
+credentials.json
+*service-account*.json
+
+# Brainstorming mockups (local only)
+.superpowers/

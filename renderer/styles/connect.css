@@ -1,0 +1,91 @@
+/* "Conectar mi cuenta" (views/ui/connectModalView.js): a glass card over a dimmed map, in the chat's look
+   (tokens from chat-glass.css). Neutral: the main button is the chat's white pill, choices are glass chips. */
+
+.connect-layer {
+  position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 16px;
+  background: rgba(0, 0, 0, .45);
+  animation: connect-fade .2s var(--lg-ease) both;
+}
+.connect-layer[hidden] { display: none; }
+.connect-card {
+  position: relative; width: min(440px, 100%); padding: 18px 20px 20px; border-radius: var(--lg-r-card);
+  background: rgba(22, 22, 22, .86);
+  -webkit-backdrop-filter: url(#liquid-glass) blur(22px) saturate(175%) brightness(1.04);
+  backdrop-filter: url(#liquid-glass) blur(22px) saturate(175%) brightness(1.04);
+  box-shadow: var(--lg-rim-strong), var(--lg-shadow);
+  color: var(--lg-text); font: 13px/1.5 var(--lg-font); -webkit-font-smoothing: antialiased;
+  animation: connect-pop .3s var(--lg-ease) both;
+}
+.connect-card::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(150deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, .07) 28%, rgba(255, 255, 255, .02) 55%, rgba(255, 255, 255, .1));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+
+.connect-head { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.connect-head h3 { flex: 1; margin: 0; font: 600 16px/1.25 var(--lg-font); letter-spacing: -.01em; }
+.connect-logo {
+  width: 34px; height: 34px; border-radius: 11px; display: grid; place-items: center; flex: none;
+  background: var(--lg-stage); box-shadow: inset 0 0 0 1px var(--lg-code-ring); color: var(--lg-icon);
+}
+.connect-logo svg { width: 18px; height: 18px; }
+.connect-x {
+  width: 28px; height: 28px; border: 0; border-radius: var(--lg-r-sm); display: grid; place-items: center;
+  background: transparent; color: var(--lg-icon-muted); cursor: pointer;
+}
+.connect-x svg { width: 15px; height: 15px; }
+.connect-x:hover:not(:disabled) { color: var(--lg-icon); background: var(--lg-chip); box-shadow: var(--lg-rim); }
+.connect-x:disabled { opacity: .3; cursor: default; }
+
+.connect-text { margin: 0 0 12px; color: var(--lg-text-2); }
+.connect-steps { margin: 0 0 16px; padding: 0; list-style: none; counter-reset: step; display: grid; gap: 8px; }
+.connect-steps li { counter-increment: step; display: flex; align-items: center; gap: 10px; color: var(--lg-text); }
+.connect-steps li::before {
+  content: counter(step); flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--lg-chip); box-shadow: var(--lg-rim); font: 500 11px var(--lg-mono); color: var(--lg-text-2);
+}
+
+.connect-label { display: grid; gap: 6px; margin-bottom: 12px; font-size: 12px; color: var(--lg-muted); }
+.connect-select {
+  width: 100%; height: 34px; padding: 0 10px; border: 0; border-radius: var(--lg-r-sm);
+  background: var(--lg-stage); box-shadow: inset 0 0 0 1px var(--lg-code-ring); color: var(--lg-text); font: 13px var(--lg-font);
+}
+.connect-option + .connect-select { margin: -2px 0 10px; }
+
+.connect-option {
+  display: flex; align-items: center; gap: 10px; width: 100%; margin-bottom: 8px; padding: 10px 12px; border: 0;
+  border-radius: var(--lg-r-block); text-align: left; cursor: pointer; color: var(--lg-text);
+  background: rgba(255, 255, 255, .025); box-shadow: inset 0 0 0 1px var(--lg-line); transition: background .15s, box-shadow .15s;
+}
+.connect-option:hover { background: var(--lg-chip-hover); }
+.connect-option.chosen { background: var(--lg-chip); box-shadow: var(--lg-rim), inset 0 0 0 1px rgba(255, 255, 255, .14); }
+.connect-option-body { display: grid; gap: 1px; }
+.connect-option-body b { font: 600 13px/1.3 var(--lg-font); }
+.connect-option-body small { font: 12px/1.35 var(--lg-font); color: var(--lg-muted); }
+.connect-radio { flex: none; width: 16px; height: 16px; border-radius: 50%; box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .3); }
+.connect-option.chosen .connect-radio { box-shadow: inset 0 0 0 5px #fff; }
+
+.connect-primary {
+  width: 100%; height: 38px; margin-top: 4px; border: 0; border-radius: 999px; cursor: pointer;
+  background: #fff; color: #121212; font: 600 13px var(--lg-font); transition: background .15s, opacity .15s;
+}
+.connect-primary:hover:not(:disabled) { background: rgba(255, 255, 255, .88); }
+.connect-primary:disabled { opacity: .4; cursor: default; }
+.connect-primary:focus-visible, .connect-option:focus-visible, .connect-x:focus-visible, .connect-select:focus-visible { outline: 2px solid rgba(255, 255, 255, .5); outline-offset: 2px; }
+
+.connect-wait { display: flex; align-items: center; gap: 12px; padding: 6px 0 2px; }
+.connect-wait .connect-text { margin: 0; }
+.connect-spinner {
+  flex: none; width: 22px; height: 22px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .12); border-top-color: #fff; animation: connect-spin .8s linear infinite;
+}
+.connect-error-title { margin: 0 0 4px; font-weight: 600; color: var(--lg-text); }
+
+@keyframes connect-fade { from { opacity: 0; } }
+@keyframes connect-pop { from { opacity: 0; transform: translateY(8px) scale(.98); } }
+@keyframes connect-spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .connect-layer, .connect-card { animation: none; }
+  .connect-spinner { animation-duration: 2.4s; }
+}

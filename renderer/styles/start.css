@@ -1,0 +1,89 @@
+/* Start screen (no project open): one card in the chat's clear glass (tokens from chat-glass.css, loaded
+   before this file). Left: the tile, the question and the two actions; right: the recent projects.
+   Neutral like the chat: white, greys and translucent pills, no accent color. */
+
+.empty-card {
+  position: relative; pointer-events: auto; box-sizing: border-box; width: min(720px, 100%);
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr);
+  border-radius: var(--lg-r-panel); background: var(--lg-panel);
+  -webkit-backdrop-filter: url(#liquid-glass) blur(22px) saturate(175%) brightness(1.04);
+  backdrop-filter: url(#liquid-glass) blur(22px) saturate(175%) brightness(1.04);
+  box-shadow: var(--lg-rim-strong), var(--lg-shadow);
+  color: var(--lg-text); font: 13px/1.5 var(--lg-font); font-feature-settings: "cv11", "ss01"; text-align: left;
+  -webkit-font-smoothing: antialiased;
+}
+/* The glass edge: the same gradient rim as the chat */
+.empty-card::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(150deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, .07) 28%, rgba(255, 255, 255, .02) 55%, rgba(255, 255, 255, .1));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+
+/* Nothing else on the start screen: no map controls (zoom, turn, center, hand) and no chat button.
+   Here, after shell.css, so it wins over "show the chat button while the chat is closed". */
+body.no-project #controls, body.no-project .chat-launcher { display: none; }
+
+/* ---------- Left: what to do ---------- */
+.empty-main { display: flex; flex-direction: column; align-items: flex-start; padding: 32px 28px; }
+.empty-tile {
+  display: grid; place-items: center; width: 46px; height: 46px; margin-bottom: 18px;
+  border-radius: 14px; background: var(--lg-chip); box-shadow: var(--lg-rim); color: var(--lg-icon);
+}
+.empty-tile svg { width: 20px; height: 20px; }
+.empty-main strong { display: block; font: 600 22px/1.25 var(--lg-font); letter-spacing: -.015em; color: var(--lg-text); }
+.empty-main p { margin: 8px 0 22px; color: var(--lg-muted); font-size: 13px; line-height: 1.6; }
+
+.empty-actions { display: flex; flex-direction: column; gap: 8px; align-self: stretch; }
+#new-project, #open-project {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 11px 16px; border: 0; border-radius: 999px;
+  font: 500 13px var(--lg-font); cursor: pointer; transition: background .2s var(--lg-ease), transform .2s var(--lg-ease);
+}
+#new-project svg, #open-project svg { width: 16px; height: 16px; flex: none; }
+/* Primary: a white pill, like "Abrir" in the chat */
+#new-project { background: #fff; color: #121212; font-weight: 600; }
+#new-project:hover { background: rgba(255, 255, 255, .88); }
+#open-project { background: var(--lg-chip); box-shadow: var(--lg-rim); color: var(--lg-text); }
+#open-project svg { color: var(--lg-icon-muted); }
+#open-project:hover { background: var(--lg-chip-hover); }
+#new-project:active, #open-project:active { transform: scale(.98); }
+#new-project:focus-visible, #open-project:focus-visible, .recent-row:focus-visible { outline: 2px solid rgba(255, 255, 255, .5); outline-offset: 2px; }
+
+/* ---------- Right: recent projects ---------- */
+.empty-recent {
+  display: flex; flex-direction: column; gap: 2px; min-width: 0; max-height: 380px; overflow-y: auto;
+  padding: 24px 16px 16px; border-left: 1px solid var(--lg-line);
+}
+.empty-recent::-webkit-scrollbar { width: 6px; }
+.empty-recent::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, .12); border-radius: 99px; }
+.empty-label { margin: 6px 12px 8px; font: 500 11px var(--lg-font); letter-spacing: .08em; text-transform: uppercase; color: var(--lg-faint); }
+.empty-none { margin: 4px 12px; color: var(--lg-muted); font-size: 13px; }
+
+/* Folder tile on the left, name and path stacked, when on the right */
+.recent-row {
+  display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 12px; row-gap: 1px; align-items: center;
+  padding: 9px 12px; border: 0; border-radius: var(--lg-r-block); background: transparent;
+  color: var(--lg-text); font: inherit; text-align: left; cursor: pointer; transition: background .2s var(--lg-ease);
+}
+.recent-row:hover { background: var(--lg-chip); }
+.recent-row:active { background: var(--lg-chip-press); }
+.recent-tile {
+  grid-row: span 2; display: grid; place-items: center; width: 32px; height: 32px;
+  border-radius: 10px; background: var(--lg-chip); box-shadow: var(--lg-rim); color: var(--lg-icon-muted);
+}
+.recent-tile svg { width: 16px; height: 16px; }
+.recent-row:hover .recent-tile { color: var(--lg-icon); }
+.recent-row strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; }
+.recent-path { grid-column: 2; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 11px var(--lg-mono); color: var(--lg-muted); }
+.recent-when { grid-column: 3; grid-row: 1 / span 2; color: var(--lg-faint); font-size: 11px; white-space: nowrap; }
+
+/* ---------- Narrow window: the columns stack ---------- */
+@media (max-width: 640px) {
+  .empty-card { grid-template-columns: minmax(0, 1fr); width: min(420px, 100%); }
+  .empty-main { padding: 26px 22px 18px; }
+  .empty-recent { border-left: 0; border-top: 1px solid var(--lg-line); padding-top: 14px; max-height: 260px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  #new-project, #open-project, .recent-row { transition: none; }
+  #new-project:active, #open-project:active { transform: none; }
+}

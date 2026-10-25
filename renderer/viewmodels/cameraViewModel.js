@@ -3,12 +3,16 @@
 import { clamp } from '../core/format.js';
 
 export const CAMERA = {
-  azimuth: Math.PI / 4,
-  elevation: (52 * Math.PI) / 180, // same angle as the zombieland game
+  // The map's tree runs down-right from the integrations at the top left; the folders face the camera
+  azimuth: 0,
+  gitAzimuth: Math.PI / 4, // the git view keeps its diagonal lanes
+  elevation: (44 * Math.PI) / 180, // low enough that the folders show their fronts
   distance: 60,
   viewHeight: 30,
   zoomMin: 0.4,
   zoomMax: 4,
+  elevationMin: (22 * Math.PI) / 180, // low: almost from the street
+  elevationMax: (82 * Math.PI) / 180, // high: almost a floor plan
 };
 
 const EASE_SPEED = 10;
@@ -17,14 +21,17 @@ const QUARTER_TURN = Math.PI / 2;
 export class CameraViewModel {
   azimuth = CAMERA.azimuth;
   azimuthGoal = CAMERA.azimuth;
+  elevation = CAMERA.elevation;
   zoom = 1;
   zoomGoal = 1;
   target = { x: 0, z: 0 };
   targetGoal = null; // only set while flying somewhere
+  manual = 0;        // counts the person's own moves (pan, zoom, turn, tilt): who follows something stops then
 
   // Camera position relative to its target
   offset(azimuth = this.azimuth) {
-    const { elevation, distance } = CAMERA;
+    const { elevation } = this;
+    const { distance } = CAMERA;
     return {
       x: Math.cos(elevation) * Math.sin(azimuth) * distance,
       y: Math.sin(elevation) * distance,
@@ -39,28 +46,52 @@ export class CameraViewModel {
   }
 
   rotateQuarter(direction) {
+    this.manual++;
     this.azimuthGoal += direction * QUARTER_TURN;
+  }
+
+  // Eased rotation (hand gestures: smooths the jumps between camera frames)
+  turnBy(radians) {
+    this.manual++;
+    this.azimuthGoal += radians;
   }
 
   // Free rotation while dragging: applied immediately
   rotateBy(radians) {
+    this.manual++;
     this.azimuthGoal += radians;
     this.azimuth = this.azimuthGoal;
   }
 
+  // Dragging up/down tilts the view (applied immediately)
+  tiltBy(radians) {
+    this.manual++;
+    this.elevation = clamp(this.elevation + radians, CAMERA.elevationMin, CAMERA.elevationMax);
+  }
+
   zoomBy(factor) {
+    this.manual++;
     this.zoomGoal = clamp(this.zoomGoal * factor, CAMERA.zoomMin, CAMERA.zoomMax);
   }
 
   // Wheel zoom: applied immediately (the view keeps the point under the cursor fixed)
   setZoomNow(zoom) {
+    this.manual++;
     this.zoom = this.zoomGoal = clamp(zoom, CAMERA.zoomMin, CAMERA.zoomMax);
     this.targetGoal = null;
   }
 
   panBy(dx, dz) {
+    this.manual++;
     this.target = { x: this.target.x + dx, z: this.target.z + dz };
     this.targetGoal = null;
+  }
+
+  // Pan that eases in, like a short flight (hand gestures: smooths the jumps between camera frames)
+  glideBy(dx, dz) {
+    this.manual++;
+    const from = this.targetGoal ?? this.target;
+    this.targetGoal = { x: from.x + dx, z: from.z + dz };
   }
 
   cancelFlight() {
@@ -76,6 +107,7 @@ export class CameraViewModel {
   reset() {
     const turn = Math.PI * 2;
     this.azimuthGoal = CAMERA.azimuth + Math.round((this.azimuth - CAMERA.azimuth) / turn) * turn;
+    this.elevation = CAMERA.elevation;
     this.flyTo({ x: 0, z: 0 }, 1);
   }
 

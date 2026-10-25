@@ -1,0 +1,51 @@
+/* Title bar (brand, project, menu, Vibe / Dev, search) in the chat's look (tokens from chat-glass.css). Like
+   the side panel, it redefines the shell tokens with the chat's values; each piece is a glass chip or pill.
+   Neutral: the brand mark and the active mode are white, not the accent. */
+
+#titlebar {
+  --ink: var(--lg-text);
+  --muted: var(--lg-muted);
+  --faint: var(--lg-faint);
+  --panel: var(--lg-chip);
+  --panel-2: var(--lg-chip-hover);
+  --line: var(--lg-line);
+  --line-strong: rgba(255, 255, 255, .12);
+  --accent: rgba(255, 255, 255, .92);
+  --font: var(--lg-font);
+  --mono: var(--lg-mono);
+  gap: 8px; font-family: var(--lg-font); -webkit-font-smoothing: antialiased;
+}
+
+/* Brand: a white tile with a dark P, like the chat's white pill */
+#titlebar .brand { gap: 9px; }
+#titlebar .brand-mark { width: 24px; height: 24px; border-radius: 7px; object-fit: cover; box-shadow: 0 1px 2px rgba(0, 0, 0, .3); }
+#titlebar .brand-name { font: 600 13.5px var(--lg-font); letter-spacing: -.01em; color: var(--lg-text); }
+
+/* The open project: a glass pill; its dot keeps the traffic light */
+#titlebar .project-chip { height: 24px; padding: 0 10px; border: 0; background: var(--lg-chip); box-shadow: var(--lg-rim); color: var(--lg-text-2); font: 500 11.5px var(--lg-font); }
+#titlebar .project-chip i { width: 7px; height: 7px; }
+#titlebar .project-chip.danger i { box-shadow: 0 0 6px rgba(255, 90, 106, .7); }
+
+/* Project menu (Windows / Linux / web): glass button and popup */
+#titlebar .menu-button { height: 28px; padding: 0 11px; border-radius: 999px; color: var(--lg-muted); font: 500 12px var(--lg-font); }
+#titlebar .menu-button:hover, #titlebar .menu.open .menu-button { color: var(--lg-text); background: var(--lg-chip); }
+#titlebar .menu-list { top: 34px; border: 0; border-radius: var(--lg-r-block); background: rgba(24, 24, 24, .9); box-shadow: var(--lg-rim-strong), var(--lg-shadow); }
+#titlebar .menu-item { border-radius: 9px; font: 12.5px var(--lg-font); }
+
+/* Vibe / Dev: a glass segmented pill; the active mode is a lit chip in white */
+#titlebar .mode-toggle { padding: 3px; border: 0; border-radius: 999px; background: var(--lg-chip); box-shadow: var(--lg-rim); }
+#titlebar .mode-toggle button { height: 24px; padding: 0 12px; border-radius: 999px; color: var(--lg-faint); font: 500 12px var(--lg-font); }
+#titlebar .mode-toggle button:hover:not(.active) { color: var(--lg-text-2); background: transparent; }
+#titlebar .mode-toggle button.active,
+#titlebar .mode-toggle button[data-mode="tech"].active { background: var(--lg-chip-hover); box-shadow: var(--lg-rim); color: var(--lg-text); font-family: var(--lg-font); }
+
+/* Search: a glass pill like the chat's composer, its shortcut in a small chip */
+#titlebar .search {
+  height: 32px; padding: 0 8px 0 13px; gap: 9px; border: 0; border-radius: 999px;
+  background: var(--lg-chip); box-shadow: var(--lg-rim); color: var(--lg-muted); font: 13px var(--lg-font);
+  transition: background .2s var(--lg-ease), color .2s var(--lg-ease);
+}
+#titlebar .search:hover { background: var(--lg-chip-hover); color: var(--lg-text-2); }
+#titlebar .search svg { width: 15px; height: 15px; stroke-width: 1.75; color: var(--lg-icon-muted); }
+#titlebar .search kbd { padding: 2px 7px; border-radius: 7px; background: var(--lg-code); box-shadow: inset 0 0 0 1px var(--lg-code-ring); color: var(--lg-faint); font: 10.5px var(--lg-mono); }
+#titlebar .search:focus-visible, #titlebar .menu-button:focus-visible, #titlebar .mode-toggle button:focus-visible { outline: 2px solid rgba(255, 255, 255, .5); outline-offset: 2px; }

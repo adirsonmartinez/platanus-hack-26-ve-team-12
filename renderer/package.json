@@ -1,0 +1,4 @@
+{
+  "//": "Lets Node's test runner load the renderer's ES modules (Electron and browsers ignore this file).",
+  "type": "module"
+}

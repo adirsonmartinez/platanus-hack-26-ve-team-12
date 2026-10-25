@@ -21,6 +21,12 @@ class Workspace {
     return this.root;
   }
 
+  // No folder open: every operation (and every agent tool) is refused until one is opened again
+  close() {
+    this.unwatch();
+    this.root = null;
+  }
+
   // Turns a workspace-relative path into an absolute one and checks it does not escape
   // (via "../", absolute paths or symlinks pointing outside).
   async resolve(rel = '.') {

@@ -3,60 +3,146 @@
 <head>
   <meta charset="utf-8" />
   <!-- Only local code is loaded: no remote scripts inside the app ('unsafe-inline' is for the import map) -->
-  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; media-src 'self' blob:; connect-src 'self' https://api.elevenlabs.io wss://api.elevenlabs.io wss://api.x.ai" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Platanus</title>
+  <title>Qubbot</title>
   <link rel="stylesheet" href="styles/main.css" />
+  <link rel="stylesheet" href="styles/shell.css" />
+  <link rel="stylesheet" href="styles/sidebar.css" />
+  <link rel="stylesheet" href="styles/devtree.css" />
+  <link rel="stylesheet" href="styles/agents.css" />
+  <link rel="stylesheet" href="styles/chat.css" />
+  <link rel="stylesheet" href="styles/chat-glass.css" />
+  <link rel="stylesheet" href="styles/start.css" />
+  <link rel="stylesheet" href="styles/controls.css" />
+  <link rel="stylesheet" href="styles/dock.css" />
+  <link rel="stylesheet" href="styles/labels.css" />
+  <link rel="stylesheet" href="styles/welcome.css" />
+  <link rel="stylesheet" href="styles/connect.css" />
+  <link rel="stylesheet" href="styles/database.css" />
+  <link rel="stylesheet" href="styles/hud.css" />
+  <link rel="stylesheet" href="styles/panel.css" />
+  <link rel="stylesheet" href="styles/editor.css" />
+  <link rel="stylesheet" href="styles/titlebar.css" />
+  <link rel="stylesheet" href="styles/call.css" />
+  <link rel="stylesheet" href="styles/services.css" />
   <script type="importmap">
-    { "imports": { "three": "../node_modules/three/build/three.module.js" } }
+    { "imports": { "three": "../node_modules/three/build/three.module.js", "three/addons/": "../node_modules/three/examples/jsm/", "thinking-orbs/engine": "./vendor/thinking-orbs/engine.es.js", "@mediapipe/tasks-vision": "../node_modules/@mediapipe/tasks-vision/vision_bundle.mjs" } }
   </script>
 </head>
-<body>
+<body class="shell no-project"><!-- start screen until a project opens (avoids a flash of the panels) -->
+  <!-- Liquid glass: bends what is behind a glass surface near its edges (used by styles/chat-glass.css) -->
+  <svg class="glass-defs" width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute">
+    <filter id="liquid-glass" x="0" y="0" width="100%" height="100%" color-interpolation-filters="sRGB">
+      <feTurbulence type="fractalNoise" baseFrequency="0.006 0.009" numOctaves="2" seed="7" result="noise" />
+      <feGaussianBlur in="noise" stdDeviation="2.5" result="soft" />
+      <feDisplacementMap in="SourceGraphic" in2="soft" scale="38" xChannelSelector="R" yChannelSelector="G" />
+    </filter>
+  </svg>
+  <header id="titlebar">
+    <div class="brand">
+      <img class="brand-mark" src="images/logo.png" alt="" aria-hidden="true" width="24" height="24">
+      <span id="brand-name" class="brand-name"></span>
+      <span id="project-chip" class="project-chip" hidden><i></i><span id="project-chip-name"></span></span>
+    </div>
+    <nav id="menu" class="menubar" aria-label="Menú"></nav>
+    <div id="mode-toggle" class="mode-toggle" role="group"></div>
+    <button id="search" class="search" type="button">
+      <i data-icon="search"></i>
+      <span id="search-label"></span>
+      <kbd id="search-shortcut"></kbd>
+    </button>
+  </header>
+
+  <div id="workspace">
+
+    <aside id="sidebar" class="card">
+      <header class="card-head"><span id="sidebar-title"></span><div id="sidebar-actions" class="sidebar-actions"></div><button class="chat-toggle sidebar-close" id="sidebar-close" type="button" data-gesture="safe" data-i18n-title="shell.closePanel" data-i18n-aria="shell.closePanel"><i data-icon="minus"></i></button></header>
+      <div id="sidebar-body" class="sidebar-body"></div>
+      <div id="agent-connect" class="sidebar-body" hidden></div>
+    </aside>
+
+    <main id="stage" class="card">
+  <!-- Side dock (left edge of the map): the side panels, which open next to it -->
+  <div id="side-dock" class="icon-bar side-dock" role="toolbar" aria-orientation="vertical">
+    <button type="button" draggable="true" data-side="explorer" data-gesture="safe"><i data-icon="folder"></i></button>
+    <button type="button" draggable="true" data-side="risks" data-gesture="safe"><i data-icon="alert"></i></button>
+    <button type="button" draggable="true" data-side="repairs" data-gesture="safe"><i data-icon="wrench"></i><em class="rail-badge" id="rail-repairs-badge" hidden></em></button>
+    <button type="button" draggable="true" data-side="servers" data-gesture="safe"><i data-icon="server"></i></button>
+    <button type="button" draggable="true" data-side="agent" data-gesture="safe"><i data-icon="plug"></i></button>
+  </div>
+  <!-- Floating view switcher: map | git (drag the icons to reorder them; the order is remembered) -->
+  <div id="stage-tabs" class="stage-tabs icon-bar" role="toolbar">
+    <button type="button" draggable="true" role="tab" data-stage="map" data-gesture="safe"><i data-icon="home"></i><span data-i18n="stageTabs.map"></span><em class="tab-badge"></em><span class="tip"></span></button>
+    <button type="button" draggable="true" role="tab" data-stage="git" data-gesture="safe"><i data-icon="gitBranch"></i><span data-i18n="stageTabs.git"></span><em class="tab-badge"></em><span class="tip"></span></button>
+  </div>
+  <div id="hover-card" class="hover-card" hidden></div>
+  <div id="qubi-layer" class="qubi-layer"></div>
+  <!-- Call with Qubi (views/ui/callBarView.js), only during a call: a panel above Qubi's head that follows him;
+       at the bottom center of the map when he is not on screen -->
+  <div id="call-bar" class="call-bar" hidden></div>
   <div id="controls">
     <div class="group">
-      <button id="zoom-in" data-i18n-title="controls.zoomIn" data-i18n-aria="controls.zoomIn">
-        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      <button id="zoom-in" data-gesture="safe" data-i18n-title="controls.zoomIn" data-i18n-aria="controls.zoomIn">
+        <i data-icon="plus"></i>
       </button>
-      <button id="zoom-out" data-i18n-title="controls.zoomOut" data-i18n-aria="controls.zoomOut">
-        <svg viewBox="0 0 24 24"><path d="M5 12h14"/></svg>
-      </button>
-    </div>
-    <div class="group">
-      <button id="rotate-left" data-i18n-title="controls.rotateLeft" data-i18n-aria="controls.rotateLeft">
-        <svg viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 0 2.4-5.7"/><path d="M4 4v4.5h4.5"/></svg>
-      </button>
-      <button id="rotate-right" data-i18n-title="controls.rotateRight" data-i18n-aria="controls.rotateRight">
-        <svg viewBox="0 0 24 24"><path d="M20 12a8 8 0 1 1-2.4-5.7"/><path d="M20 4v4.5h-4.5"/></svg>
+      <button id="zoom-out" data-gesture="safe" data-i18n-title="controls.zoomOut" data-i18n-aria="controls.zoomOut">
+        <i data-icon="minus"></i>
       </button>
     </div>
     <div class="group">
-      <button id="reset-view" data-i18n-title="controls.reset" data-i18n-aria="controls.reset">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+      <button id="rotate-left" data-gesture="safe" data-i18n-title="controls.rotateLeft" data-i18n-aria="controls.rotateLeft">
+        <i data-icon="rotateLeft"></i>
       </button>
+      <button id="rotate-right" data-gesture="safe" data-i18n-title="controls.rotateRight" data-i18n-aria="controls.rotateRight">
+        <i data-icon="rotateRight"></i>
+      </button>
+    </div>
+    <div class="group">
+      <button id="reset-view" data-gesture="safe" data-i18n-title="controls.reset" data-i18n-aria="controls.reset">
+        <i data-icon="center"></i>
+      </button>
+    </div>
+    <div class="group">
+      <button id="hand-control" data-gesture="never" aria-pressed="false" data-i18n-title="controls.hands" data-i18n-aria="controls.hands">
+        <i data-icon="hand"></i>
+      </button>
+    </div>
+    <div id="hand-preview" hidden>
+      <div class="hand-video"></div>
+      <div class="hand-row"><span class="hand-status"></span><button type="button" class="hand-help-button" aria-expanded="false"><i data-icon="help"></i></button></div>
+      <span class="hand-slow"></span>
+      <div class="hand-help" hidden></div>
+      <span class="hand-fps" hidden></span>
     </div>
   </div>
 
+  <div id="hud" hidden></div>
+
+  <div id="git-panel" hidden>
+    <strong id="git-title"></strong>
+    <span id="git-summary"></span>
+    <span id="git-risky" hidden></span>
+  </div>
+
   <div id="empty-state">
+    <!-- Start screen in the chat's glass (styles/start.css): actions on the left, recent projects on the right -->
     <div class="empty-card">
-      <div class="empty-icon">
-        <svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+      <div class="empty-main">
+        <span class="empty-tile"><i data-icon="sparkles"></i></span>
+        <strong data-i18n="emptyState.title"></strong>
+        <p data-i18n="emptyState.body"></p>
+        <div class="empty-actions">
+          <button id="new-project" type="button"><i data-icon="plus"></i><span data-i18n="emptyState.newAction"></span></button>
+          <button id="open-project" type="button"><i data-icon="folder"></i><span data-i18n="emptyState.action"></span></button>
+        </div>
       </div>
-      <strong data-i18n="emptyState.title"></strong>
-      <p data-i18n="emptyState.body"></p>
-      <button id="open-project" type="button" data-i18n="emptyState.action"></button>
+      <div id="empty-recent" class="empty-recent"></div>
     </div>
   </div>
 
   <div id="map-labels"></div>
 
-  <div id="folder-panel" hidden>
-    <div>
-      <strong id="folder-title"></strong>
-      <span class="sub" id="folder-summary"></span>
-    </div>
-    <div class="fp-legend" id="folder-legend"></div>
-    <button id="folder-close" type="button" data-i18n="panels.backToMap"></button>
-  </div>
 
   <div id="schema-panel" hidden>
     <div>
@@ -66,27 +152,64 @@
     <button id="schema-close" type="button" data-i18n="panels.backToMap"></button>
   </div>
 
-  <aside id="chat" data-i18n-aria="chat.ariaLabel">
+    </main>
+
+  <aside id="chat" class="card" data-i18n-aria="chat.ariaLabel">
     <header class="chat-head">
       <div class="chat-avatar">
-        <svg viewBox="0 0 24 24"><rect x="5" y="8" width="14" height="11" rx="2"/><path d="M12 4v4M9 13h.01M15 13h.01M9.5 16.5h5"/></svg>
+        <i data-icon="bot"></i>
       </div>
       <div class="chat-title">
         <strong data-i18n="chat.agentName"></strong>
         <span data-i18n="chat.online"></span>
       </div>
-      <button class="chat-toggle" id="chat-toggle" data-i18n-aria="chat.minimize" aria-expanded="true">
-        <svg viewBox="0 0 24 24"><path d="M6 12h12"/></svg>
+      <button class="chat-toggle chat-call" id="chat-call" type="button" data-i18n-title="call.button" data-i18n-aria="call.button">
+        <i data-icon="call"></i>
+      </button>
+      <button class="chat-toggle chat-pin" id="chat-pin" type="button" aria-pressed="false">
+        <i data-icon="pin"></i>
+      </button>
+      <button class="chat-toggle" id="chat-toggle" data-gesture="safe" data-i18n-aria="chat.minimize" aria-expanded="true">
+        <i data-icon="minus"></i>
       </button>
     </header>
     <div class="chat-body" id="chat-body" aria-live="polite"></div>
-    <form class="chat-input" id="chat-form">
-      <input id="chat-text" type="text" autocomplete="off" data-i18n-placeholder="chat.placeholder" data-i18n-aria="chat.inputLabel" />
-      <button type="submit" id="chat-send" data-i18n-aria="chat.send">
-        <svg viewBox="0 0 24 24"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-      </button>
+    <div id="chat-suggest" class="chat-suggest" role="list"></div>
+    <form class="chat-input composer" id="chat-form">
+      <textarea id="chat-text" rows="2" autocomplete="off" data-i18n-placeholder="chat.placeholder" data-i18n-aria="chat.inputLabel"></textarea>
+      <div class="composer-bar">
+        <div class="chat-more-wrap">
+          <button type="button" id="chat-more" class="composer-icon" data-i18n-title="chat.more" data-i18n-aria="chat.more">
+            <i data-icon="plus"></i>
+          </button>
+          <div id="chat-more-menu" class="chat-menu glass-pop"></div>
+        </div>
+        <div id="agent-picker" class="agent-picker"></div>
+        <button type="submit" id="chat-send" data-i18n-aria="chat.send">
+          <i data-icon="arrowUp"></i>
+        </button>
+      </div>
     </form>
   </aside>
+  </div>
+
+  <!-- When the chat is minimized or closed, its options live in this floating button -->
+  <div id="chat-launcher" class="chat-launcher">
+    <div id="chat-launcher-menu" class="chat-menu glass-pop"></div>
+    <button type="button" id="chat-launcher-button" class="chat-launcher-button" data-i18n-title="chat.more" data-i18n-aria="chat.more">
+      <i data-icon="bot"></i>
+    </button>
+  </div>
+
+  <footer id="statusbar">
+    <nav id="breadcrumb" hidden data-i18n-aria="panels.breadcrumbLabel">
+      <div class="crumbs" id="crumbs"></div>
+    </nav>
+    <div id="status-items"></div>
+  </footer>
+
+  <!-- «Qubi está fuera de conexión»: how to connect a voice service (views/ui/voiceConnectView.js) -->
+  <div id="voice-connect" class="voice-connect" hidden></div>
 
   <script type="module" src="main.js"></script>
 </body>

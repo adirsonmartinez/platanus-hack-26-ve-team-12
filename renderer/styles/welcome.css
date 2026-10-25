@@ -1,0 +1,206 @@
+/* The welcome robot's speech bubble (welcomeRobotView.js, classes rb-*) in the chat's clear glass (tokens from
+   chat-glass.css). Neutral like the chat: white steps, glass chips, the chat's white pill for the main choice.
+   --rb is the tone: neutral for questions and tips, green for good news; amber and red only for risks, and only
+   those get the turning beam on the edge. One bubble on the map, so it can afford a plain backdrop blur. */
+@property --rb-angle { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+
+.map-label.robot-speech {
+  z-index: 5; padding: 0; background: none; border: 0; box-shadow: none;
+  white-space: normal; pointer-events: auto; font: 13px/1.5 var(--lg-font);
+  font-feature-settings: "cv11", "ss01"; -webkit-font-smoothing: antialiased;
+}
+.rb-bubble {
+  --rb: var(--lg-text);
+  --rb-soft: rgba(255, 255, 255, .08);
+  --rb-fill: rgb(24, 24, 24);
+  position: relative; width: 300px; padding: 12px 14px 14px;
+  border-radius: var(--lg-r-card); border: 0;
+  background: rgba(22, 22, 22, .82);
+  -webkit-backdrop-filter: blur(22px) saturate(175%) brightness(1.04);
+  backdrop-filter: blur(22px) saturate(175%) brightness(1.04);
+  box-shadow: var(--lg-rim-strong), var(--lg-shadow);
+  color: var(--lg-text);
+  transform-origin: 0 var(--tail-y, 50%); /* pops out of the robot's head */
+}
+/* The glass edge: the chat's gradient rim */
+.rb-bubble::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(150deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, .07) 28%, rgba(255, 255, 255, .02) 55%, rgba(255, 255, 255, .1));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.rb-bubble.tone-success { --rb: var(--ok, #3ddc97); --rb-soft: rgba(61, 220, 151, .14); }
+/* Risks: the edge turns into a beam of their color */
+.rb-bubble.tone-warn { --rb: var(--warn); --rb-soft: rgba(255, 194, 74, .16); }
+.rb-bubble.tone-danger { --rb: var(--danger); --rb-soft: rgba(255, 90, 106, .2); }
+.rb-bubble:is(.tone-warn, .tone-danger)::before {
+  padding: 1.5px;
+  background: conic-gradient(from var(--rb-angle), var(--rb) 0deg, transparent 70deg, transparent 180deg, var(--rb) 250deg, transparent 320deg);
+  animation: rb-beam 6s linear infinite;
+}
+.rb-bubble.tone-danger::before { animation-duration: 2.4s; }
+.rb-bubble:is(.tone-warn, .tone-danger) { box-shadow: var(--lg-rim-strong), 0 0 26px var(--rb-soft), var(--lg-shadow); }
+/* Tail on the left side, at the robot's head (--tail-y is set by welcomeRobotView) */
+.rb-bubble::after {
+  content: ""; position: absolute; left: -7px; top: var(--tail-y, 50%); width: 13px; height: 13px;
+  transform: translateY(-50%) rotate(45deg); border-radius: 0 0 0 4px;
+  background: var(--rb-fill); box-shadow: inset 1px -1px 0 rgba(255, 255, 255, .12);
+}
+.rb-bubble:is(.tone-warn, .tone-danger)::after { box-shadow: inset 1.5px -1.5px 0 var(--rb); }
+.rb-bubble.pop { animation: rb-pop .45s var(--lg-ease) both; }
+.rb-bubble.tone-danger.pop { animation: rb-pop .45s var(--lg-ease) both, rb-shake .5s .3s ease-in-out; }
+
+/* Header: step bars or tone badge, minimize and close */
+.rb-head { display: flex; align-items: center; gap: 4px; margin-bottom: 8px; }
+.rb-steps { display: flex; gap: 4px; flex: 1; }
+.rb-steps span { width: 18px; height: 4px; border-radius: 2px; background: rgba(255, 255, 255, .1); transition: background .3s, width .3s var(--lg-ease); }
+.rb-steps span.done { background: rgba(255, 255, 255, .4); }
+.rb-steps span.now { width: 28px; background: var(--lg-text); }
+#map-labels .map-label.robot-speech .rb-badge { flex: 1; display: inline-flex; align-items: center; gap: 6px; font: 500 11px var(--lg-font); letter-spacing: 0; text-transform: none; color: var(--rb); }
+.rb-badge svg { width: 14px; height: 14px; }
+.rb-icon {
+  width: 24px; height: 24px; padding: 0; border: 0; border-radius: var(--lg-r-sm); display: grid; place-items: center;
+  background: transparent; color: var(--lg-icon-muted); cursor: pointer; transition: color .15s, background .15s;
+}
+.rb-icon svg { width: 14px; height: 14px; }
+.rb-icon:hover { color: var(--lg-icon); background: var(--lg-chip); box-shadow: var(--lg-rim); }
+
+/* Answers so far, as small chips */
+.rb-answers { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.rb-answers button {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 7px 2px 9px; border: 0; border-radius: 999px; cursor: pointer;
+  font: 500 11px var(--lg-font); color: var(--lg-muted);
+  background: var(--lg-chip); box-shadow: var(--lg-rim);
+  animation: rb-fade .3s both; transition: color .15s, background .15s;
+}
+/* The undo icon shows on hover: "tap to change this answer" */
+.rb-answers button svg { width: 11px; height: 11px; opacity: 0; margin-left: -12px; transition: opacity .15s, margin .15s; }
+.rb-answers button:hover { color: var(--lg-text); background: var(--lg-chip-hover); }
+.rb-answers button:hover svg, .rb-answers button:focus-visible svg { opacity: 1; margin-left: 0; }
+
+/* labels.css styles the strong and span of every map label (#map-labels .map-label strong / span); the bubble
+   keeps its own type, so the rules that touch them carry the same prefix */
+#map-labels .map-label.robot-speech span { font: inherit; color: inherit; letter-spacing: inherit; }
+#map-labels .map-label.robot-speech .rb-title { display: block; font: 600 14px/1.3 var(--lg-font); letter-spacing: -.01em; color: var(--lg-text); margin-bottom: 4px; }
+.rb-text { margin: 0; min-height: 2.9em; color: var(--lg-text-2); cursor: pointer; overflow-wrap: anywhere; }
+.typed .rb-text { cursor: default; }
+/* Caret while typing; dots while "thinking" before the text starts */
+.rb-caret { display: inline-block; width: 2px; height: 1em; margin-left: 1px; vertical-align: -2px; background: var(--rb); animation: rb-blink .7s steps(1) infinite; }
+.typed .rb-caret, .thinking .rb-caret { display: none; }
+.rb-dots { display: none; gap: 4px; }
+.thinking .rb-dots { display: inline-flex; }
+.rb-dots i { width: 6px; height: 6px; border-radius: 50%; background: var(--rb); animation: rb-dot 1s ease-in-out infinite; }
+.rb-dots i:nth-child(2) { animation-delay: .15s; }
+.rb-dots i:nth-child(3) { animation-delay: .3s; }
+
+/* A reassuring line under the first question */
+.rb-hint {
+  margin: 10px 0 0; padding-left: 9px; border-left: 2px solid var(--lg-line);
+  font-size: 12px; color: var(--lg-muted); opacity: 0; transition: opacity .4s;
+}
+.typed .rb-hint { opacity: 1; }
+
+/* The technology cards: logo, name and what it does; chosen ones are lit glass with a white check, the others
+   dim with an empty ring. The base (Next.js) carries a "Base" tag instead of the check. */
+.rb-bubble.kind-stack { width: 320px; }
+.rb-stack { display: grid; gap: 6px; margin-top: 12px; }
+.rb-pick {
+  display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 10px 8px 8px; border: 0;
+  border-radius: var(--lg-r-block); cursor: pointer; text-align: left; color: var(--lg-text);
+  background: rgba(255, 255, 255, .025); box-shadow: inset 0 0 0 1px var(--lg-line);
+  opacity: 0; transform: translateY(6px); pointer-events: none;
+  transition: opacity .25s, transform .3s var(--lg-ease), background .15s, box-shadow .15s;
+}
+.typed .rb-pick { opacity: .62; transform: none; pointer-events: auto; transition-delay: calc(var(--i) * 70ms), calc(var(--i) * 70ms), 0s, 0s; }
+.typed .rb-pick.chosen { opacity: 1; background: var(--lg-chip); box-shadow: var(--lg-rim), inset 0 0 0 1px rgba(255, 255, 255, .14); }
+.typed .rb-pick:hover { opacity: 1; background: var(--lg-chip-hover); transition-delay: 0s; }
+.rb-pick.locked { cursor: default; }
+.typed .rb-pick.locked:hover { background: var(--lg-chip); }
+#map-labels .map-label.robot-speech .rb-pick-logo {
+  flex: none; width: 32px; height: 32px; border-radius: var(--lg-r-sm); display: grid; place-items: center;
+  background: var(--lg-stage); box-shadow: inset 0 0 0 1px var(--lg-code-ring); color: var(--lg-icon);
+}
+.rb-pick-logo svg { width: 17px; height: 17px; }
+#map-labels .map-label.robot-speech .rb-pick-body { flex: 1; min-width: 0; display: grid; gap: 1px; }
+.rb-pick-body b { font: 600 13px/1.25 var(--lg-font); color: var(--lg-text); }
+.rb-pick-body small { font: 12px/1.35 var(--lg-font); color: var(--lg-muted); }
+/* The check: an empty ring when not chosen, a white disc with a dark tick when chosen */
+#map-labels .map-label.robot-speech .rb-pick-check {
+  flex: none; width: 20px; height: 20px; border-radius: 50%; display: grid; place-items: center;
+  box-shadow: inset 0 0 0 1.5px rgba(255, 255, 255, .28); color: transparent; transition: background .15s, color .15s, box-shadow .15s;
+}
+.rb-pick-check svg { width: 13px; height: 13px; }
+#map-labels .map-label.robot-speech .rb-pick.chosen .rb-pick-check { background: #fff; box-shadow: none; color: #121212; }
+#map-labels .map-label.robot-speech .rb-pick-mark {
+  flex: none; padding: 2px 8px; border-radius: 999px; background: var(--lg-chip); box-shadow: var(--lg-rim);
+  font: 500 10.5px var(--lg-font); color: var(--lg-text-2);
+}
+
+/* The agent is getting ready: a thin track with a light that sweeps across, until the first file shows up */
+.rb-progress { position: relative; height: 3px; margin-top: 12px; border-radius: 99px; overflow: hidden; background: rgba(255, 255, 255, .08); }
+.rb-progress i {
+  position: absolute; inset: 0 auto 0 0; width: 40%; border-radius: inherit;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, .85), transparent);
+  animation: rb-sweep 1.4s var(--lg-ease) infinite;
+}
+@keyframes rb-sweep { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
+
+/* Buttons slide in one by one once the text is typed: the chat's glass chips */
+.rb-buttons { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.rb-btn {
+  flex: 1 1 calc(50% - 6px); min-height: 34px; padding: 7px 11px; border: 0; border-radius: var(--lg-r-block); cursor: pointer;
+  font: 500 12.5px/1.3 var(--lg-font); text-align: left; color: var(--lg-text);
+  background: var(--lg-chip); box-shadow: var(--lg-rim);
+  opacity: 0; transform: translateY(6px) scale(.97); pointer-events: none;
+  transition: opacity .25s, transform .3s var(--lg-ease), background .15s;
+}
+.typed .rb-btn { opacity: 1; transform: none; pointer-events: auto; transition-delay: calc(var(--i) * 55ms), calc(var(--i) * 55ms), 0s; }
+.rb-btn:hover { background: var(--lg-chip-hover); transition-delay: 0s; }
+.rb-btn:active { background: var(--lg-chip-press); transform: scale(.98); }
+.rb-btn:focus-visible, .rb-pick:focus-visible, .rb-icon:focus-visible, .rb-back:focus-visible, .rb-pill:focus-visible, .rb-answers button:focus-visible { outline: 2px solid rgba(255, 255, 255, .5); outline-offset: 2px; }
+/* The main choice: the chat's white pill */
+.rb-btn.primary { flex-basis: 100%; text-align: center; font-weight: 600; color: #121212; background: #fff; box-shadow: none; }
+.rb-btn.primary:hover { background: rgba(255, 255, 255, .88); }
+.rb-btn.ghost { flex: 0 0 auto; margin-left: auto; color: var(--lg-muted); background: transparent; box-shadow: none; }
+.rb-btn.ghost:hover { color: var(--lg-text); background: var(--lg-chip); }
+
+/* "Atrás" in the header, before the step bars */
+.rb-back {
+  display: inline-flex; align-items: center; gap: 3px; height: 24px; padding: 0 9px 0 5px;
+  border: 0; border-radius: 999px; background: var(--lg-chip); box-shadow: var(--lg-rim);
+  color: var(--lg-text); font: 500 11px var(--lg-font); cursor: pointer; transition: background .15s;
+}
+.rb-back svg { width: 13px; height: 13px; transform: scaleX(-1); }
+.rb-back:hover { background: var(--lg-chip-hover); }
+
+/* Minimized: a glass pill above the robot; it pulses when a new tip is waiting */
+.rb-pill {
+  position: relative; display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px 6px 9px;
+  border: 0; border-radius: 999px; cursor: pointer;
+  background: rgba(22, 22, 22, .82);
+  -webkit-backdrop-filter: blur(22px) saturate(175%); backdrop-filter: blur(22px) saturate(175%);
+  box-shadow: var(--lg-rim-strong), var(--lg-shadow);
+  color: var(--lg-text); font: 500 12px var(--lg-font); -webkit-font-smoothing: antialiased;
+  animation: rb-pop .35s var(--lg-ease) both; transition: background .15s;
+}
+.rb-pill svg { width: 15px; height: 15px; color: var(--lg-icon); }
+.rb-pill:hover { background: rgba(40, 40, 40, .86); }
+.rb-pill.unread { animation: rb-pop .35s var(--lg-ease) both, rb-ping 1.6s .4s ease-out infinite; }
+.rb-pill.unread::after {
+  content: ""; position: absolute; top: -1px; right: -1px; width: 9px; height: 9px; border-radius: 50%;
+  background: #fff; box-shadow: 0 0 0 2px rgb(22, 22, 22);
+}
+
+@keyframes rb-beam { to { --rb-angle: 360deg; } }
+@keyframes rb-pop { from { opacity: 0; transform: translateX(-10px) scale(.86); } }
+@keyframes rb-shake { 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+@keyframes rb-fade { from { opacity: 0; transform: translateY(3px); } }
+@keyframes rb-blink { 50% { opacity: 0; } }
+@keyframes rb-dot { 0%, 100% { transform: translateY(0); opacity: .4; } 50% { transform: translateY(-3px); opacity: 1; } }
+@keyframes rb-ping { 0% { box-shadow: var(--lg-rim-strong), 0 0 0 0 rgba(255, 255, 255, .35), var(--lg-shadow); } 100% { box-shadow: var(--lg-rim-strong), 0 0 0 12px rgba(255, 255, 255, 0), var(--lg-shadow); } }
+
+@media (prefers-reduced-motion: reduce) {
+  .rb-bubble, .rb-bubble.pop, .rb-bubble.tone-danger.pop, .rb-bubble::before, .rb-pill, .rb-pill.unread, .rb-answers button { animation: none; }
+  .rb-progress i { animation: none; width: 100%; opacity: .35; }
+  .rb-btn, .typed .rb-btn, .rb-hint, .rb-pick, .typed .rb-pick, .rb-pick-check { transition: none; }
+}

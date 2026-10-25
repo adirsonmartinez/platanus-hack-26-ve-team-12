@@ -1,0 +1,13 @@
+{
+  "name": "feria-online",
+  "private": true,
+  "description": "Tienda en línea de una feria de productores locales",
+  "scripts": {
+    "dev": "pnpm -r --parallel dev",
+    "test": "vitest run",
+    "build": "pnpm -r build"
+  },
+  "devDependencies": {
+    "vitest": "^2.1.0"
+  }
+}

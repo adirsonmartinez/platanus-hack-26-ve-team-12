@@ -1,0 +1,54 @@
+/* Security card (top left of the map, fixed: score ring and counters, one compact row) in the chat's clear
+   glass (tokens from chat-glass.css). It took the place of the traffic-light counts, which said the same. Neutral like the chat; the ring and the problem counters keep the traffic-light colors,
+   the only color here. */
+
+#hud {
+  position: fixed; top: 16px; left: 16px; z-index: 2;
+  display: flex; align-items: center; gap: 2px; padding: 5px 8px 5px 6px; border: 0; border-radius: 18px;
+  background: var(--lg-panel);
+  -webkit-backdrop-filter: url(#liquid-glass) blur(22px) saturate(175%) brightness(1.04);
+  backdrop-filter: url(#liquid-glass) blur(22px) saturate(175%) brightness(1.04);
+  box-shadow: var(--lg-rim-strong), var(--lg-shadow);
+  color: var(--lg-text); font-family: var(--lg-font); -webkit-font-smoothing: antialiased;
+}
+#hud[hidden] { display: none; }
+/* The glass edge: the chat's gradient rim */
+#hud::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(150deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, .07) 28%, rgba(255, 255, 255, .02) 55%, rgba(255, 255, 255, .1));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+
+/* Score ring: the track is a faint line, the value takes the worst open light */
+.hud-ring { display: flex; align-items: center; gap: 8px; padding: 0 8px 0 0; margin-right: 2px; border-right: 1px solid var(--lg-line); }
+.hud-ring svg { width: 32px; height: 32px; transform: rotate(-90deg); }
+.hud-ring circle { fill: none; stroke-width: 6; }
+.hud-ring .track { stroke: rgba(255, 255, 255, .08); }
+.hud-ring .value { stroke: var(--lg-text); stroke-linecap: round; transition: stroke-dashoffset .6s var(--lg-ease); }
+#hud[data-level="red"] .hud-ring .value { stroke: var(--danger); filter: drop-shadow(0 0 4px rgba(255, 90, 106, .7)); }
+#hud[data-level="yellow"] .hud-ring .value { stroke: var(--warn); filter: drop-shadow(0 0 4px rgba(255, 194, 74, .6)); }
+#hud[data-level="green"] .hud-ring .value { stroke: var(--ok); }
+#hud[data-level="red"] [data-field="score"] { color: var(--danger); }
+#hud[data-level="yellow"] [data-field="score"] { color: var(--warn); }
+
+/* Numbers in Inter (tabular), labels in grey */
+#hud strong { display: block; font: 600 14px/1.15 var(--lg-font); letter-spacing: -.01em; font-variant-numeric: tabular-nums; color: var(--lg-text); }
+#hud span { display: block; font-size: 10px; line-height: 1.2; color: var(--lg-muted); white-space: nowrap; }
+.hud-stat { padding: 4px 8px; border-radius: 12px; }
+#hud .hud-stat.risk strong { color: var(--danger); }
+#hud .hud-stat.review strong { color: var(--warn); }
+/* The risk counters open the list of risks: they light up like the chat's chips */
+.hud-stat[role="button"] { cursor: pointer; transition: background .2s var(--lg-ease); }
+.hud-stat[role="button"]:hover { background: var(--lg-chip); }
+.hud-stat[role="button"]:active { background: var(--lg-chip-press); }
+.hud-stat[role="button"]:focus-visible { outline: 2px solid rgba(255, 255, 255, .5); outline-offset: 1px; }
+
+/* ---------- Fixed at the top left of the map: it never moves ---------- */
+#stage #hud { top: 14px; left: 14px; right: auto; bottom: auto; z-index: 5; }
+/* The map's other top-left panels (Supabase schema, folder) open below it */
+#stage #folder-panel, #stage #schema-panel { top: 72px; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hud-ring .value, .hud-stat[role="button"] { transition: none; }
+}

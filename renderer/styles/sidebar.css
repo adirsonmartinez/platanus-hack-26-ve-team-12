@@ -1,0 +1,152 @@
+/* Sidebar and icon-rail polish for the "clear glass" shell: entry motion, button states and
+   micro-transitions. Loaded after shell.css; presentation overrides only, no layout changes. */
+
+/* ---------- View change: staggered content entry + title crossfade ---------- */
+@keyframes side-enter {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: none; }
+}
+.sidebar-body.enter > * {
+  animation: side-enter .24s cubic-bezier(.2, .8, .2, 1) backwards;
+}
+.sidebar-body.enter > :nth-child(2) { animation-delay: 35ms; }
+.sidebar-body.enter > :nth-child(3) { animation-delay: 70ms; }
+.sidebar-body.enter > :nth-child(4) { animation-delay: 105ms; }
+.sidebar-body.enter > :nth-child(5) { animation-delay: 140ms; }
+.sidebar-body.enter > :nth-child(n + 6) { animation-delay: 175ms; }
+
+@keyframes title-crossfade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+#sidebar-title.enter { animation: title-crossfade .24s ease backwards; }
+
+/* ---------- Vibe cards: accent-tinted gradient edge and lift instead of a per-tag glow ---------- */
+/* The gradient slot exists at rest so the hover tint cross-fades instead of popping. */
+.guide-card { background-image: linear-gradient(180deg, transparent, transparent); }
+.guide-card:hover {
+  background-color: var(--panel-2);
+  background-image: linear-gradient(180deg, color-mix(in srgb, var(--accent) 15%, transparent), transparent 46%);
+  border-color: color-mix(in srgb, var(--accent) 40%, var(--line-strong));
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35), inset 0 1px 0 color-mix(in srgb, var(--accent) 50%, transparent);
+}
+
+/* ---------- Buttons: missing hovers before the press and focus states ---------- */
+.chip:hover:not(.active) { color: var(--ink); border-color: var(--line-strong); background: var(--panel); }
+.segmented button:hover:not(.active) { color: var(--muted); background: rgba(255, 255, 255, 0.045); }
+.mode-toggle button:hover:not(.active) { color: var(--muted); background: rgba(255, 255, 255, 0.05); }
+
+/* ---------- Buttons: one shared transition, pressed scale and accent focus ring ---------- */
+.pill, .chip, .segmented button, .mode-toggle button, .side-row, .guide-card, .guide-sub,
+.risk-card, #rail button {
+  transition: transform .16s cubic-bezier(.2, .8, .2, 1), background-color .18s ease,
+    background-image .18s ease, border-color .18s ease, color .18s ease, box-shadow .18s ease;
+}
+.pill:active, .chip:active, .segmented button:active, .mode-toggle button:active, .side-row:active,
+.guide-card:active, .guide-sub:active, .risk-card:active, #rail button:active {
+  transform: scale(.97);
+}
+.pill:focus-visible, .chip:focus-visible, .segmented button:focus-visible,
+.mode-toggle button:focus-visible, .side-row:focus-visible, .guide-card:focus-visible,
+.guide-sub:focus-visible, .risk-card:focus-visible, #rail button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ---------- Dev tree: smoother chevron rotation curve ---------- */
+.side-row .chevron { transition: transform .24s cubic-bezier(.2, .8, .2, 1); }
+.side-row.folder.open .chevron { transform: rotate(90deg); }
+
+/* ---------- Repair pill: hammer strike on hover, shimmer while Qubi works ---------- */
+.risk-head .pill.repair::before {
+  content: "🔨";
+  display: inline-block;
+  margin-right: 4px;
+  transform-origin: 70% 75%;
+}
+.risk-head .pill.repair:hover::before { animation: hammer-strike .24s cubic-bezier(.2, .8, .2, 1); }
+@keyframes hammer-strike {
+  from { transform: rotate(-8deg); }
+  to { transform: rotate(0); }
+}
+.risk-head .pill.repair.active {
+  background-image: linear-gradient(100deg, transparent 35%, rgba(255, 255, 255, 0.5) 50%, transparent 65%);
+  background-size: 250% 100%;
+  background-repeat: no-repeat;
+  animation: repair-shimmer 1.6s linear infinite;
+}
+@keyframes repair-shimmer {
+  from { background-position: 130% 0; }
+  to { background-position: -130% 0; }
+}
+
+/* ---------- Icon rail: icon lifts, accent bar grows in, tooltip pops ---------- */
+#rail button svg { transition: transform .16s cubic-bezier(.2, .8, .2, 1); }
+#rail button:hover svg, #rail button:focus-visible svg { transform: translateY(-1px); }
+
+#rail button::before { transition: height .22s cubic-bezier(.2, .8, .2, 1); }
+#rail button.active::before { animation: rail-bar-in .24s cubic-bezier(.2, .8, .2, 1); }
+@keyframes rail-bar-in {
+  from { height: 0; }
+  to { height: 18px; }
+}
+
+#rail .tip {
+  transform-origin: left center;
+  transform: translate(-4px, -50%) scale(.96);
+  transition: opacity .16s ease, transform .16s cubic-bezier(.2, .8, .2, 1);
+}
+#rail button:hover .tip, #rail button:focus-visible .tip { transform: translate(0, -50%) scale(1); }
+
+/* ---------- Severity dots: red pulses with an expanding halo ---------- */
+.level-dot.red { animation: dot-pulse 2s ease-in-out infinite; }
+@keyframes dot-pulse {
+  0% {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--danger) 55%, transparent),
+      0 0 0 0 color-mix(in srgb, var(--danger) 55%, transparent);
+  }
+  70% {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--danger) 45%, transparent),
+      0 0 0 5px color-mix(in srgb, var(--danger) 20%, transparent);
+  }
+  95% {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--danger) 55%, transparent),
+      0 0 0 6px color-mix(in srgb, var(--danger) 0%, transparent);
+  }
+  100% {
+    box-shadow: 0 0 8px color-mix(in srgb, var(--danger) 55%, transparent),
+      0 0 0 0 color-mix(in srgb, var(--danger) 0%, transparent);
+  }
+}
+
+/* ---------- Sidebar scrollbar: thin thumb visible only while the panel is hovered ---------- */
+.sidebar-body { scrollbar-width: thin; scrollbar-color: transparent transparent; }
+#sidebar:hover .sidebar-body { scrollbar-color: rgba(255, 255, 255, 0.16) transparent; }
+.sidebar-body::-webkit-scrollbar { width: 8px; height: 8px; }
+.sidebar-body::-webkit-scrollbar-track { background: transparent; }
+.sidebar-body::-webkit-scrollbar-thumb {
+  background: transparent;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 8px;
+  transition: background-color .2s ease;
+}
+#sidebar:hover .sidebar-body::-webkit-scrollbar-thumb { background-color: rgba(255, 255, 255, 0.18); }
+
+/* ---------- Reduced motion: drop every animation and movement transition ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .sidebar-body.enter > *,
+  #sidebar-title.enter,
+  .risk-head .pill.repair:hover::before,
+  .risk-head .pill.repair.active,
+  #rail button.active::before,
+  .level-dot.red {
+    animation: none !important;
+  }
+  /* Keep color fades; remove transform, size and position movement. */
+  .pill, .chip, .segmented button, .mode-toggle button, .side-row, .guide-card, .guide-sub,
+  .risk-card, #rail button, #rail button svg, #rail button::before, .side-row .chevron, .tip {
+    transition-property: background-color, background-image, border-color, color, box-shadow, opacity !important;
+  }
+}

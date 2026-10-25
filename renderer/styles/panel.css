@@ -1,0 +1,223 @@
+/* Side panel (explorer, risks, repairs, servers, agent) in the chat's clear glass (tokens from chat-glass.css).
+   Everything inside is drawn with the shell's tokens, so the panel redefines them with the chat's values:
+   white and greys, translucent cards and chips, Inter + Roboto Mono, and a neutral "accent" (white), so
+   selections and primary buttons look like the chat's lit chips and white pills. Traffic-light colors stay. */
+
+#sidebar.card {
+  --ink: var(--lg-text);
+  --text: var(--lg-text);
+  --muted: var(--lg-muted);
+  --faint: var(--lg-faint);
+  --panel: var(--lg-card);
+  --panel-2: var(--lg-chip);
+  --line: var(--lg-line);
+  --line-strong: rgba(255, 255, 255, .12);
+  --accent: rgba(255, 255, 255, .92);
+  --accent-soft: var(--lg-chip);
+  --glass-pop: rgba(24, 24, 24, .9);
+  --font: var(--lg-font);
+  --sans: var(--lg-font);
+  --mono: var(--lg-mono);
+
+  border: 0; border-radius: var(--lg-r-panel); overflow: hidden;
+  background: rgba(18, 18, 18, .52); /* a little denser than the chat: long lists of text over the map */
+  -webkit-backdrop-filter: url(#liquid-glass) blur(22px) saturate(175%) brightness(1.04);
+  backdrop-filter: url(#liquid-glass) blur(22px) saturate(175%) brightness(1.04);
+  box-shadow: var(--lg-rim-strong), var(--lg-shadow);
+  color: var(--lg-text); font: 13px/1.45 var(--lg-font); font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+}
+/* Between the security card (top, 14px from the edge and 46px tall: hud.css) and the map controls (bottom,
+   14px and 42px: controls.css), ~11px clear of each */
+#sidebar.card { top: 72px; bottom: 68px; }
+
+/* The glass edge: the chat's gradient rim */
+#sidebar.card::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(150deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, .07) 28%, rgba(255, 255, 255, .02) 55%, rgba(255, 255, 255, .1));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+
+/* Header: like the chat's */
+#sidebar .card-head { gap: 8px; height: 48px; padding: 0 10px 0 16px; border-bottom: 1px solid var(--lg-line); user-select: none; }
+#sidebar .card-head #sidebar-title { flex: 1; font: 600 14px/1.2 var(--lg-font); letter-spacing: -.01em; color: var(--lg-text); }
+/* "–" closes the panel: the chat's minimize button */
+#sidebar .sidebar-close { flex: none; border-radius: 10px; color: var(--lg-icon-muted); background: transparent; transition: background .2s var(--lg-ease), color .2s var(--lg-ease); }
+#sidebar .sidebar-close:hover { color: var(--lg-icon); background: var(--lg-chip); box-shadow: var(--lg-rim); }
+#sidebar .sidebar-close:focus-visible { outline: 2px solid rgba(255, 255, 255, .5); outline-offset: 1px; }
+
+/* Primary buttons on the white "accent": dark text, like the chat's white pill */
+#sidebar :is(button, a).primary, #sidebar .btn-primary { color: #121212; }
+
+/* Hand-written purples inside the panel, made neutral */
+#sidebar .task-status.fixed { background: var(--lg-chip-hover); color: var(--lg-text); }
+#sidebar .hub-agent.hub-agent-demo .hub-avatar { background: var(--lg-chip-hover); color: var(--lg-text); }
+#sidebar .hub-agent.hub-agent-selected { border-color: rgba(255, 255, 255, .35); background: var(--lg-card); box-shadow: var(--lg-rim); }
+
+/* Explorer rows: a folder or file icon (Hugeicons) instead of a dot, tinted by its traffic light. Safe stays
+   a calm grey; problems take their color and only red glows. */
+.entry-icon { display: grid; place-items: center; flex: none; width: 16px; height: 16px; color: var(--lg-icon-muted); }
+.entry-icon svg { width: 15px; height: 15px; }
+.entry-icon.yellow { color: var(--warn); }
+.entry-icon.red { color: var(--danger); filter: drop-shadow(0 0 4px rgba(255, 90, 106, .55)); }
+.guide-head .entry-icon svg { width: 16px; height: 16px; }
+
+/* Explorer (Dev) toolbar: the search field on its own row, the actions below as chips */
+#sidebar .devtree-toolbar { flex-direction: column; align-items: stretch; gap: 6px; padding: 10px 10px 8px; }
+#sidebar .devtree-searchbox {
+  display: flex; align-items: center; gap: 8px; height: 32px; padding: 0 10px; border-radius: 999px;
+  background: var(--lg-chip); box-shadow: var(--lg-rim); cursor: text;
+  transition: background .2s var(--lg-ease), box-shadow .2s var(--lg-ease);
+}
+#sidebar .devtree-searchbox:focus-within { background: var(--lg-chip-hover); box-shadow: var(--lg-rim), 0 0 0 1px rgba(255, 255, 255, .22); }
+#sidebar .devtree-search-icon { display: grid; place-items: center; flex: none; color: var(--lg-icon-muted); }
+#sidebar .devtree-search-icon svg { width: 14px; height: 14px; }
+#sidebar .devtree-search {
+  flex: 1; min-width: 0; height: 100%; padding: 0; border: 0; border-radius: 0; background: transparent;
+  color: var(--lg-text); font: 12px var(--lg-font);
+}
+#sidebar .devtree-search:focus { background: transparent; }
+#sidebar .devtree-search::-webkit-search-cancel-button { filter: invert(1) opacity(.5); }
+#sidebar .devtree-matches { margin: 0; color: var(--lg-faint); font: 11px var(--lg-font); font-variant-numeric: tabular-nums; }
+#sidebar .devtree-toolbar-actions { display: flex; align-items: center; gap: 4px; }
+#sidebar .devtree-action { height: 24px; padding: 0 10px; border-radius: 999px; font: 500 11px var(--lg-font); color: var(--lg-muted); }
+#sidebar .devtree-action:hover { background: var(--lg-chip); color: var(--lg-text); }
+/* "Solo riesgos": a toggle chip on the right, red when on */
+#sidebar .devtree-risk { margin-left: auto; border: 0; background: var(--lg-chip); box-shadow: var(--lg-rim); }
+#sidebar .devtree-risk:hover { background: var(--lg-chip-hover); }
+#sidebar .devtree-risk.active { background: rgba(255, 90, 106, .14); color: var(--danger); box-shadow: inset 0 0 0 1px rgba(255, 90, 106, .35); }
+#sidebar .devtree-matches[hidden] { display: none; }
+
+/* Toolbar actions as round icon buttons (expand all, collapse all; risks only on the right) */
+#sidebar .devtree-action { display: grid; place-items: center; width: 28px; height: 28px; padding: 0; border-radius: 50%; color: var(--lg-icon-muted); }
+#sidebar .devtree-action svg { width: 16px; height: 16px; }
+#sidebar .devtree-action:hover { color: var(--lg-icon); }
+#sidebar .devtree-risk.active svg { color: var(--danger); }
+
+/* Repairs: "Limpiar terminadas" on its own row, right-aligned, clear of the cards below */
+#sidebar .repairs-bar { display: flex; justify-content: flex-end; margin: 2px 0 12px; padding-bottom: 10px; border-bottom: 1px solid var(--lg-line); }
+#sidebar .repairs-clear {
+  height: 26px; padding: 0 12px; border: 0; border-radius: 999px; background: var(--lg-chip); box-shadow: var(--lg-rim);
+  color: var(--lg-muted); font: 500 11px var(--lg-font); cursor: pointer; transition: background .2s var(--lg-ease), color .2s var(--lg-ease);
+}
+#sidebar .repairs-clear:hover { background: var(--lg-chip-hover); color: var(--lg-text); }
+#sidebar .repairs-clear:focus-visible { outline: 2px solid rgba(255, 255, 255, .5); outline-offset: 1px; }
+
+/* ---------- Risk and server cards: the chat's cards (lighter glass inside the glass) ----------
+   Neutral card with the rim; the traffic light lives in the badge and the level text only. */
+#sidebar .risk-card {
+  gap: 4px; margin-bottom: 8px; padding: 12px 12px 12px 14px; border: 0; border-radius: 18px;
+  background: var(--lg-card); box-shadow: var(--lg-rim), 0 6px 24px rgba(0, 0, 0, .18);
+  transition: background .2s var(--lg-ease), transform .2s var(--lg-ease);
+}
+#sidebar .risk-card.red, #sidebar .risk-card.yellow { background: var(--lg-card); }
+#sidebar .risk-card:hover, #sidebar .risk-card.red:hover, #sidebar .risk-card.yellow:hover { background: rgba(255, 255, 255, .07); transform: none; }
+#sidebar .risk-card:active { transform: scale(.985); }
+#sidebar .risk-card:focus-visible { outline: 2px solid rgba(255, 255, 255, .5); outline-offset: 2px; }
+#sidebar .risk-head { gap: 8px; min-height: 28px; }
+#sidebar .risk-icon { width: 26px; height: 26px; border-radius: 9px; box-shadow: var(--lg-rim); }
+#sidebar .risk-icon svg { width: 14px; height: 14px; }
+#sidebar .risk-icon.red { background: rgba(255, 90, 106, .16); }
+#sidebar .risk-icon.yellow { background: rgba(255, 194, 74, .14); }
+#sidebar .risk-level { font: 600 12px var(--lg-font); }
+#sidebar .risk-path { margin-top: 2px; font: 500 12.5px/1.35 var(--lg-mono); color: var(--lg-text); }
+#sidebar .risk-reason { color: var(--lg-text-2); font-size: 12.5px; line-height: 1.5; }
+
+/* "Reparar": the chat's glass chip with a wrench; shimmers while Qubi works */
+#sidebar .risk-head .pill.repair {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border: 0; border-radius: 999px;
+  background: var(--lg-chip); box-shadow: var(--lg-rim); color: var(--lg-text); font: 500 12px var(--lg-font);
+}
+#sidebar .risk-head .pill.repair::before { content: none; }
+#sidebar .risk-head .pill.repair svg { width: 14px; height: 14px; color: var(--lg-icon-muted); }
+#sidebar .risk-head .pill.repair:hover { background: var(--lg-chip-hover); }
+#sidebar .risk-head .pill.repair:hover svg { color: var(--lg-icon); }
+#sidebar .risk-head .pill.repair.active { background-color: var(--lg-chip-hover); color: var(--lg-text); }
+
+/* Servers: same card; the actions are round icon buttons, chips are glass */
+#sidebar .server-card.paused, #sidebar .server-card.stopped { background: rgba(255, 255, 255, .025); }
+#sidebar .server-card.stopped { border: 0; box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .08); }
+#sidebar .server-process { color: var(--lg-muted); font-weight: 400; }
+#sidebar .server-address { font: 11px var(--lg-mono); color: var(--lg-faint); }
+#sidebar .server-chip, #sidebar .server-demo { padding: 2px 8px; border: 0; background: var(--lg-chip); box-shadow: var(--lg-rim); color: var(--lg-muted); font: 500 10.5px var(--lg-font); }
+#sidebar .server-chip.managed { color: var(--lg-text); }
+#sidebar .icon-btn { width: 28px; height: 28px; border: 0; border-radius: 50%; color: var(--lg-icon-muted); }
+#sidebar .icon-btn svg { width: 15px; height: 15px; }
+#sidebar .icon-btn:hover:not(:disabled) { background: var(--lg-chip-hover); color: var(--lg-icon); }
+#sidebar .icon-btn.active { background: var(--lg-chip-hover); border: 0; box-shadow: var(--lg-rim); color: var(--lg-text); }
+#sidebar .server-output { border-radius: var(--lg-r-block); background: var(--lg-stage); font-family: var(--lg-mono); }
+
+/* ---------- Explorer, Vibe: the guide as the chat's cards ----------
+   Each part is a lighter glass card (folder icon in a small tile, friendly name, folder in mono, one
+   sentence); its subfolders and the loose files are rows that light up like the chat's chips. */
+#sidebar .side-intro { margin: 2px 6px 12px; color: var(--lg-muted); font-size: 12.5px; line-height: 1.5; }
+#sidebar .guide-card {
+  gap: 6px; margin-bottom: 8px; padding: 12px 14px; border: 0; border-radius: 18px;
+  background: var(--lg-card); background-image: none; box-shadow: var(--lg-rim), 0 6px 24px rgba(0, 0, 0, .18);
+  transition: background .2s var(--lg-ease), transform .2s var(--lg-ease);
+}
+#sidebar .guide-card:hover { background: rgba(255, 255, 255, .07); background-image: none; box-shadow: var(--lg-rim), 0 6px 24px rgba(0, 0, 0, .18); transform: none; }
+#sidebar .guide-card:active { transform: scale(.985); }
+#sidebar .guide-card:focus-visible, #sidebar .guide-sub:focus-visible, #sidebar .side-row:focus-visible { outline: 2px solid rgba(255, 255, 255, .5); outline-offset: 2px; }
+#sidebar .guide-head { gap: 10px; }
+#sidebar .guide-head .entry-icon { width: 28px; height: 28px; border-radius: 9px; background: var(--lg-chip); box-shadow: var(--lg-rim); }
+#sidebar .guide-head .entry-icon svg { width: 15px; height: 15px; }
+#sidebar .guide-head strong { font: 600 13.5px/1.3 var(--lg-font); letter-spacing: -.01em; color: var(--lg-text); }
+#sidebar .guide-folder { font: 11px var(--lg-mono); color: var(--lg-muted); }
+#sidebar .guide-summary { color: var(--lg-text-2); font-size: 12.5px; line-height: 1.5; }
+
+#sidebar .guide-subs { gap: 2px; margin: -2px 0 10px 18px; padding-left: 10px; border-left: 1px solid var(--lg-line); }
+#sidebar .guide-sub { gap: 9px; height: 32px; padding: 0 10px; border-radius: 10px; color: var(--lg-text-2); font: 12.5px var(--lg-font); transition: background .2s var(--lg-ease), color .2s var(--lg-ease); }
+#sidebar .guide-sub:hover { background: var(--lg-chip); color: var(--lg-text); }
+
+#sidebar .side-label { margin: 16px 8px 6px; color: var(--lg-faint); font: 500 10.5px var(--lg-font); letter-spacing: .08em; }
+#sidebar .side-row { gap: 9px; height: 32px; padding: 0 10px; border-radius: 10px; font-size: 12.5px; transition: background .2s var(--lg-ease), color .2s var(--lg-ease); }
+#sidebar .side-row:hover { background: var(--lg-chip); }
+#sidebar .side-row.file { color: var(--lg-text-2); }
+#sidebar .side-row.file:hover { color: var(--lg-text); }
+#sidebar .side-name { font: 12px var(--lg-mono); }
+/* Risk counts beside a part or a row: small glass chips in their color */
+#sidebar .count { min-width: 18px; padding: 1px 6px; border-radius: 999px; font: 600 10.5px var(--lg-font); }
+
+/* "Conecta tu agente": one compact row per agent (logo, name, one status line, one action) */
+#sidebar .hub-rows { display: flex; flex-direction: column; gap: 6px; }
+#sidebar .hub-row {
+  display: grid; grid-template-columns: 34px 1fr auto; align-items: center; gap: 10px;
+  padding: 8px 8px 8px 10px; border-radius: var(--lg-r-block, 14px); border: 1px solid var(--lg-line);
+  background: transparent; transition: background .2s var(--lg-ease), border-color .2s var(--lg-ease);
+}
+#sidebar .hub-row:hover { background: var(--lg-chip); }
+#sidebar .hub-row.selected { background: var(--lg-card); border-color: rgba(255, 255, 255, .28); box-shadow: var(--lg-rim); }
+#sidebar .hub-logo {
+  width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center;
+  background: var(--lg-chip); box-shadow: var(--lg-rim); color: var(--lg-text);
+}
+#sidebar .hub-logo svg { width: 20px; height: 20px; }
+#sidebar .hub-row.off .hub-logo { opacity: .55; filter: grayscale(.6); }
+#sidebar .hub-row-info { min-width: 0; }
+#sidebar .hub-row-name { display: flex; align-items: baseline; gap: 6px; font: 600 13.5px/1.25 var(--lg-font); color: var(--lg-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#sidebar .hub-row-kind { font: 500 11px/1 var(--lg-font); color: var(--lg-faint); }
+#sidebar .hub-row-meta { display: flex; align-items: center; gap: 6px; margin-top: 2px; font: 12px/1.3 var(--lg-font); color: var(--lg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#sidebar .hub-row-meta::before { content: ''; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--lg-faint); }
+#sidebar .hub-row-meta.on::before { background: #34d399; }
+#sidebar .hub-row-meta.unknown::before { background: #f5b84d; }
+#sidebar .hub-row-dev { margin-top: 2px; font: 11px/1.3 var(--lg-mono); color: var(--lg-faint); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#sidebar .hub-row-actions { display: flex; align-items: center; gap: 4px; }
+#sidebar .hub-row-actions button {
+  height: 28px; padding: 0 10px; border-radius: 999px; border: 0; cursor: pointer;
+  font: 500 12px/1 var(--lg-font); color: var(--lg-text-2, var(--lg-text)); background: transparent;
+  display: inline-flex; align-items: center; gap: 4px; transition: background .2s var(--lg-ease), color .2s var(--lg-ease);
+}
+#sidebar .hub-row-actions button:hover { background: var(--lg-chip-hover); color: var(--lg-text); }
+#sidebar .hub-row-actions button:focus-visible, #sidebar .hub-demo:focus-visible { outline: 2px solid rgba(255, 255, 255, .5); outline-offset: 1px; }
+#sidebar .hub-row-test { color: var(--lg-muted) !important; }
+#sidebar .hub-row-test.ok { color: #34d399 !important; }
+#sidebar .hub-row-test.error { color: #f87171 !important; }
+#sidebar .hub-row-main { background: var(--lg-chip) !important; box-shadow: var(--lg-rim); }
+#sidebar .hub-row-main.active { background: #fff !important; color: #121212 !important; }
+#sidebar .hub-demo {
+  margin-top: 8px; align-self: flex-start; border: 0; background: transparent; cursor: pointer; padding: 4px 2px;
+  font: 12px/1.3 var(--lg-font); color: var(--lg-faint); text-decoration: underline; text-underline-offset: 3px;
+}
+#sidebar .hub-demo:hover, #sidebar .hub-demo.active { color: var(--lg-text); }

@@ -1,0 +1,265 @@
+/* ==========================================================================
+   Dev tree sidebar — glassmorphism dark theme, .devtree prefix only
+   ========================================================================== */
+
+/* ---------- Root container ---------- */
+.devtree {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, .14) transparent;
+  animation: rise .22s ease both;
+}
+
+.devtree:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* ---------- Toolbar ---------- */
+.devtree-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, .14) transparent;
+}
+
+.devtree-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 8px 6px;
+  border-bottom: 1px solid var(--line);
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.devtree-actions {
+  display: flex;
+  gap: 2px;
+  flex: none;
+  align-items: center;
+}
+
+.devtree-search {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: var(--panel);
+  color: var(--ink);
+  font: 11px var(--font);
+  outline: none;
+  transition: border-color .15s, background .15s;
+}
+.devtree-search::placeholder { color: var(--faint); }
+.devtree-search:focus {
+  border-color: var(--line-strong);
+  background: var(--panel-2);
+}
+
+.devtree-matches {
+  color: var(--faint);
+  font-size: 10px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+.devtree-action {
+  padding: 2px 8px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--muted);
+  font: 600 10px var(--font);
+  cursor: pointer;
+  transition: background .15s, color .15s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.devtree-action:hover { background: var(--panel-2); color: var(--ink); }
+
+.devtree-risk {
+  padding: 2px 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+}
+.devtree-risk:hover { border-color: var(--line-strong); }
+.devtree-risk.active {
+  background: rgba(255, 90, 106, .12);
+  color: var(--danger);
+  border-color: rgba(255, 90, 106, .35);
+}
+
+/* ---------- Rows ---------- */
+.devtree-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 8px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--ink);
+  font: 12px var(--font);
+  text-align: left;
+  cursor: pointer;
+  transition: background .12s ease;
+  box-sizing: border-box;
+}
+.devtree-row:hover { background: var(--panel-2); }
+
+/* Folder rows */
+.devtree-row.dir { font-weight: 600; }
+.devtree-row.folder { font-weight: 600; }
+.devtree-row.file { color: var(--muted); font-weight: 400; }
+.devtree-row.file:hover { color: var(--ink); }
+
+/* Chevron */
+.devtree-chevron {
+  display: inline-block;
+  width: 12px;
+  flex: none;
+  color: var(--faint);
+  font-size: 10px;
+  transition: transform .15s ease;
+  text-align: center;
+}
+.devtree-row.open .devtree-chevron { transform: rotate(90deg); }
+
+/* Level dot (reused from shell.css) */
+.level-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--faint); }
+.level-dot.green { background: var(--ok); }
+.level-dot.yellow { background: var(--warn); }
+.level-dot.red { background: var(--danger); box-shadow: 0 0 6px rgba(255, 90, 106, .5); }
+.level-dot.grey { background: var(--muted); }
+
+/* Name */
+.devtree-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+  font-size: 11px;
+}
+
+/* Counters */
+.devtree-count {
+  color: var(--faint);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  flex: none;
+}
+.devtree-count.red { background: rgba(255, 90, 106, .16); color: var(--danger); padding: 0 4px; border-radius: 4px; }
+.devtree-count.yellow { background: rgba(255, 194, 74, .14); color: var(--warn); padding: 0 4px; border-radius: 4px; }
+
+/* Tag chip (inherits .tag-chip from shell.css) */
+.devtree-row .tag-chip {
+  margin-left: auto;
+  flex: none;
+  white-space: nowrap;
+  font-size: 9.5px;
+}
+
+/* Size */
+.devtree-size {
+  color: var(--faint);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex: none;
+  font-family: var(--mono);
+}
+
+/* Agent / Qubi badge */
+.devtree-badge {
+  padding: 1px 6px;
+  border-radius: 5px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font-size: 9px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  flex: none;
+  white-space: nowrap;
+}
+.devtree-badge.agent { color: var(--accent); }
+.devtree-badge.qubi { color: var(--warn); }
+
+/* ---------- Action buttons (hover / focus) ---------- */
+.devtree-action-btn {
+  display: none;
+  padding: 2px 7px;
+  border: 0;
+  border-radius: 5px;
+  background: var(--panel-2);
+  color: var(--muted);
+  font: 500 10px var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+  flex: none;
+  transition: background .12s, color .12s;
+}
+.devtree-action-btn:hover { background: var(--line); color: var(--ink); }
+.devtree-action-btn:active { background: var(--line-strong); }
+.devtree-action-btn.devtree-repair { color: var(--warn); border-color: rgba(245, 197, 66, .35); }
+
+/* Show actions on row hover or focus */
+.devtree-row:hover .devtree-action-btn,
+.devtree-row:focus-visible .devtree-action-btn {
+  display: inline-block;
+}
+
+/* ---------- Toast (copied) ---------- */
+.devtree-toast {
+  position: absolute;
+  top: 50px;
+  right: 12px;
+  z-index: 100;
+  padding: 5px 12px;
+  border-radius: 8px;
+  background: var(--glass-pop);
+  border: 1px solid var(--line-strong);
+  color: var(--ok);
+  font: 600 11px var(--font);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .4);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .2s ease;
+}
+.devtree-toast.show { opacity: 1; }
+
+/* ---------- Empty state (search no match) ---------- */
+.devtree-empty {
+  margin: 12px 8px;
+  color: var(--muted);
+  font-size: 12px;
+  text-align: center;
+  animation: pop-in .2s ease both;
+}
+
+/* ---------- Keyboard focus on rows ---------- */
+.devtree-row:focus-visible {
+  background: var(--panel-2);
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+/* ---------- Reduced motion ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .devtree { animation: none; }
+  .devtree-chevron { transition: none; }
+  .devtree-toast { transition: none; }
+  .devtree-row { transition: none; }
+}

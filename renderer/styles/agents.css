@@ -1,0 +1,392 @@
+/* Agent Connect view ("hub"): dark glass cards, avatar-based agent grid,
+   segmented compare buttons, MCP tool list, recent activity rows.
+   Classes use the .hub- prefix. */
+
+/* ---------- Section headings ---------- */
+.hub-section {
+  margin: 14px 0 6px;
+  color: var(--faint);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  line-height: 1;
+}
+.hub-section:first-child {
+  margin-top: 2px;
+}
+
+/* ---------- Intro ---------- */
+.hub-intro {
+  margin: 0 0 8px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+/* ---------- Agents grid ---------- */
+.hub-agents {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 4px;
+}
+
+/* ---------- Individual agent card ---------- */
+.hub-agent {
+  display: flex;
+  align-items: stretch;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  transition: border-color .18s, background .18s, transform .18s;
+}
+.hub-agent:hover {
+  border-color: var(--line-strong);
+  background: var(--panel-2);
+  transform: translateY(-1px);
+}
+.hub-agent.hub-agent-selected {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+}
+
+/* Demo (scripted) card — slightly different */
+.hub-agent.hub-agent-demo .hub-avatar {
+  background: rgba(139, 131, 255, .2);
+  color: var(--accent);
+}
+
+/* ---------- Avatar ---------- */
+.hub-avatar {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  font-size: 18px;
+  font-weight: 700;
+  color: #fff;
+  background: color-mix(in srgb, var(--c) 55%, transparent);
+}
+
+/* ---------- Agent info (name + status) ---------- */
+.hub-agent-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  justify-content: center;
+}
+.hub-agent-name {
+  font-size: 12.5px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hub-status {
+  font-size: 11px;
+  color: var(--muted);
+}
+.hub-status.on::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--ok);
+}
+.hub-status.off::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  margin-right: 5px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+
+/* Current model & effort (inside selected card) */
+.hub-current {
+  font-size: 10.5px;
+  color: var(--accent);
+  font-weight: 500;
+}
+
+/* Dev mode extras */
+.hub-dev {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+.hub-dev-row {
+  font-size: 10px;
+  font-family: var(--mono);
+  color: var(--faint);
+}
+
+/* Stats & error */
+.hub-stats {
+  font-size: 11px;
+  color: var(--muted);
+}
+.hub-error {
+  font-size: 11px;
+  color: var(--danger);
+}
+
+/* ---------- Action buttons row ---------- */
+.hub-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  flex: none;
+  min-width: 0;
+}
+
+/* Generic pill button */
+.hub-btn {
+  padding: 4px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: 11.5px var(--font);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s, color .15s, border-color .15s;
+}
+.hub-btn:hover {
+  border-color: var(--line-strong);
+  background: var(--panel-2);
+}
+.hub-btn.active {
+  background: var(--ink);
+  color: #0b0a1f;
+  border-color: var(--ink);
+}
+.hub-btn.disabled {
+  opacity: .45;
+  cursor: default;
+  pointer-events: none;
+}
+/* "Probando…": the connecting orb beside the text, at full opacity (the orb is the state) */
+.hub-btn-test { display: inline-flex; align-items: center; gap: 6px; }
+.hub-btn-test .orb { margin: -3px 0 -3px -4px; }
+.hub-btn-test.disabled { opacity: 1; color: var(--muted); }
+
+/* Compare button — segmented style */
+.hub-btn-compare.active {
+  background: var(--panel-2);
+  color: var(--ink);
+  border-color: var(--line-strong);
+  box-shadow: inset 0 0 0 1px var(--line);
+}
+
+/* ---------- Compare section ---------- */
+.hub-compare-intro {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.hub-segmented {
+  display: flex;
+  gap: 3px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.hub-segmented .hub-btn {
+  flex: none;
+}
+
+/* ---------- MCP section ---------- */
+.hub-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+.hub-pill.on {
+  background: rgba(61, 220, 151, .12);
+  color: var(--ok);
+}
+.hub-pill::before {
+  content: "";
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.hub-pill.on::before {
+  animation: pulse .9s ease-in-out infinite;
+}
+.hub-url {
+  font: 11px var(--mono);
+  color: var(--ok);
+  overflow-wrap: anywhere;
+  margin: 0 0 2px;
+}
+.hub-hint {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.4;
+  margin: 0 0 6px;
+}
+
+/* MCP tools list */
+.hub-tools {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px 16px;
+}
+.hub-tools li {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-size: 11.5px;
+  color: var(--muted);
+  padding: 2px 0;
+}
+.hub-tools li strong {
+  color: var(--ink);
+  font-size: 11.5px;
+  flex: none;
+}
+.hub-tool-desc {
+  font-size: 11px;
+  color: var(--faint);
+}
+
+/* ---------- Activity section ---------- */
+.hub-activity {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 0;
+}
+.hub-activity-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 8px;
+  font-size: 11.5px;
+  color: var(--muted);
+  transition: background .12s;
+}
+.hub-activity-row:hover {
+  background: var(--panel);
+  color: var(--ink);
+}
+.hub-dot-ok {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--ok);
+}
+.hub-dot-err {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--danger);
+}
+.hub-activity-tool {
+  flex: 1;
+  min-width: 0;
+}
+.hub-activity-path {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hub-activity-ago {
+  font-size: 10px;
+  color: var(--faint);
+  flex: none;
+  white-space: nowrap;
+}
+
+/* ---------- Test result badges ---------- */
+.hub-test-result {
+  font-size: 10.5px;
+  white-space: nowrap;
+  margin-top: -2px;
+}
+.hub-test-ok {
+  color: var(--ok);
+}
+.hub-test-error {
+  color: var(--danger);
+}
+
+/* ---------- Empty state ---------- */
+.hub-empty {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ---------- Snippets (reuse existing classes, section heading only) ---------- */
+.hub-section + .snippet {
+  margin: 0 2px 8px;
+}
+
+/* ---------- Animations ---------- */
+@keyframes hub-rise {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+.hub-enter > * {
+  animation: hub-rise .28s ease both;
+}
+.hub-enter > :nth-child(1) { animation-delay: 0ms; }
+.hub-enter > :nth-child(2) { animation-delay: 35ms; }
+.hub-enter > :nth-child(3) { animation-delay: 70ms; }
+.hub-enter > :nth-child(4) { animation-delay: 105ms; }
+.hub-enter > :nth-child(5) { animation-delay: 140ms; }
+.hub-enter > :nth-child(n+6) { animation-delay: 170ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  .hub-enter > *,
+  .hub-agent,
+  .hub-agent.hub-agent:hover,
+  .hub-pill.on::before {
+    animation: none !important;
+    transition: none !important;
+  }
+}.hub-status.unknown { color: var(--warn); }
+.hub-status.unknown::before { background: var(--warn); }
+
+/* Layout fixes (narrow sidebar): avatar + info on one row, buttons on their own row; tools in one column */
+.hub-agents { display: flex; flex-direction: column; gap: 6px; }
+.hub-agent { display: grid; grid-template-columns: 34px minmax(0, 1fr); column-gap: 10px; row-gap: 8px; align-items: start; box-sizing: border-box; width: 100%; min-width: 0; }
+.hub-agent-info { min-width: 0; }
+.hub-agent-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hub-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.hub-test-result { margin-left: auto; font-size: 10.5px; }
+.hub-tools { display: flex; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.hub-tools li { display: flex; flex-direction: column; gap: 1px; padding: 6px 8px; border-radius: 8px; background: var(--panel); }
+.hub-tools li strong { font-size: 11.5px; }
+.hub-tool-desc { color: var(--muted); font-size: 11px; line-height: 1.4; }
+.hub-url { overflow-wrap: anywhere; }
+.hub-agent .hub-actions { grid-column: 2 / -1; flex-direction: row; align-items: center; justify-content: flex-start; }

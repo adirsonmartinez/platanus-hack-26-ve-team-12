@@ -1,0 +1,4 @@
+node_modules/
+out/
+# recordings: made by `npm run take` (scripts/demo/recordTour.mjs), heavy and easy to redo
+public/takes/
