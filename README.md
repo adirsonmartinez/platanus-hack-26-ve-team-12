@@ -2,7 +2,7 @@
 
 <img src="./project-logo.png" alt="Project Logo" width="200" />
 
-Track: 🛡️ AI Security
+Track: 🧊 3D
 
 team-12
 
@@ -13,6 +13,11 @@ team-12
 ## Qubbot
 
 IDE visual: tu proyecto se ve como un mapa isométrico. La carpeta raíz es el edificio principal, cada carpeta un edificio, y al abrir uno ves sus archivos por piso como cubitos con un semáforo de seguridad. Un agente de IA crea y corrige el código, y lo peligroso (borrar, sobrescribir) necesita tu aprobación.
+
+## Probar Qubbot
+
+- **Landing:** carpeta `landing/`, publicada en Render con `render.yaml`.
+- **Descargar la app (Mac o Windows):** [última versión](https://github.com/adirsonmartinez/platanus-hack-26-ve-team-12/releases/latest).
 
 ## Arrancar
 

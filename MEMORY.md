@@ -2,10 +2,15 @@
 
 Léelo **antes** de trabajar y actualízalo **al terminar** cada tarea. El protocolo está en `.claude/skills/platanus-ade/SKILL.md`. Se escribe corto: lo que cambia rápido va aquí; lo estable va en `CLAUDE.md` y `docs/`.
 
-Última actualización: 2026-10-24.
+Última actualización: 2026-10-25.
 
 ## Qué es
 ADE de escritorio (Electron) para personas no técnicas: el proyecto se ve como un mapa 3D (radar de seguridad), con un chat agéntico en español sencillo. Los agentes (Claude, Codex, Grok, OpenCode, Simulador) actúan **solo** con las herramientas MCP de Qubbot.
+
+## Entrega (Platanus Hack, 2026-10-25)
+- Repo de jurado: `platanus-hack/platanus-hack-26-ve-team-12` (`main`), mismo historial que este. Formulario lleno en `platanus-hack-project.jsonc`, texto de votación en `project-description.md`, track 3D en el README.
+- `deploy-url` = release `v0.2.0` (instaladores .dmg y .exe que arma `release.yml` al subir la etiqueta).
+- Landing estática en `landing/`, publicada en Render con `render.yaml` (Render no corre Electron; solo la página).
 
 ## Ramas
 | Rama | Estado |

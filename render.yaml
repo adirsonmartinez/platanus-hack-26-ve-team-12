@@ -1,0 +1,22 @@
+# Render Blueprint: solo la landing de Qubbot (página estática, sin build).
+# La app de escritorio (Electron) no corre en Render: se descarga desde GitHub Releases (.dmg y .exe),
+# que arma .github/workflows/release.yml al subir una etiqueta vX.Y.Z.
+services:
+  - type: web
+    name: qubbot
+    runtime: static
+    branch: main
+    buildCommand: echo "La landing no necesita build"
+    staticPublishPath: ./landing
+    pullRequestPreviewsEnabled: false
+    buildFilter:
+      paths:
+        - landing/**
+        - render.yaml
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
