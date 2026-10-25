@@ -1,15 +1,15 @@
-// OpenCode runs only with the Platanus tools: its config denies everything else, the environment is
+// OpenCode runs only with the Qubbot tools: its config denies everything else, the environment is
 // clean, and a fallback to its default agent stops the run.
 const test = require('node:test');
 const assert = require('node:assert/strict');
 const { opencodeConfig, opencodeEnv, opencodeArgs, FALLBACK_LINE } = require('./opencode');
 
-test('the config denies every tool but the Platanus ones, at both levels, and turns off its own agents', () => {
-  const cfg = opencodeConfig({ mcpUrl: 'http://127.0.0.1:7811/mcp/tok', systemPrompt: 'Eres Platanus' });
+test('the config denies every tool but the Qubbot ones, at both levels, and turns off its own agents', () => {
+  const cfg = opencodeConfig({ mcpUrl: 'http://127.0.0.1:7811/mcp/tok', systemPrompt: 'Eres Qubbot' });
   assert.deepEqual(cfg.mcp.platanus, { type: 'remote', url: 'http://127.0.0.1:7811/mcp/tok', enabled: true, oauth: false, timeout: 30000 });
   assert.deepEqual(Object.entries(cfg.permission), [['*', 'deny'], ['platanus_*', 'allow']], 'deny first, then the one allow (last match wins)');
   assert.deepEqual(Object.entries(cfg.agent.platanus.permission), [['*', 'deny'], ['platanus_*', 'allow']]);
-  assert.equal(cfg.agent.platanus.prompt, 'Eres Platanus');
+  assert.equal(cfg.agent.platanus.prompt, 'Eres Qubbot');
   assert.equal(cfg.agent.platanus.mode, 'primary');
   for (const name of ['build', 'plan', 'general', 'explore']) assert.equal(cfg.agent[name].disable, true, name);
   assert.equal(cfg.default_agent, 'platanus');

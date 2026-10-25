@@ -2,8 +2,11 @@
 // the traffic light an agent sets. The tools themselves are declared in electron/mcpServer.js.
 export function connectMcpBridge({ agentService, securityModel, shellViewModel }) {
   const tools = {
+    // with the audit: what each rule found and on which line, so the agent looks at exactly that
     list_risks: () =>
-      shellViewModel.store.state.risks.map(({ path, level, reason, reasonKey }) => ({ path, level, reason: reason || reasonKey || '' })),
+      shellViewModel.store.state.risks.map(({ path, level, reason, reasonKey, findings = [] }) => ({
+        path, level, reason: reason || reasonKey || '', ...(findings.length ? { findings: findings.map(({ rule, line }) => ({ rule, line })) } : {}),
+      })),
     show_folder: ({ path }) => {
       shellViewModel.showFolder(path ?? '');
       return path ? `Showing ${path}/ on the map.` : 'Showing the whole map.';

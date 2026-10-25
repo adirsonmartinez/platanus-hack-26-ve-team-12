@@ -1,7 +1,7 @@
 {
   "name": "platanus-video",
   "private": true,
-  "description": "Video del producto de Platanus (Remotion): intro y cierre en 3D, la app real grabada en el medio",
+  "description": "Video del producto de Qubbot (Remotion): intro y cierre en 3D, la app real grabada en el medio",
   "scripts": {
     "take": "node ../scripts/demo/recordTour.mjs 9223 public/takes/raw && npm run encode",
     "encode": "node scripts/encode.mjs",

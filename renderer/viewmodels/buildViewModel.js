@@ -6,6 +6,8 @@
 // (views/scene/robotView.js), like the tour. One file at a time, in the order the agent wrote them.
 // The camera steps back and follows the robot to each folder (so it never walks out of sight), until the
 // person moves the camera themselves; when the work ends it shows the whole project as it grew.
+// Qubi's team is not built here: its cards (run.worker) and its saves (agent:changed with `worker`, which
+// this view model never listens to) belong to teamViewModel.js.
 import { Observable } from '../core/observable.js';
 import { clamp } from '../core/format.js';
 import { strings } from '../i18n/es.js';
@@ -61,7 +63,8 @@ export class BuildViewModel {
     const seen = new Set();
     for (const m of state.messages) {
       const run = m.run;
-      if (!run) continue;
+      // a worker of Qubi's team (run.worker) has its own mini robot (teamViewModel.js, teamView.js)
+      if (!run || run.worker) continue;
       for (const s of run.steps ?? []) {
         if (s.name !== 'write_file' || !s.target) continue;
         const key = `${m.id}:${s.id}`;

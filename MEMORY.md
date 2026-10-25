@@ -1,16 +1,17 @@
-# MEMORY — estado vivo de Platanus
+# MEMORY — estado vivo de Qubbot
 
 Léelo **antes** de trabajar y actualízalo **al terminar** cada tarea. El protocolo está en `.claude/skills/platanus-ade/SKILL.md`. Se escribe corto: lo que cambia rápido va aquí; lo estable va en `CLAUDE.md` y `docs/`.
 
 Última actualización: 2026-10-24.
 
 ## Qué es
-ADE de escritorio (Electron) para personas no técnicas: el proyecto se ve como un mapa 3D (radar de seguridad), con un chat agéntico en español sencillo. Los agentes (Claude, Codex, Grok, OpenCode, Simulador) actúan **solo** con las herramientas MCP de Platanus.
+ADE de escritorio (Electron) para personas no técnicas: el proyecto se ve como un mapa 3D (radar de seguridad), con un chat agéntico en español sencillo. Los agentes (Claude, Codex, Grok, OpenCode, Simulador) actúan **solo** con las herramientas MCP de Qubbot.
 
 ## Ramas
 | Rama | Estado |
 |---|---|
 | `develop` | `feature/hand-gestures` de Genesis (zagenesis19: zoom y giro con dos manos, cursor de mano, seleccionar quedándose quieto; `data-gesture="never"` en acciones sin confirmación) fusionada el 2026-10-24. Tiene todo: chat natural, recorrido, robot, video, editor de archivos y la UI nueva. `feature/chat-natural`, `feature/recorrido` y `feature/robot-speech-bubbles` (Desire: robot de bienvenida con entrevista, agente en Windows) ya están fusionadas (2026-10-24). |
+| `feature/llamada-remi` | Local, sin commit. Llamada con Qubi por voz (ElevenLabs o Grok Voice): fases 1-3, las mejoras de la primera prueba y los servicios del proyecto, con pruebas. Ver `docs/features/llamada/` (`README.md`, `FASE2.md`, `MEJORAS.md`, `VOZ.md`) y `docs/features/servicios/README.md`. |
 
 - Adirson trabaja directo en `develop` (sin ramas `feature/*`) y sube a su mirror: `git push personal develop`. `origin` (repo de la organización) le responde 403: alguien con permisos tiene que subir `develop` allí.
 
@@ -59,7 +60,7 @@ ADE de escritorio (Electron) para personas no técnicas: el proyecto se ve como 
   - fijos: chat abajo a la derecha, panel lateral, tarjeta de seguridad (compacta, arriba a la izquierda; reemplazó al semáforo) y selector Mapa/Git. Solo el editor se arrastra. Se quitó `floater.js`.
 
 ## Cómo comprobar
-- `npm test` (546 pruebas al 2026-10-24) y `npx esbuild renderer/main.js --bundle --outfile=/dev/null '--external:*.css' '--external:*.task'`.
+- `npm test` (761 pruebas al 2026-10-25 en `feature/llamada-remi`; `node --test electron/*.test.js` 193) y `npx esbuild renderer/main.js --bundle --outfile=/dev/null '--external:*.css' '--external:*.task'`.
 - **App real:** `npx electron . --remote-debugging-port=9223 --open=<proyecto>` y scripts CDP (`scripts/demo/cdp.mjs`).
 - **Banderas:**
   - `PLATANUS_SIM=1`: agente «Simulador», escenarios en `scripts/sim/scenarios.js`;
@@ -86,13 +87,41 @@ El equipo cambió el mapa: ya no es un radar, ahora es **un árbol de todo el pr
 ## Pendiente o ideas acordadas
 - **Conectar mi cuenta, lo que falta:** Vercel por su CLI (`vercel login/link/env add/deploy` desde main); tablas reales de Supabase en el mapa (`list_tables`); que la regla de seguridad entienda `.gitignore` (hoy `.env.local` queda verde solo en la sesión en que se conectó).
 - A futuro, más tarjetas en el catálogo (React Native/Expo, Clerk, AWS) con sus reglas.
+- **Llamada con Qubi**:
+  - Fase 1 hecha: barra de llamada, voz a voz Realtime, Qubi delega en el agente del chat y se ve construir.
+  - Fase 2 hecha (`docs/features/llamada/FASE2.md` → «Cómo quedó»):
+    - `repartir` da 1 a 3 tareas a trabajadores (`worker-1..3`), y cada uno solo puede escribir en su carpeta (ruta MCP `/w/<id>`);
+    - en el mapa salen mini robots (`teamView.js`);
+    - Qubi audita, y deciden los verificadores fijos;
+    - el chat muestra una tarjeta del equipo;
+    - todas las corridas de Grok van en fila (una dirección MCP global).
+  - Fase 3 hecha: memoria del proyecto (`electron/projectMemory.js`, `models/projectMemoryModel.js`). Se guarda al colgar y entra en la voz y en los prompts de los trabajadores.
+  - Mejoras de la primera prueba (`MEJORAS.md` y `VOZ.md` → «Cómo quedó»):
+    - el panel flota sobre la cabeza de Qubi (`robotView.head()`);
+    - suena un timbre y atiende cada vez con un saludo distinto (`voice.greetings` por estilo, sin repetir el anterior), en tono pana venezolano y con la voz Juan;
+    - pide permiso para abrir, ejecutar o abrir en el navegador; se le dirige con `ir_a` y `volver`, y camina también al mostrar una carpeta, revisar o abrir un archivo;
+    - es expresivo: gestos y caras (`models/gestures.js`, `views/scene/robotGestures.js`), automáticos en la llamada y con la herramienta `gesto`; sigue el cursor con la mirada, reacciona a un toque y gira con el mapa (MEJORAS.md §3);
+    - sin servicio de voz, se abre el modal «Qubi está fuera de conexión» (iniciar sesión en ElevenLabs, pegar la clave de ElevenLabs o de xAI, o probar sin voz). **Ya no se simula sola**, tampoco con el Simulador.
+  - El agente de ElevenLabs guardado se actualiza solo en la próxima llamada real (`configHash`). Si `.env.local` tiene `PLATANUS_VOICE_ID`, esa voz gana sobre la venezolana.
+  - **Nada de esto se ha visto en la app real.** Hay que probarlo con el Simulador, después con Claude y Grok. El instalador de ElevenLabs pide el «sí» del usuario antes de abrir la app o hablar.
+- **Revalidación de datos reales** (`docs/REVALIDACION.md`, 2026-10-25): auditoría completa y precisa, ejecutor de comandos endurecido tras revisión adversaria, nada inventado en escritorio (Supabase, chat sin agente, demos), estados de servicios honestos, contexto vivo en la llamada.
+- **Comandos del agente** (`docs/features/comandos/README.md`, sin commit): herramientas MCP `platanus_run_command` (lista permitida, sin shell, sin -g, permiso según el modo, salida con claves tapadas) y `platanus_delete_file` (copia y deshacer). Los agentes siguen sin terminal.
+- **Auditoría de seguridad** (`docs/features/seguridad/README.md`, sin commit): el semáforo y el % los decide una auditoría por contenido (`electron/securityAudit.js`), no el nombre. Historial del % y aceptaciones en `userData/security/`. Reparaciones verificadas por la auditoría; Qubi tiene `auditar` y `reparar`. Probado en la app con feria-test (75 → 90 → 75 y persistencia).
+- **Servicios del proyecto** (`docs/features/servicios/README.md`): main detecta 17 servicios y si el agente puede usarlos (MCP o sesión de CLI). La ventana pone una tarjeta en el chat y un globo del robot con «Conectar», y abre el modal con los comandos de la CLI y del MCP. Sin probar en la app real.
+- Nombre del producto: el pitch decía «Obra», pero el usuario duda (se parece a Orca). Recomendé «Qubi»; falta su decisión.
 - Guion único del video (`video/src/guion.js`) con sonidos (clics desde `cursor-path.json`), música, `@remotion/transitions` y el lanzamiento del robot. Propuesto, falta el «sí».
 - Informe del otro agente (8 funciones de seguridad, competidores, demo de 3 min): sin actuar, hay que preguntar.
 - Blender para una toma hero: después.
 - Commit y PR de `feature/recorrido` cuando el usuario lo pida.
 
 ## Aprendizajes (actualiza aquí; lo técnico detallado va en la skill)
+- **ElevenLabs**:
+  - La clave está en `.env.local` (puesta por `npx @elevenlabs/cli onboard`, termina en 171e).
+  - Main la lee con `util.parseEnv` en un objeto privado, nunca en `process.env`, para que los agentes no la hereden.
+  - `onboard check` se queja igual; es una falsa alarma.
+  - El usuario quiere **voz a voz** como Grok: agente con `realtime_model`, con caída automática al modo clásico.
 - Dos robots: `welcomeRobotView.js` (entrevista de Desire) y `robotView.js` (recorrido, obra, compañero). Uno a la vez: el de bienvenida se aparta en recorrido u obra; el otro, mientras el diálogo está abierto. En `agents:run` de `electron/main.js` el módulo de Electron es `electronSession` (la variable local `session` es el tipo de sesión).
+- `ProjectModel` ahora guarda `root`, la ruta completa. Main solo acepta la memoria de esa ruta, la del proyecto abierto o de uno reciente; con el nombre de la carpeta, la memoria salía siempre vacía.
 - Las etiquetas del mapa se mueven en cada cuadro: sin `backdrop-filter` (sería lento); fondo oscuro translúcido con el borde del chat (`labels.css`).
 - **Siempre dejar la app en modo normal** con el proyecto del usuario al terminar una prueba. Si queda en modo grabación (`PLATANUS_DEMO`), el cursor es falso y los clics se sienten desfasados (le pasó al usuario el 2026-10-24).
 - En modo demo, `__platanus.screenOf({x,y,z})` da la posición en pantalla de un punto 3D: sirve para pruebas con el ratón real. Tras recargar, esperar a que la cámara termine de volar.

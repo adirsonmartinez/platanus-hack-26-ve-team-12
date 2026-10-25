@@ -1,5 +1,5 @@
 // The user's own AI subscription (OAuth of each official CLI, no API keys in the app).
-// Platanus runs the CLI non-interactively and gives it its tools through the local MCP server.
+// Qubbot runs the CLI non-interactively and gives it its tools through the local MCP server.
 const { spawn, spawnSync, execFile } = require("node:child_process");
 const fs = require("node:fs");
 const os = require("node:os");
@@ -18,15 +18,17 @@ const { opencodeConfig, opencodeEnv, opencodeArgs, FALLBACK_LINE } = require("./
 
 const AGENTS = {
   claude: { label: t.agents.claude, bin: "claude", login: "claude auth login" },
-  grok: { label: t.agents.grok, bin: "grok", login: "grok login --oauth" },
+  // Grok keeps its MCP servers in one global config (`grok mcp add`): two of its runs at once would
+  // rewrite each other's address, so all its runs wait in line (run)
+  grok: { label: t.agents.grok, bin: "grok", login: "grok login --oauth", parallel: false },
   codex: { label: t.agents.codex, bin: "codex", login: "codex login" },
-  // Locked to the Platanus tools by its config (opencode.js); it uses the providers OpenCode is signed in to
+  // Locked to the Qubbot tools by its config (opencode.js); it uses the providers OpenCode is signed in to
   opencode: { label: t.agents.opencode, bin: "opencode", login: "opencode auth login", format: "opencode" },
 };
 // OpenCode's own config and global config folder, apart from the person's (opencode.js)
 const OPENCODE_HOME = path.join(os.homedir(), ".platanus", "opencode");
 // Development only (PLATANUS_SIM=1): "Simulador", a fake Claude Code CLI that plays scripted scenarios
-// through the real pipeline and the real Platanus tools (scripts/sim/fakeAgent.js). Never in a release.
+// through the real pipeline and the real Qubbot tools (scripts/sim/fakeAgent.js). Never in a release.
 const SIM = process.env.PLATANUS_SIM === "1";
 if (SIM) {
   AGENTS.sim = { label: t.agents.sim, bin: process.execPath, script: path.join(__dirname, "..", "scripts", "sim", "fakeAgent.js"), format: "claude", login: "" };
@@ -121,10 +123,13 @@ function login(id) {
   return true;
 }
 
-const resumeIds = {}; // conversation continuity per agent and session ("chat" | "repair" | "refine" | "tour")
+// Runs of one agent that may exist at the same time; workers are Qubi's team (docs/features/llamada/FASE2.md)
+const SESSIONS = ["chat", "repair", "refine", "tour", "review", "worker-1", "worker-2", "worker-3"];
+
+const resumeIds = {}; // conversation continuity per agent and session
 
 // Grok's built-in tools (terminal, file edits, subagents, media…) are removed: it only acts through
-// Platanus' MCP tools (use_tool). Verified: with these flags `touch` from a prompt is not possible.
+// Qubbot' MCP tools (use_tool). Verified: with these flags `touch` from a prompt is not possible.
 // Codex features that give it tools of its own (verified names, codex-cli 0.164.0 `codex features list`)
 const CODEX_DISABLED = [
   "shell_tool", "unified_exec", "unified_exec_tty", "shell_snapshot", "apps",
@@ -141,13 +146,14 @@ const GROK_DISALLOWED = [
 ].join(",");
 
 // Minimal context: the CLI's own system prompt, tools, skills and settings are replaced/disabled;
-// only Platanus' tools remain, through MCP. (Claude Code: ~24k -> ~2k input tokens per message.)
-function argsFor(id, { prompt, systemPrompt, mcpUrl, continued, model, effort, session }) {
+// only Qubbot' tools remain, through MCP. (Claude Code: ~24k -> ~2k input tokens per message.)
+function argsFor(id, { prompt, systemPrompt, mcpUrl, continued, model, effort, session, agent = id }) {
   const resume = continued ? resumeIds[`${id}:${session}`] : null;
   if (id === "claude") {
     // The address carries a private key: write it to a 0600 file instead of the command line,
-    // which any user of this computer could read with `ps`
-    const mcp = path.join(WORKDIR, "mcp.json");
+    // which any user of this computer could read with `ps`. One file per session (and per agent for the
+    // simulator, which shares this format), so workers running at once keep their own address.
+    const mcp = path.join(WORKDIR, agent === id ? `mcp-${session}.json` : `mcp-${agent}-${session}.json`);
     fs.writeFileSync(mcp, JSON.stringify({ mcpServers: { platanus: { type: "http", url: mcpUrl } } }), { mode: 0o600 });
     return [
       "-p", prompt,
@@ -181,7 +187,7 @@ function argsFor(id, { prompt, systemPrompt, mcpUrl, continued, model, effort, s
       ...(resume ? ["--resume", resume] : []),
     ];
   }
-  // codex: same rule as the others, it only acts through Platanus' MCP tools. Its terminal, browser,
+  // codex: same rule as the others, it only acts through Qubbot' MCP tools. Its terminal, browser,
   // computer use, plugins and subagents are switched off and the user's config is not loaded, so it
   // cannot read files (or secrets) on its own. Verified against codex-cli 0.164.0 (unknown flags fail).
   return [
@@ -199,10 +205,12 @@ function argsFor(id, { prompt, systemPrompt, mcpUrl, continued, model, effort, s
 }
 
 // OpenCode: its config (0600, rewritten each run with this run's MCP address and system prompt) and
-// a clean environment; the command never carries --auto/--yolo (opencode.js)
+// a clean environment; the command never carries --auto/--yolo (opencode.js). One config folder per
+// session, so workers running at once never rewrite each other's address.
 function spawnOpencode({ prompt, systemPrompt, mcpUrl, continued, model }, session, env) {
-  const configHome = path.join(OPENCODE_HOME, "xdg");
-  const configFile = path.join(OPENCODE_HOME, "config.json");
+  const dir = path.join(OPENCODE_HOME, "sessions", session);
+  const configHome = path.join(dir, "xdg");
+  const configFile = path.join(dir, "config.json");
   fs.mkdirSync(configHome, { recursive: true });
   fs.writeFileSync(configFile, JSON.stringify(opencodeConfig({ mcpUrl, systemPrompt })), { mode: 0o600 });
   fs.chmodSync(configFile, 0o600);
@@ -223,21 +231,65 @@ function parseLine(format, session, line, emit, id = format) {
   }
 }
 
-const running = new Map();
+const running = new Map(); // `${agent}:${session}` -> child process
+// Agents with parallel: false -> runs waiting for their turn, first in first out:
+// [{ key, session, opts, emit, child: null | process, cancelled }]
+const waiting = {};
+
+// A run of an agent that keeps one global config waits while any other run of that agent is active:
+// sessions use different addresses (chat and repair the full one, tour and review the read-only one,
+// each worker its own), so two at once would hand one of them the other's tools.
+function mustWait(id) {
+  return [...running.keys()].some((k) => k.startsWith(`${id}:`));
+}
+
+// Starts the waiting runs whose turn came (strictly in order: one that must wait holds the rest)
+function startWaiting(id) {
+  const line = waiting[id] ?? [];
+  while (line.length && !mustWait(id)) {
+    const entry = line.shift();
+    entry.child = start(id, entry.session, entry.opts, entry.emit);
+  }
+}
+
+// A waiting run that is cancelled (or replaced) never starts: it ends like an interrupted one
+function dropWaiting(id, entry) {
+  const line = waiting[id] ?? [];
+  if (entry.child || entry.cancelled || !line.includes(entry)) return;
+  entry.cancelled = true;
+  line.splice(line.indexOf(entry), 1);
+  entry.emit({ type: "error", message: t.agents.interrupted });
+  entry.emit({ type: "done" });
+  startWaiting(id);
+}
 
 // One run per agent and session at a time (the window serializes its requests; this is a safety net).
+// Returns the child process, or for a run that waits its turn a handle whose kill() cancels it (or stops
+// the process once it started), so main can cancel either the same way. opts.mcpUrl comes from main.
 function run(id, opts, emit) {
   if (!AGENTS[id]) return emit({ type: "error", message: t.agents.unknown }), emit({ type: "done" }), null;
-  const session = ["repair", "refine", "tour"].includes(opts.session) ? opts.session : "chat";
+  const session = SESSIONS.includes(opts.session) ? opts.session : "chat";
   const key = `${id}:${session}`;
   running.get(key)?.kill("SIGTERM");
+  const replaced = (waiting[id] ?? []).find((e) => e.key === key);
+  if (replaced) dropWaiting(id, replaced);
+  if (AGENTS[id].parallel === false && (waiting[id]?.length || mustWait(id))) {
+    const entry = { key, session, opts, emit, child: null, cancelled: false };
+    (waiting[id] ??= []).push(entry);
+    return { kill: (signal = "SIGTERM") => (entry.child ? entry.child.kill(signal) : dropWaiting(id, entry)) };
+  }
+  return start(id, session, opts, emit);
+}
+
+function start(id, session, opts, emit) {
+  const key = `${id}:${session}`;
   const agent = AGENTS[id];
   const format = agent.format ?? id; // the simulator speaks Claude Code's stream JSON
   // opts.proxyEnv: the system proxy (VPNs); opts.env: the API key of this agent, when the person saved one
   // (keyStore.js); both only for this run
   const env = { ...ENV, ...(opts.proxyEnv ?? {}), ...(opts.env ?? {}) };
   const child = id === "opencode" ? spawnOpencode(opts, session, env) : agent.script
-    ? spawn(agent.bin, [agent.script, ...argsFor(format, { ...opts, session })], { env: { ...env, ELECTRON_RUN_AS_NODE: "1" }, cwd: WORKDIR, stdio: ["ignore", "pipe", "pipe"] })
+    ? spawn(agent.bin, [agent.script, ...argsFor(format, { ...opts, session, agent: id })], { env: { ...env, ELECTRON_RUN_AS_NODE: "1" }, cwd: WORKDIR, stdio: ["ignore", "pipe", "pipe"] })
     : spawn(binPaths[id] ?? agent.bin, argsFor(id, { ...opts, session }), { env, cwd: WORKDIR, stdio: ["ignore", "pipe", "pipe"] });
   running.set(key, child);
   let buffer = "";
@@ -264,6 +316,7 @@ function run(id, opts, emit) {
     }
     if (running.get(key) === child) running.delete(key); // a newer run may already own the key
     emit({ type: "done" });
+    startWaiting(id); // the next run in line, if this agent has one
   });
   return child;
 }

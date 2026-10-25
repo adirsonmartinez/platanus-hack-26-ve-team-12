@@ -126,17 +126,20 @@ export function buildSchema(renderer, tables, trunkStart, center) {
     };
   });
 
-  // Foreign keys to users: lines on the ground, under the cards
-  const users = cards.find((c) => c.name === 'users').group.position;
-  cards.forEach((c) => {
-    if (c.name !== 'users') groundLink(links, M.road, c.group.position.x, c.group.position.z, users.x, users.z, 0.2, 0.12);
-  });
-  // Trunk from the Supabase node to the users table
-  groundLink(links, M.road, trunkStart.x, trunkStart.z, users.x, users.z, 0.4, 0.12);
+  // Foreign keys to users: lines on the ground, under the cards (no tables on the desktop: Qubbot has not
+  // read the project's database, so there are no cards, links or warning to place)
+  const users = cards.find((c) => c.name === 'users')?.group.position ?? null;
+  if (users) {
+    cards.forEach((c) => {
+      if (c.name !== 'users') groundLink(links, M.road, c.group.position.x, c.group.position.z, users.x, users.z, 0.2, 0.12);
+    });
+    // Trunk from the Supabase node to the users table
+    groundLink(links, M.road, trunkStart.x, trunkStart.z, users.x, users.z, 0.4, 0.12);
+  }
 
   // Warning sign over the table with the problem
   const warning = warningSign(1.1);
-  warning.position.set(users.x, 3, users.z);
+  if (users) warning.position.set(users.x, 3, users.z);
   warning.visible = false;
   root.add(warning);
 

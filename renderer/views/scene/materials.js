@@ -60,19 +60,19 @@ export const materials = {
   // Its eyes and smile: a pale purple that just crosses the bloom threshold (a soft glow, not a blob)
   get robotGlow()  { return material('robotGlow', 0xd4d0ff, { emissive: PALETTE.accent, emissiveIntensity: 1.1, roughness: 0.3, metalness: 0 }); },
   get dangerLit()  { return material('dangerLit', PALETTE.danger, { emissive: PALETTE.danger, emissiveIntensity: 1.0, roughness: 0.3, metalness: 0 }); },
-  // Remi (same palette as his pixel-art sprite)
-  get remiHelmet()       { return material('remiHelmet', 0xf5c542, { roughness: 0.45, metalness: 0 }); },
-  get remiHelmetDark()   { return material('remiHelmetDark', 0xc99a2e, { roughness: 0.5, metalness: 0 }); },
-  get remiSkin()         { return material('remiSkin', 0xf2c9a0, { metalness: 0 }); },
-  get remiSkinDark()     { return material('remiSkinDark', 0xd9a57a, { metalness: 0 }); },
-  get remiEye()          { return material('remiEye', 0x2f3540, { metalness: 0 }); },
-  get remiShirt()        { return material('remiShirt', 0xececf0, { metalness: 0 }); },
-  get remiOveralls()     { return material('remiOveralls', 0x3b6fd8, { metalness: 0 }); },
-  get remiOverallsDark() { return material('remiOverallsDark', 0x2a4f9e, { metalness: 0 }); },
-  get remiBoots()        { return material('remiBoots', 0x5a4434, { metalness: 0 }); },
-  get remiHammer()       { return material('remiHammer', 0xe8b830, { metalness: 0.6, roughness: 0.3 }); },
-  get remiHandle()       { return material('remiHandle', 0x7a5230, { metalness: 0 }); },
-  // Remi's sparks
+  // Qubi (same palette as his pixel-art sprite)
+  get qubiHelmet()       { return material('qubiHelmet', 0xf5c542, { roughness: 0.45, metalness: 0 }); },
+  get qubiHelmetDark()   { return material('qubiHelmetDark', 0xc99a2e, { roughness: 0.5, metalness: 0 }); },
+  get qubiSkin()         { return material('qubiSkin', 0xf2c9a0, { metalness: 0 }); },
+  get qubiSkinDark()     { return material('qubiSkinDark', 0xd9a57a, { metalness: 0 }); },
+  get qubiEye()          { return material('qubiEye', 0x2f3540, { metalness: 0 }); },
+  get qubiShirt()        { return material('qubiShirt', 0xececf0, { metalness: 0 }); },
+  get qubiOveralls()     { return material('qubiOveralls', 0x3b6fd8, { metalness: 0 }); },
+  get qubiOverallsDark() { return material('qubiOverallsDark', 0x2a4f9e, { metalness: 0 }); },
+  get qubiBoots()        { return material('qubiBoots', 0x5a4434, { metalness: 0 }); },
+  get qubiHammer()       { return material('qubiHammer', 0xe8b830, { metalness: 0.6, roughness: 0.3 }); },
+  get qubiHandle()       { return material('qubiHandle', 0x7a5230, { metalness: 0 }); },
+  // Qubi's sparks
   get spark()      { return material('spark', 0xffd25a, { emissive: 0xffb020, emissiveIntensity: 1.4, roughness: 0.3, metalness: 0 }); },
 };
 

@@ -190,9 +190,9 @@ test('B13: saying no in the dialog leaves no message; a refused stop explains wh
   const no = new ServersViewModel({ serversModel: new ServersModel(fakeService([ok([PY])], { stopReply: { ok: false, code: 'stopRejected', error: 'cancelado' } })) });
   await no.stop(8000);
   assert.equal(no.store.state.notice, null);
-  const refused = new ServersViewModel({ serversModel: new ServersModel(fakeService([ok([PY])], { stopReply: { ok: false, code: 'protected', error: 'Ese proceso es Platanus o del sistema.' } })) });
+  const refused = new ServersViewModel({ serversModel: new ServersModel(fakeService([ok([PY])], { stopReply: { ok: false, code: 'protected', error: 'Ese proceso es Qubbot o del sistema.' } })) });
   await refused.stop(7811);
-  assert.deepEqual(refused.store.state.notice, { tone: 'error', text: 'Ese proceso es Platanus o del sistema.' });
+  assert.deepEqual(refused.store.state.notice, { tone: 'error', text: 'Ese proceso es Qubbot o del sistema.' });
 });
 
 test('B13: while a stop is waiting for the dialog, the same server cannot be stopped twice', async () => {
@@ -227,7 +227,7 @@ test('B16/B17: pausing and resuming go through the service and refresh the list;
 
 const STOPPED_PY = { id: 'a000000000000001', port: 8000, process: 'Python', canRestart: true, state: 'stopped', exitCode: null, hasOutput: false, at: 5 };
 
-test('B18: servers stopped from Platanus are listed apart; bad rows are dropped', async () => {
+test('B18: servers stopped from Qubbot are listed apart; bad rows are dropped', async () => {
   const bad = [{ id: '../x', port: 1 }, { id: 'a000000000000002', port: 'x' }, null];
   const vm = new ServersViewModel({ serversModel: new ServersModel(fakeService([ok([])], { stopped: [...bad, STOPPED_PY] })) });
   await vm.refresh();
@@ -279,7 +279,7 @@ test('the view model counts the exposed servers', async () => {
   assert.equal(vm.store.state.exposed, 1);
 });
 
-test('B19: rows started by Platanus are flagged; stopped rows carry their state, exit code and whether there is output', async () => {
+test('B19: rows started by Qubbot are flagged; stopped rows carry their state, exit code and whether there is output', async () => {
   const exited = { ...STOPPED_PY, id: 'a000000000000002', state: 'exited', exitCode: 1, hasOutput: true };
   const weird = { ...STOPPED_PY, id: 'a000000000000003', state: 'hacked', exitCode: 'x', hasOutput: 'yes' };
   const vm = new ServersViewModel({ serversModel: new ServersModel(fakeService([ok([{ ...NODE, managed: true }, PY])], { stopped: [exited, weird] })) });

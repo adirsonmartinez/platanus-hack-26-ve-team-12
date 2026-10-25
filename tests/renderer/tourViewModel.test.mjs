@@ -137,7 +137,7 @@ test('an agent that tries to change a file during the tour is stopped (the tour 
   assert.equal(vm.store.state.tour.source, 'script');
 });
 
-test('not while Remi repairs; and opening another project ends it', async () => {
+test('not while Qubi repairs; and opening another project ends it', async () => {
   const busy = setup({ busy: true });
   assert.deepEqual(await busy.vm.start(), { ok: false, reason: 'busy' });
   assert.equal(busy.vm.store.state.status, 'idle');

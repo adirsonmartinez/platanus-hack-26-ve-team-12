@@ -9,6 +9,8 @@ const PATTERNS = [
   ['Anthropic key', /sk-ant-[A-Za-z0-9_-]{10,}/],
   ['OpenAI key', /\bsk-(proj-)?[A-Za-z0-9]{32,}/],
   ['xAI key', /\bxai-[A-Za-z0-9]{20,}/],
+  ['Stripe key', /\b[sr]k_(live|test)_[A-Za-z0-9]{10,}/],
+  ['ElevenLabs key', /\bsk_[A-Za-z0-9]{32,}/],
   ['GitHub token', /\b(ghp|gho|ghu|ghs|ghr)_[A-Za-z0-9]{30,}|github_pat_[A-Za-z0-9_]{20,}/],
   ['AWS key', /\bAKIA[0-9A-Z]{16}\b/],
   ['Google key', /\bAIza[0-9A-Za-z_-]{30,}/],

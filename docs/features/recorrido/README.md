@@ -1,6 +1,6 @@
 # Recorrido del proyecto
 
-Alguien llega a un proyecto que no conoce (por ejemplo, el primer día en una empresa nueva), lo abre en Platanus y pide un **recorrido**. Platanus le muestra cómo está armado y le dice **por dónde empezar**, paso a paso, en el mapa y en el chat.
+Alguien llega a un proyecto que no conoce (por ejemplo, el primer día en una empresa nueva), lo abre en Qubbot y pide un **recorrido**. Qubbot le muestra cómo está armado y le dice **por dónde empezar**, paso a paso, en el mapa y en el chat.
 
 ## Cómo se usa
 

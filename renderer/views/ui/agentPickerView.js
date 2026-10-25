@@ -171,7 +171,7 @@ export function createAgentPickerView({ container, connection, approval = null, 
     return b;
   }
 
-  // Agents connected from their own app through Platanus' MCP server (they cannot be locked inside
+  // Agents connected from their own app through Qubbot' MCP server (they cannot be locked inside
   // the chat): where to paste the config, and how to install them
   function externalRow(state, x) {
     const row = el('div', 'pick-agent external');

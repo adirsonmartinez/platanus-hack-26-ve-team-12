@@ -1,13 +1,13 @@
 # Servidores
 
-La vista **Servidores** muestra los programas de tu computadora que escuchan en un puerto TCP. Marca en amarillo los que cualquier equipo de tu red WiFi puede abrir, y te deja abrirlos, pausarlos, detenerlos y reactivarlos sin salir de Platanus.
+La vista **Servidores** muestra los programas de tu computadora que escuchan en un puerto TCP. Marca en amarillo los que cualquier equipo de tu red WiFi puede abrir, y te deja abrirlos, pausarlos, detenerlos y reactivarlos sin salir de Qubbot.
 
 - Spec: [`spec/001-running-servers.md`](../../../spec/001-running-servers.md)
 - Rama: `feature/server`
 
 ## Cómo se usa
 
-Abre la app (`npm start`) y toca el ícono **Servidores** en la barra flotante, entre Reparaciones y Conecta tu agente. La lista se actualiza cada 3 segundos mientras el panel está abierto; con el panel cerrado, Platanus no consulta al sistema.
+Abre la app (`npm start`) y toca el ícono **Servidores** en la barra flotante, entre Reparaciones y Conecta tu agente. La lista se actualiza cada 3 segundos mientras el panel está abierto; con el panel cerrado, Qubbot no consulta al sistema.
 
 Cada fila tiene:
 
@@ -20,8 +20,8 @@ Cada fila tiene:
 
 El menú ⋯ de un servidor que está corriendo ofrece:
 
-- **Abrir con**: el navegador predeterminado, cada navegador instalado que Platanus reconoce (Safari, Chrome, Firefox, Edge, Brave, Arc, Opera, Vivaldi y Chromium) o "Elegir otra app…".
-- **Ver salida**: solo en los servidores que inició Platanus. El panel se cierra con su ×.
+- **Abrir con**: el navegador predeterminado, cada navegador instalado que Qubbot reconoce (Safari, Chrome, Firefox, Edge, Brave, Arc, Opera, Vivaldi y Chromium) o "Elegir otra app…".
+- **Ver salida**: solo en los servidores que inició Qubbot. El panel se cierra con su ×.
 - **Pausar**: congela el proceso. El puerto sigue ocupado y el servidor no responde hasta que lo reanudes.
 - **Detener…**: cierra el proceso después de confirmar.
 
@@ -50,43 +50,43 @@ stateDiagram-v2
 
 | Estado | Dónde aparece | Acciones |
 |---|---|---|
-| Corriendo | Lista principal | Abrir, Pausar, Detener. Ver salida si tiene la etiqueta **En Platanus**. |
+| Corriendo | Lista principal | Abrir, Pausar, Detener. Ver salida si tiene la etiqueta **En Qubbot**. |
 | En pausa | Lista principal, con la etiqueta "En pausa" | Reanudar (▶), Detener |
-| Detenido | Detenidos desde Platanus | Reactivar (▶), Ver salida, Quitar de la lista |
-| Iniciando… | Detenidos desde Platanus | Cancelar inicio (■), Ver salida |
-| Se cerró solo | Detenidos desde Platanus, con su código de salida | Reactivar, Ver salida, Quitar de la lista |
+| Detenido | Detenidos desde Qubbot | Reactivar (▶), Ver salida, Quitar de la lista |
+| Iniciando… | Detenidos desde Qubbot | Cancelar inicio (■), Ver salida |
+| Se cerró solo | Detenidos desde Qubbot, con su código de salida | Reactivar, Ver salida, Quitar de la lista |
 
-"Se cerró solo" solo puede pasar con servidores que inició Platanus. Si cierras un servidor desde tu terminal, desaparece de la lista y Platanus no lo registra.
+"Se cerró solo" solo puede pasar con servidores que inició Qubbot. Si cierras un servidor desde tu terminal, desaparece de la lista y Qubbot no lo registra.
 
 ## Reactivar
 
-Reactivar vuelve a iniciar el servidor dentro de Platanus, en segundo plano, sin abrir ninguna ventana de Terminal:
+Reactivar vuelve a iniciar el servidor dentro de Qubbot, en segundo plano, sin abrir ninguna ventana de Terminal:
 
-1. Platanus pide confirmación y muestra la carpeta y el comando, con las contraseñas y los tokens ocultos.
+1. Qubbot pide confirmación y muestra la carpeta y el comando, con las contraseñas y los tokens ocultos.
 2. Si el puerto ya está ocupado por otro programa, avisa y no inicia nada.
 3. La fila pasa a "Iniciando…" hasta que algo escuche en ese puerto.
-4. El servidor vuelve a la lista con la etiqueta **En Platanus**. Lo que imprime está en ⋯ › Ver salida: las últimas 300 líneas, sin colores.
+4. El servidor vuelve a la lista con la etiqueta **En Qubbot**. Lo que imprime está en ⋯ › Ver salida: las últimas 300 líneas, sin colores.
 5. Si el proceso termina solo, vuelve a Detenidos como "Se cerró solo · código N", con su error en Ver salida.
 
-Puedes detenerlo y reactivarlo las veces que quieras, porque Platanus guarda el comando y la carpeta con que lo inició.
+Puedes detenerlo y reactivarlo las veces que quieras, porque Qubbot guarda el comando y la carpeta con que lo inició.
 
 Límites:
 
 - Solo funciona en macOS. Windows no expone la carpeta de trabajo de otro proceso, y reabrir el comando en otra carpeta serviría otra cosa.
-- Platanus lee el comando con `ps` como texto y lo separa por espacios. Si un argumento tiene espacios, el servidor no arranca bien.
+- Qubbot lee el comando con `ps` como texto y lo separa por espacios. Si un argumento tiene espacios, el servidor no arranca bien.
 - Los programas que cambian su nombre de proceso (por ejemplo, `next-server`) no muestran su comando real: al reactivarlos se cierran solos, y Ver salida muestra el error.
 - Las variables que exportaste en la terminal original no se copian. El servidor arranca con tu shell de inicio de sesión (zsh o bash), así que sí tiene tu `PATH`, nvm o pyenv.
 - La lista de Detenidos vive en memoria y se pierde al cerrar la app.
-- Al cerrar Platanus se detienen los servidores que inició, porque no tienen terminal y quedarían escuchando sin que nadie los vea. Los que pausó, los reanuda.
+- Al cerrar Qubbot se detienen los servidores que inició, porque no tienen terminal y quedarían escuchando sin que nadie los vea. Los que pausó, los reanuda.
 
 ## Seguridad
 
-La vista toca procesos del sistema, así que sigue las reglas del resto de Platanus:
+La vista toca procesos del sistema, así que sigue las reglas del resto de Qubbot:
 
 - **La ventana nunca manda un pid, una URL, un comando ni una ruta de programa.** Solo manda un puerto, el id de un navegador conocido o el id de una fila de Detenidos. El proceso principal resuelve el resto y valida cada pedido.
 - **Sin shell.** Los comandos del sistema van con `execFile`, rutas absolutas, argumentos fijos y un límite de 5 segundos.
-- **Detener y Reactivar piden confirmación** en un diálogo nativo, con Cancelar por defecto. Después del diálogo, Platanus vuelve a leer la lista y solo cierra los procesos que siguen en ese puerto, para no tocar un pid que el sistema haya reutilizado.
-- **Procesos protegidos.** Nunca detiene ni pausa a Platanus ni a los procesos del sistema (pid 0, 1 y 4), y nunca pide `sudo`. En macOS, sin permisos de administrador, solo ve los procesos de tu usuario.
+- **Detener y Reactivar piden confirmación** en un diálogo nativo, con Cancelar por defecto. Después del diálogo, Qubbot vuelve a leer la lista y solo cierra los procesos que siguen en ese puerto, para no tocar un pid que el sistema haya reutilizado.
+- **Procesos protegidos.** Nunca detiene ni pausa a Qubbot ni a los procesos del sistema (pid 0, 1 y 4), y nunca pide `sudo`. En macOS, sin permisos de administrador, solo ve los procesos de tu usuario.
 - **Reactivar no interpreta el comando.** Lo ejecuta un script fijo, `exec "$@"`, que recibe las palabras como argumentos, así que `$`, `;`, `|` y los backticks no se interpretan.
 - **Abrir arma la URL en el proceso principal**: `http://localhost:<puerto>`, con el puerto validado entre 1 y 65535.
 - **Auditoría.** Cada apertura, detención, pausa, reanudación y reactivación queda en el registro de auditoría, igual que un servidor que se cierra solo.
@@ -157,7 +157,7 @@ Prueba manual en macOS, con una terminal para cada comando:
 1. `npx electron . --dev`
 2. `python3 -m http.server 8000`: aparece en amarillo, "Visible en tu red".
 3. `python3 -m http.server 8001 --bind 127.0.0.1`: aparece como "Solo esta computadora".
-4. En la fila 8000, toca ■ y confirma: pasa a Detenidos. Toca ▶ y confirma: pasa a "Iniciando…" y vuelve a la lista con **En Platanus**. Repite el ciclo una vez más.
+4. En la fila 8000, toca ■ y confirma: pasa a Detenidos. Toca ▶ y confirma: pasa a "Iniciando…" y vuelve a la lista con **En Qubbot**. Repite el ciclo una vez más.
 5. En la fila 8001, ⋯ › Pausar: `curl -m 1 localhost:8001` no responde. Toca ▶ y vuelve a responder.
 
 Las decisiones que se tomaron por defecto y las que siguen abiertas están en la sección "Decisiones abiertas" de la spec.
