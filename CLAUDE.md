@@ -72,7 +72,7 @@ renderer/
                   (libraries.dev orbs over the package engine), agentPicker
                   (+ effortSlider), chatMenu, agentConnect, devTree, hoverCard, hud,
                   callBar (the call panel above Qubi, no phone ring), voiceConnect (voice connection modal), serviceConnect,
-                  repairPanel, qubiJump, editor (floating file editor with tabs, CodeMirror with syntax colors; secrets open flagged), panels (breadcrumb, schema, git), controls, handControl (hand button + camera preview + "?" with the gestures),
+                  repairPanel, qubiJump, editor (floating file editor with tabs, CodeMirror with syntax colors; secrets open flagged; Código / Vista previa for pages, images and the project on localhost), panels (breadcrumb, schema, git), controls, handControl (hand button + camera preview + "?" with the gestures),
                   handCursor (white cursor + hold-still ring; holding still or a quick pinch selects like a click), handTargets (what the cursor may
                   select: 3D picks, and in panels anything clickable except data-gesture="never"), labels
                   floating layout: iconBar (reorderable icons), draggable (the file editor by
@@ -90,6 +90,8 @@ renderer/
 electron/
   main.js         window, IPC, confirmations, recent projects, MCP handlers (read/write with approval + backup, undo),
                   editor:open / editor:save (the person's own edits: secrets allowed, saving one asks; backup; mtime check)
+  preview.js      the editor's preview: qubbot-preview://project/<path> serves the open project's files (GET only,
+                  links resolved, never a secret); shown in a sandboxed iframe, the CSP frames only it and localhost
   workspace.js    every disk operation, caged in the open folder
   git.js          read-only git history (execFile, no shell)
   servers.js      list of listening TCP servers (lsof on macOS, netstat + tasklist on Windows; execFile, absolute

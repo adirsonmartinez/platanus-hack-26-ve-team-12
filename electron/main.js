@@ -1,7 +1,7 @@
 // Electron main process: creates the window and is the only part that touches the disk.
 // The window (renderer) asks for things over IPC and they are validated here before running.
 
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell, safeStorage, systemPreferences, session: electronSession } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, Menu, shell, safeStorage, systemPreferences, session: electronSession, protocol } = require('electron');
 const path = require('node:path');
 const { pathToFileURL } = require('node:url');
 const fs = require('node:fs/promises');
@@ -24,6 +24,13 @@ const { createProjectMemory } = require('./projectMemory');
 const { createSecurityStore, createSecurityService } = require('./securityStore');
 const { parseCommand, classify, commandNeedsApproval, createCommandRunner } = require('./commandRun');
 const { createProjectRun } = require('./projectRun');
+const { PREVIEW_SCHEME, previewPathOf, servePreview } = require('./preview');
+
+// The editor's preview (preview.js): its own scheme, standard (relative CSS, scripts and images resolve)
+// and with fetch, so a page loads as from a server. Registered before the app is ready, as Electron asks
+protocol.registerSchemesAsPrivileged([
+  { scheme: PREVIEW_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } },
+]);
 const { LINKS, publicCatalog } = require('./serviceCatalog');
 const { createServiceStatus } = require('./serviceStatus');
 
@@ -1429,6 +1436,12 @@ function watchSources() {
 }
 
 app.whenReady().then(async () => {
+  // Only GET, only the open project's files (preview.js refuses secrets and links out)
+  protocol.handle(PREVIEW_SCHEME, async (request) => {
+    const rel = request.method === 'GET' ? previewPathOf(request.url) : null;
+    const { status, headers, body } = rel == null ? { status: 404, headers: {}, body: '' } : await servePreview(workspace.root, rel);
+    return new Response(status === 200 ? body : null, { status, headers });
+  });
   await nativeMenu();
   if (LIVE_RELOAD) watchSources();
   if (openArg) await openWorkspace(openArg).catch((err) => log('workspace:open', openArg, false, err.message));

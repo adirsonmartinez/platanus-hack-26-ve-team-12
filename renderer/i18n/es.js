@@ -101,6 +101,14 @@ export const strings = {
     confirmClose: (name) => `"${name}" tiene cambios sin guardar. ¿Cerrar y perderlos?`,
     stale: 'El archivo cambió en el disco mientras lo editabas.',
     reload: 'Recargar del disco',
+    // Preview: pages and images rendered, and the project running on this computer
+    preview: {
+      views: 'Ver código o vista previa',
+      code: 'Código',
+      show: 'Vista previa',
+      refresh: 'Recargar la vista previa',
+      outside: 'Abrir en el navegador',
+    },
     // CodeMirror's own texts (search panel, folding), by its English phrase
     phrases: {
       'Find': 'Buscar', 'Replace': 'Reemplazar', 'next': 'siguiente', 'previous': 'anterior', 'all': 'todos',

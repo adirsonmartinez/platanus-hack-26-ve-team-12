@@ -55,6 +55,7 @@ ADE de escritorio (Electron) para personas no técnicas: el proyecto se ve como 
   - mientras el agente trabaja, el globo muestra una cápsula con el orbe a 20 px.
 - **Logos reales de los agentes**: `renderer/icons/brands.js`, generado con `npm run icons` desde `@lobehub/icons-static-svg` (MIT). La clase es `svg.icon.agent-logo`, no `brand`, porque esa choca con la barra de título. En el encabezado del chat, el logo va en un marco de vidrio líquido con el color del agente (`--agent-tint`).
 - **Video del producto**: `video/` (Remotion) y `scripts/demo/` (grabación por CDP + proyecto de ejemplo «Feria Online»).
+- **Vista previa en el editor (2026-10-25, sin commit):** páginas, imágenes y `localhost` dentro del editor (`electron/preview.js`, iframe con sandbox; «Ver tu proyecto» ya no abre Chrome). Probado en la app con una página hostil: todo bloqueado.
 - **Editor de archivos** (`docs/features/file-editor/README.md`): clic en un archivo del mapa → ventana flotante con pestañas, CodeMirror con colores de sintaxis, guardar con ⌘S (secretos: se abren marcados, guardarlos pide confirmación; respaldo y control de `mtime`).
 - **UI nueva en toda la app** (el idioma del chat: vidrio, Inter/Roboto Mono, neutra, sin morado):
   - un CSS por pieza, todos sobre los tokens `--lg-*` de `chat-glass.css`: `start.css` (inicio), `welcome.css` (globo del robot de bienvenida; salió de `main.css`), `controls.css`, `dock.css`, `labels.css`, `hud.css`, `panel.css`, `editor.css`, `titlebar.css`;

@@ -126,7 +126,10 @@ const appViewModel = new AppViewModel({ camera: cameraViewModel, gitModel, gitVi
 const shellViewModel = new ShellViewModel({ projectModel, securityModel, mapViewModel, compact: window.matchMedia('(max-width: 820px)').matches });
 const repairViewModel = new RepairViewModel({ securityModel, mapViewModel, cameraViewModel, connection, history: repairHistory, agentService, bus, voiceMode: () => (modeModel.tech ? 'dev' : 'vibe'), audit: auditViewModel });
 const serversViewModel = new ServersViewModel({ serversModel });
-const editorViewModel = new EditorViewModel({ workspace, bus }); // files clicked on the map open as tabs
+// files clicked on the map open as tabs; on the desktop pages, images and localhost also show as a preview
+const editorViewModel = new EditorViewModel({ workspace, bus, preview: workspace.isDesktop });
+// The project running on this computer: a preview tab of the editor (the person's browser when it cannot)
+const showLocal = (port) => editorViewModel.openUrl(`http://localhost:${port}`) || serversModel.open(port);
 const handTracking = createHandTrackingService();
 // The tour of the open project ("Recorrido"): the analyzer decides the stops, the agent narrates them
 const tourViewModel = new TourViewModel({ projectModel, workspace, connection, modeModel, camera: cameraViewModel, mapViewModel, repairViewModel, bus });
@@ -339,7 +342,7 @@ const callViewModel = new CallViewModel({
     showLink(url) {
       const address = url.replace(/^https?:\/\//, '');
       const port = Number(address.split(':')[1]);
-      chatViewModel.sayFromMap({ text: strings.call.link.chat(address), chips: [{ label: strings.call.link.chip, run: () => serversModel.open(port), quiet: true }] });
+      chatViewModel.sayFromMap({ text: strings.call.link.chat(address), chips: [{ label: strings.call.link.chip, run: () => showLocal(port), quiet: true }] });
     },
     // mostrar_carpeta and ir_a: only visual, the map flies to the folder (the project root goes back home)
     showFolder: (path) => { shellViewModel.setStage('map'); return path ? mapViewModel.show(path) : (mapViewModel.home(), true); },
@@ -352,7 +355,7 @@ const callViewModel = new CallViewModel({
       await serversModel.refresh();
       return serversModel.store.state.servers.filter((s) => s.managed || startedPorts.has(s.port)).map((s) => ({ port: s.port }));
     },
-    openPreview: (port) => serversModel.open(port),
+    openPreview: (port) => showLocal(port),
     // auditar: the whole project again -> { before, after, fixed, worse } (null when it could not run)
     audit: async () => ((await auditViewModel.auditNow()) ? auditViewModel.store.state.last : null),
     // reparar (after the person's yes): the same repair as the risks panel's button
@@ -453,7 +456,7 @@ if (isDemo) {
   // the recorder (and checks) can drive the robot and find 3D things on screen
   window.__platanus = {
     robotViewModel, robotDialogViewModel, tourViewModel, mapViewModel, buildViewModel, chatViewModel, callViewModel, teamViewModel, servicesViewModel,
-    cameraViewModel, projectModel, connectViewModel,
+    cameraViewModel, projectModel, connectViewModel, editorViewModel,
     screenOf: (point) => { const r = stage.getBoundingClientRect(); const s = sceneView.toScreen(point); return { x: r.left + s.x, y: r.top + s.y }; },
   };
 }
@@ -462,7 +465,11 @@ appViewModel.store.subscribe(({ view }) => {
   sceneView.setActiveLayer(view);
   labels.setActiveLayer(view);
 }, { immediate: true });
-createEditorView({ stage, editorViewModel });
+createEditorView({
+  stage, editorViewModel,
+  // «Abrir en el navegador»: a localhost tab in the person's browser, a file with its default app
+  onOpenOutside: (tab) => (tab.kind === 'web' ? serversModel.open(Number(new URL(tab.path).port)) : workspace.open(tab.path, 'default')),
+});
 const hoverCard = createHoverCardView({ card: document.getElementById('hover-card'), stage, mapViewModel, modeModel });
 
 // Clicks, hover and Esc go to the view on screen
@@ -521,7 +528,7 @@ const voiceConnect = createVoiceConnectView({ container: document.getElementById
 // center. "Chat" opens the chat at the call's card, where the person can write to Qubi
 createCallBarView({
   container: document.getElementById('call-bar'), callButton: document.getElementById('chat-call'), callViewModel, connection,
-  sceneView, voiceConnect, onOpenLink: (port) => serversModel.open(port),
+  sceneView, voiceConnect, onOpenLink: (port) => showLocal(port),
   // while Qubi builds his bubble stays (robotView 'build' job): the panel sits above it, not on it.
   // No head (hidden, the tour): docked, even if a bubble shows
   anchor: () => {

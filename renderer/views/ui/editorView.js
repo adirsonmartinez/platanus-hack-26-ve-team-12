@@ -3,6 +3,10 @@
 // CodeMirror with syntax colors (renderer/vendor/codemirror.js; colors are CSS tokens, `--syntax-*`).
 // Each tab keeps its own CodeMirror state (undo, cursor, scroll). ⌘S / Ctrl+S saves, Tab indents,
 // ⌘F searches. Keys typed here never reach the map's shortcuts.
+// Preview: pages, images and the project on localhost show in a sandboxed iframe (scripts and forms
+// run; no popups, no navigating the app, no permissions). Its origin (qubbot-preview://project or
+// localhost) is not the app's, so the page never reaches window.platanus; the CSP of index.html only
+// lets it frame those two (docs/features/file-editor/README.md → «Vista previa»).
 import { strings } from '../../i18n/es.js';
 import { icon } from '../icons.js';
 import { makeDraggable } from './draggable.js';
@@ -57,7 +61,10 @@ const theme = EditorView.theme({
   '.cm-tooltip': { backgroundColor: 'var(--glass-strong)', border: '1px solid var(--line-strong)', color: 'var(--text)' },
 }, { dark: true });
 
-export function createEditorView({ stage, editorViewModel }) {
+const SANDBOX = 'allow-scripts allow-same-origin allow-forms allow-modals allow-downloads';
+
+// onOpenOutside(tab): the same file or address in the person's browser
+export function createEditorView({ stage, editorViewModel, onOpenOutside = () => {} }) {
   const vm = editorViewModel;
   const root = el('section', 'editor');
   root.id = 'editor';
@@ -79,7 +86,21 @@ export function createEditorView({ stage, editorViewModel }) {
   const save = el('button', 'editor-save', E.save);
   save.type = 'button';
   save.title = E.saveHint;
-  bar.append(path, secret, status, save);
+  // Código / Vista previa, then reload and open in the browser (only for tabs with a preview)
+  const views = el('div', 'editor-views');
+  views.setAttribute('role', 'group');
+  views.setAttribute('aria-label', E.preview.views);
+  const viewButton = (view, label) => {
+    const b = el('button', 'editor-view-btn', label);
+    b.type = 'button';
+    b.dataset.view = view;
+    b.addEventListener('click', () => vm.setView(vm.store.state.active, view));
+    return b;
+  };
+  views.append(viewButton('code', E.preview.code), viewButton('preview', E.preview.show));
+  const refresh = iconButton('retry', E.preview.refresh);
+  const outside = iconButton('openExternal', E.preview.outside);
+  bar.append(path, secret, status, views, refresh, outside, save);
 
   const notice = el('div', 'editor-notice');
   const noticeText = el('span');
@@ -90,7 +111,12 @@ export function createEditorView({ stage, editorViewModel }) {
   const body = el('div', 'editor-body');
   const code = el('div', 'editor-code');
   const message = el('div', 'editor-message');
-  body.append(code, message);
+  const frame = el('iframe', 'editor-preview');
+  frame.setAttribute('sandbox', SANDBOX);
+  frame.setAttribute('referrerpolicy', 'no-referrer');
+  frame.title = E.preview.show;
+  frame.hidden = true;
+  body.append(code, message, frame);
 
   root.append(head, tabs, bar, notice, body);
   stage.appendChild(root);
@@ -151,19 +177,42 @@ export function createEditorView({ stage, editorViewModel }) {
     const t = active();
     // Keep the previous tab's state (undo, cursor) for when it comes back
     if (shown && shown !== t?.path && vm.tab(shown)) states.set(shown, editor.state);
-    if (!t) { shown = null; return; }
+    if (!t) { shown = null; root.classList.remove('is-previewing'); return; }
 
     path.textContent = t.path;
+    const previewing = t.canPreview && t.view === 'preview';
+    views.hidden = !t.canPreview || t.previewOnly;
+    for (const b of views.children) b.setAttribute('aria-pressed', String(b.dataset.view === t.view));
+    refresh.hidden = !previewing;
+    outside.hidden = !t.canPreview;
     secret.hidden = !t.secret;
     root.classList.toggle('is-secret', t.secret);
     const dirty = vm.isDirty(t.path);
     status.textContent = t.status === 'loading' ? E.loading : t.saving ? E.saving : t.saveError ? t.saveError : dirty ? E.unsaved : t.status === 'ready' ? E.saved : '';
     status.className = `editor-status${t.saveError ? ' error' : dirty ? ' dirty' : ''}`;
     save.disabled = !dirty || t.saving;
-    save.hidden = t.status !== 'ready';
+    // in the preview, saving only matters when there are edits
+    save.hidden = t.status !== 'ready' || t.previewOnly || (previewing && !dirty);
+    status.hidden = previewing && !dirty && !t.saving;
 
     notice.hidden = !t.stale;
     noticeText.textContent = E.stale;
+
+    // the preview: a new address (or a reload) only when it changed, so typing never reloads it
+    frame.hidden = !previewing;
+    root.classList.toggle('is-previewing', previewing);
+    if (previewing) {
+      const key = `${t.path}\n${t.stamp}`;
+      if (frame.dataset.key !== key) {
+        frame.dataset.key = key;
+        frame.src = vm.previewUrl(t.path);
+      }
+      code.hidden = true;
+      message.hidden = true;
+      if (shown && vm.tab(shown)) states.set(shown, editor.state);
+      shown = null;
+      return;
+    }
 
     const ready = t.status === 'ready';
     code.hidden = !ready;
@@ -182,6 +231,12 @@ export function createEditorView({ stage, editorViewModel }) {
 
   vm.store.subscribe((state, previous) => {
     root.hidden = !state.open;
+    // a hidden preview stops (a page's sound or timers must not go on)
+    const t = state.open ? active() : null;
+    if (!(t?.canPreview && t.view === 'preview') && frame.dataset.key) {
+      frame.removeAttribute('src');
+      frame.dataset.key = '';
+    }
     if (!state.open) return;
     renderTabs(state);
     renderActive();
@@ -193,6 +248,8 @@ export function createEditorView({ stage, editorViewModel }) {
   closeWindow.addEventListener('click', () => vm.hide());
   save.addEventListener('click', () => vm.save(vm.store.state.active));
   reload.addEventListener('click', () => vm.reload(vm.store.state.active));
+  refresh.addEventListener('click', () => vm.refresh(vm.store.state.active));
+  outside.addEventListener('click', () => { const t = active(); if (t) onOpenOutside(t); });
 
   // Typing here never moves the map (Esc, Q/E/G, WASD); ⌘S saves from anywhere in the window
   root.addEventListener('keydown', (e) => {
