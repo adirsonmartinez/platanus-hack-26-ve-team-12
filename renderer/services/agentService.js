@@ -29,7 +29,7 @@ export function createAgentService(bridge = window.platanus) {
     isDesktop: true,
     detect: () => bridge.agents.detect(),
     login: (id) => bridge.agents.login(id),
-    run: (req) => bridge.agents.run(req),
+    run: (req) => bridge.agents.run(req), // the whole request: a worker's id and folders (worker, scope) too
     cancel: (runId) => bridge.agents.cancel(runId),
     onEvent: (cb) => bridge.agents.onEvent(cb),
     mcpInfo: () => bridge.mcp.info(),

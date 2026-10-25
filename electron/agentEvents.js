@@ -5,14 +5,14 @@
 // Events:
 //   { type: 'session', id }                       conversation id (to continue it later)
 //   { type: 'text' | 'thinking', delta, parent }  answer / reasoning; parent = subagent id or null
-//   { type: 'tool', id, name, target, level?, parent }  a Platanus tool starts (name without prefix;
+//   { type: 'tool', id, name, target, level?, parent }  a Qubbot tool starts (name without prefix;
 //                                                  level: the traffic light set_file_score sets)
 //   { type: 'tool_done', id, error }              that tool (or subagent) finished
 //   { type: 'subagent', id, description, kind, parent }  the agent launched a helper agent
 //   { type: 'result', durationMs, turns, inputTokens, outputTokens }
 //   { type: 'error', message }
 //
-// Only Platanus tools and subagents are reported: the CLIs' own tools are disabled anyway.
+// Only Qubbot tools and subagents are reported: the CLIs' own tools are disabled anyway.
 
 const PLATANUS = /^(?:mcp__)?platanus(?:__|\.|_|:)(?:platanus_)?(.+)$/;
 const SUBAGENT_TOOLS = new Set(['Task', 'Agent', 'spawn_subagent']);
@@ -22,9 +22,10 @@ const toolName = (raw) => {
   return m ? m[1] : null;
 };
 // What the tool works on (shown next to its name): a path when there is one
-const targetOf = (input) => String(input?.path ?? input?.arguments?.path ?? '').slice(0, 160);
+// a command shows as itself (run_command)
+const targetOf = (input) => String(input?.path ?? input?.arguments?.path ?? input?.command ?? input?.arguments?.command ?? '').slice(0, 160);
 const LEVELS = new Set(['green', 'yellow', 'red']);
-// A Platanus tool step; the traffic light it sets goes along so the chat can say "en rojo"
+// A Qubbot tool step; the traffic light it sets goes along so the chat can say "en rojo"
 function toolEvent(id, name, input, parent) {
   const event = { type: 'tool', id, name, target: targetOf(input), parent };
   const level = input?.level ?? input?.arguments?.level;

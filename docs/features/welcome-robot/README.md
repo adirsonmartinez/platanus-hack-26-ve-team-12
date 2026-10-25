@@ -37,7 +37,7 @@ Un clic en una integración por conectar abre el chat con un mensaje: ya está l
 
 El robot se queda y reacciona al proyecto real. En orden de prioridad:
 
-1. **Un archivo en rojo o amarillo** (por ejemplo un `.env`): el globo se abre aunque esté minimizado, en ámbar o rojo, y ofrece **Arréglalo con Remi** o **Muéstramelo**. Si el riesgo se arregla, el aviso desaparece.
+1. **Un archivo en rojo o amarillo** (por ejemplo un `.env`): el globo se abre aunque esté minimizado, en ámbar o rojo, y ofrece **Arréglalo con Qubi** o **Muéstramelo**. Si el riesgo se arregla, el aviso desaparece.
 2. **Tu proyecto ya existe 🎉** con el primer archivo.
 3. **Protejamos tus contraseñas**: falta `.gitignore` (el agente lo crea en un clic).
 4. **Preséntale tu proyecto al mundo**: falta README.

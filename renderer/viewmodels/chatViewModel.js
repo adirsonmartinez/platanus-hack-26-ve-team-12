@@ -13,7 +13,7 @@ const CHAT = strings.chat;
 const CARDS = CHAT.cards;
 const RECENT_MESSAGES = 6;
 const nameOf = (path) => path.split('/').filter(Boolean).at(-1) ?? path;
-// A Platanus tool's short name, whatever prefix the agent CLI adds (mcp__platanus__platanus_read_file -> read_file)
+// A Qubbot tool's short name, whatever prefix the agent CLI adds (mcp__platanus__platanus_read_file -> read_file)
 const toolKey = (name) => String(name).replace(/^(?:mcp__)?platanus(?:__|_)?(?:platanus_)?/, '');
 // Text the agent writes after using a tool: a new paragraph (unless the text so far is empty or already breaks)
 const paragraph = (before, delta) => (before && !/\n\s*$/.test(before) && !/^\s*\n/.test(delta) ? `\n\n${delta}` : delta);
@@ -36,7 +36,7 @@ export class ChatViewModel {
 
   // message: { id, role: 'bot' | 'user' | 'sys' | 'tool', text?, html?, tone?, card? }
   // card: { kind: 'folder' | 'file', ...data, actions: [chip] } (a map event shown as an interactive card)
-  // chip: a label (sent as a message) or { label, kind, prompt?, run? }: `run` does an app action (Remi
+  // chip: a label (sent as a message) or { label, kind, prompt?, run? }: `run` does an app action (Qubi
   //   repairs a file…), otherwise `prompt ?? label` is sent. kind picks its icon (ask, repair, audit, locate…)
   // welcome: the empty conversation shows a welcome screen with suggestions (as in Obra) instead of bubbles
   // gitPrefill: string set momentarily when a git chip is clicked; the view reads it and fills the textarea
@@ -48,6 +48,9 @@ export class ChatViewModel {
 
   #shownFromChat = null; // a file the chat asked the map to show (its map card is not repeated)
   #isTech;
+  #callId = null; // the card of the call with Qubi that is still going (upsertCallCard)
+  #teamId = null; // the card of Qubi's team that is still working, or that just finished (upsertTeamCard)
+  #teamDone = false; // that card is the finished one: only another 'done' updates it
 
   // isTech(): Dev mode (files saved by other programs are only posted in the conversation there)
   constructor({ agentModel, bus, actions = {}, connection = null, isTech = () => true }) {
@@ -70,7 +73,7 @@ export class ChatViewModel {
       this.#push({ role: 'sys', text: CHAT.projectClosed(name) });
     });
 
-    // Repairs: one card per repair, shaped like the agent's run card (run.kind 'repair'): Remi's steps,
+    // Repairs: one card per repair, shaped like the agent's run card (run.kind 'repair'): Qubi's steps,
     // the agent's explanation streaming in, and the result at the end. Nothing else is posted around it.
     const RC = strings.repair.chat;
     let repairId = null;
@@ -80,12 +83,12 @@ export class ChatViewModel {
     const settle = (status = 'done') => repair((r) => ({ ...r, steps: r.steps.map((x) => (x.status !== 'running' ? x : { ...x, status: x.name === 'write_file' && !x.diff ? 'error' : status, endedAt: Date.now() })) }));
     bus.on(EVENTS.repairStarted, ({ path, agent }) => {
       this.store.set({ minimized: false, chips: null, welcome: false });
-      // The map card Remi's flight just queued (waiting, or already in its "typing" pause) is not shown
+      // The map card Qubi's flight just queued (waiting, or already in its "typing" pause) is not shown
       this.#queue = this.#queue.filter((reply) => !reply.card);
       if (this.#showing?.card) this.#showing.dropped = true;
       repairId = this.#push({
         role: 'bot', text: '',
-        run: { kind: 'repair', path, agent: RC.title(agent), agentId: 'remi', startedAt: Date.now(), endedAt: null, status: 'running', steps: [], result: null },
+        run: { kind: 'repair', path, agent: RC.title(agent), agentId: 'qubi', startedAt: Date.now(), endedAt: null, status: 'running', steps: [], result: null },
       });
     });
     let repairBreak = false; // a tool ran since the last text: the next text starts a new paragraph
@@ -150,7 +153,9 @@ export class ChatViewModel {
     // The agent waits for the person to approve a change (Manual mode): the working card says so
     // …and the change it proposes is shown on its write step, so the person sees what they approve
     // (the card that is writing that file; a question waiting its turn never gets it)
-    bus.on(EVENTS.agentAwaiting, ({ path, waiting, diff }) => {
+    // A worker of Qubi's team (`worker`) is not the chat's: its wait shows on the team card and the map
+    bus.on(EVENTS.agentAwaiting, ({ path, waiting, diff, worker }) => {
+      if (worker) return;
       if (!waiting) {
         for (const m of this.store.state.messages.filter((x) => x.run?.awaiting === path)) this.#update(m.id, (x) => ({ ...x, run: { ...x.run, awaiting: null } }));
         return;
@@ -160,7 +165,9 @@ export class ChatViewModel {
     });
     // A change the agent saved: its diff goes on the write step of the card that asked for it. Agents that
     // report a tool only after it ends (OpenCode) get the step here; their tool event joins it later.
+    // A worker's change (`worker`) belongs to the team card, never to the chat's working card.
     bus.on(EVENTS.agentChanged, (change) => {
+      if (change.worker) return;
       const card = this.#writingCard(change.path, { chatOnly: true });
       if (!card) return;
       const saved = (x) => ({ ...x, diff: change.diff ?? null, reason: change.reason });
@@ -237,7 +244,7 @@ export class ChatViewModel {
       }
     });
 
-    // While a repair runs, Remi moves the map: its folder and file cards would only interrupt the repair's card
+    // While a repair runs, Qubi moves the map: its folder and file cards would only interrupt the repair's card
     bus.on(EVENTS.folderOpened, (detail) => repairId === null && this.sayFromMap({ card: this.#folderCard(detail), tone: detail.counts.red ? 'alert' : '' }));
 
     bus.on(EVENTS.fileSelected, (file) => {
@@ -326,6 +333,8 @@ export class ChatViewModel {
     }
     this.store.set({ typing: false });
     this.#finishSteps();
+    // no agent on the desktop: the answer offers to connect one (it never invents a result)
+    if (reply?.connect && this.#actions.showConnect) reply = { ...reply, chips: [{ kind: 'connect', label: strings.agent.connectChip, run: () => this.#actions.showConnect(), quiet: true }] };
     if (!streamed || reply.tone === 'alert') this.#enqueue(reply);
     else {
       this.store.set({ chips: this.#suggestionChips(reply.text) ?? reply.chips ?? null });
@@ -333,7 +342,7 @@ export class ChatViewModel {
     }
   }
 
-  // The user's own agent answers as one "run": a live card with its steps (reasoning, Platanus tools,
+  // The user's own agent answers as one "run": a live card with its steps (reasoning, Qubbot tools,
   // subagents and their tools), the answer as it streams, and time/turns/tokens at the end.
   // run: { agent, model, effort, startedAt, endedAt, status: 'running'|'done'|'error', steps, result }
   // step: { id, kind: 'tool'|'subagent', name?, target?, description?, agentKind?, parent, status, startedAt, endedAt, output? }
@@ -459,7 +468,7 @@ export class ChatViewModel {
     const open = (how) => () => a.openFile(path, how).then((r) => { if (!r?.ok) this.#push({ role: 'sys', text: r?.error && r.error !== 'desktop-only' ? r.error : CARDS.openFailed }); });
     return {
       kind: 'file', path, name: nameOf(path), level, reason,
-      source: unchecked ? CARDS.notReviewed : { agent: strings.security.byAgent, remi: strings.security.byRemi }[by] ?? strings.security.byDemo,
+      source: unchecked ? CARDS.notReviewed : { agent: strings.security.byAgent, qubi: strings.security.byRemi }[by] ?? strings.security.byDemo,
       actions: [
         a.openFile && opensInBrowser(path) && !isSecretFile(path) && { kind: 'open', label: CARDS.openBrowser, run: open('default'), quiet: true },
         { kind: 'ask', label: CARDS.whatIsIt, prompt: CARDS.whatIsItPrompt(path), intent: 'explain' },
@@ -502,7 +511,7 @@ export class ChatViewModel {
   }
 
   // A chip with an action runs it; a plain chip is sent as a message
-  // `source`: the clicked button (Remi jumps from there to the map)
+  // `source`: the clicked button (Qubi jumps from there to the map)
   choose(chip, source = null) {
     if (typeof chip === 'string') return this.send(chip);
     if (chip.directCommand) return this.send(chip.directCommand);
@@ -556,6 +565,63 @@ export class ChatViewModel {
       a.repairWorst && { kind: 'repair', label: strings.repair.chipWorst, run: a.repairWorst },
       ...CHAT.chips.suggestions.slice(2),
     ].filter(Boolean);
+  }
+
+  // The voice call with Qubi (callViewModel.js): one card that updates in place. A call that ended or
+  // failed is history, so the next call gets its own card. Returns the card's message id.
+  // card: { status, simulated, startedAt, endedAt?, error?, lines, task }
+  upsertCallCard(card) {
+    const going = this.#callId !== null && this.store.state.messages.some((m) => m.id === this.#callId);
+    const next = { kind: 'call', ...card };
+    let id = this.#callId;
+    if (going) this.#update(id, (m) => ({ ...m, card: next }));
+    else {
+      this.store.set({ welcome: false });
+      id = this.#push({ role: 'bot', card: next });
+    }
+    this.#callId = card.status === 'ended' || card.status === 'error' ? null : id;
+    return id;
+  }
+
+  // Qubi's team of workers (teamViewModel.js): one card that updates in place, like the call's. A team
+  // that finished (or was cancelled: back to idle) is history, so the next team gets its own card; an
+  // idle team with no card on screen adds nothing. Returns the card's message id (null when nothing shows).
+  // card: { phase: 'working' | 'auditing' | 'done' | 'idle', workers: [{ id, n, title, folder, status, created, changed, audit }] }
+  // A finished card still takes a repeated 'done' (workers rebuilt while the team lingers on the map):
+  // it updates in place instead of adding a second "El equipo terminó".
+  upsertTeamCard(card) {
+    let going = this.#teamId !== null && this.store.state.messages.some((m) => m.id === this.#teamId);
+    if (going && this.#teamDone && card.phase !== 'done') going = false; // that team is history
+    if (!going && card.phase === 'idle') {
+      this.#teamId = null;
+      this.#teamDone = false;
+      return null;
+    }
+    const next = { kind: 'team', phase: card.phase, workers: card.workers ?? [] };
+    let id = this.#teamId;
+    if (going) this.#update(id, (m) => ({ ...m, card: next }));
+    else {
+      this.store.set({ welcome: false });
+      id = this.#push({ role: 'bot', card: next });
+    }
+    this.#teamId = card.phase === 'idle' ? null : id;
+    this.#teamDone = card.phase === 'done';
+    return id;
+  }
+
+  // The services the project uses (servicesViewModel.js): one card per project, updated in place after
+  // "Ya lo conecté" or a reload. `id` is that card's message id; with `add` false nothing new is added
+  // (a new chat dropped it). Returns the card's message id, or null when nothing shows.
+  // card: { project, services: [{ key, name, state, connect? }] } (connect: a chip that opens its modal)
+  upsertServicesCard(card, { add = true, id = null } = {}) {
+    const next = { kind: 'services', ...card };
+    if (id != null && this.store.state.messages.some((m) => m.id === id)) {
+      this.#update(id, (m) => ({ ...m, card: next }));
+      return id;
+    }
+    if (!add) return null;
+    this.store.set({ welcome: false });
+    return this.#push({ role: 'bot', card: next });
   }
 
   // Map messages open the chat if it was minimized

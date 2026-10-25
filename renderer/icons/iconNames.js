@@ -61,6 +61,18 @@ export const ICON_NAMES = {
   shieldWarn: 'SecurityWarningIcon',
   layers: 'Layers01Icon',
   subagent: 'UserGroupIcon',
+  // Call with Qubi (voice): the chat header's phone and the floating call bar
+  call: 'Call02Icon',
+  callEnd: 'CallEnd01Icon',
+  settings: 'Settings01Icon',
+  mic: 'Mic01Icon',
+  micOff: 'MicOff01Icon',
+  chatBubble: 'BubbleChatIcon',
+  retry: 'Refresh01Icon',
+  // The voice connection modal (voiceConnectView.js): Qubi offline, sign in, paste a key
+  offline: 'WifiDisconnected01Icon',
+  login: 'Login01Icon',
+  key: 'Key01Icon',
 };
 
 // The agents' own logos (not Hugeicons): our name -> file in @lobehub/icons-static-svg (MIT). The color

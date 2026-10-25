@@ -22,7 +22,8 @@ const MAX_INPUT_PX = 160;
 const BEAM_AFTER_MS = 3000;
 const reducedMotion = () => window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
 
-export function createChatView({ chatViewModel: vm, composerViewModel = null, connection = null, modeModel = null }) {
+// callViewModel (optional): during a call with Qubi the composer writes to Qubi (callViewModel.type)
+export function createChatView({ chatViewModel: vm, composerViewModel = null, connection = null, modeModel = null, callViewModel = null }) {
   const $ = (id) => document.getElementById(id);
   const root = $('chat'), body = $('chat-body'), form = $('chat-form'), input = $('chat-text');
   const sendButton = $('chat-send'), toggle = $('chat-toggle');
@@ -136,6 +137,7 @@ export function createChatView({ chatViewModel: vm, composerViewModel = null, co
   function messageElement(m) {
     const el = document.createElement('div');
     el.className = ['msg', m.role, m.tone, m.run && 'run', m.card && `card-msg ${m.card.kind}`, m.result && `result ${m.result}`].filter(Boolean).join(' ');
+    el.dataset.id = m.id; // the call bar's "Chat" scrolls to the call's card
     paint(el, m);
     return el;
   }
@@ -165,6 +167,18 @@ export function createChatView({ chatViewModel: vm, composerViewModel = null, co
   body.addEventListener('click', openRef);
   body.addEventListener('keydown', openRef);
   body.addEventListener('mousedown', (e) => { if (e.detail > 1 && e.target.closest?.('.file-ref')) e.preventDefault(); }); // no word selection on double click
+
+  // "Ver el final": when there is more of the conversation below what is on screen (a long answer grows
+  // under the question, which stays on top), a pill takes the person to its end
+  const more = document.createElement('button');
+  more.type = 'button';
+  more.className = 'chat-more-below';
+  more.textContent = strings.chat.moreBelow;
+  more.hidden = true;
+  more.addEventListener('click', () => { anchorId = null; body.scrollTo({ top: body.scrollHeight, behavior: 'smooth' }); });
+  body.after(more);
+  const showMore = () => { more.hidden = body.scrollHeight - body.scrollTop - body.clientHeight < 40; };
+  body.addEventListener('scroll', showMore, { passive: true });
 
   function render(state, previous) {
     // Follow the conversation only if the person is already at the bottom (not while they read above)
@@ -211,6 +225,8 @@ export function createChatView({ chatViewModel: vm, composerViewModel = null, co
     const added = previous ? state.messages.slice(previous.messages.length) : [];
     const asked = added.findLast((m) => m.role === 'user');
     if (asked) anchorId = asked.id;
+    // a card that did not answer the person's question (a repair, the map, a call) is followed to its end
+    else if (added.some((m) => m.role !== 'user')) anchorId = null;
     const busy = state.typing || state.messages.at(-1)?.run?.status === 'running';
     const anchor = anchorId !== null && rendered.get(anchorId)?.el;
     // it stays there after the answer too (its chips appear below); something new from the map lets go
@@ -223,7 +239,8 @@ export function createChatView({ chatViewModel: vm, composerViewModel = null, co
       if (atBottom || state.messages.length !== previous?.messages.length) body.scrollTop = body.scrollHeight;
     }
 
-    sendButton.disabled = state.typing;
+    showMore();
+    canSend();
     root.classList.toggle('min', state.minimized);
     root.classList.toggle('working', state.typing);
     document.body.classList.toggle('chat-min', state.minimized); // the map takes the chat's column
@@ -307,6 +324,11 @@ export function createChatView({ chatViewModel: vm, composerViewModel = null, co
     avatar.classList.add('busy');
   }
 
+  const onCall = () => callViewModel?.store.state.status === 'live';
+  const canSend = () => { sendButton.disabled = Boolean(vm.store.state.typing) && !onCall(); };
+  const placeholder = () => {
+    input.placeholder = onCall() ? strings.call.placeholder : strings.chat.placeholders[modeModel?.store.state.mode ?? 'vibe'];
+  };
   const grow = () => {
     input.style.height = 'auto';
     input.style.height = `${Math.min(input.scrollHeight, MAX_INPUT_PX)}px`;
@@ -314,6 +336,14 @@ export function createChatView({ chatViewModel: vm, composerViewModel = null, co
   form.addEventListener('submit', (e) => {
     e.preventDefault();
     if (e.target !== form) return; // a form inside a menu of the composer, not the message
+    // a call is on: the text goes to Qubi (the only way to talk in a simulated call), even while the agent works
+    if (onCall() && callViewModel.type(input.value)) {
+      input.value = '';
+      grow();
+      // the person's words show up in the call's card: bring it into view (run cards may be below it)
+      body.querySelector(`[data-id="${callViewModel.store.state.cardId}"]`)?.scrollIntoView({ block: 'nearest' });
+      return;
+    }
     if (vm.store.state.typing || !input.value.trim()) return; // keep the text until it can be sent
     vm.send(input.value);
     input.value = '';
@@ -327,7 +357,13 @@ export function createChatView({ chatViewModel: vm, composerViewModel = null, co
     }
   });
   toggle.addEventListener('click', () => vm.toggleMinimized());
-  setInterval(() => tickRunTimers(body), 1000);
+  setInterval(() => {
+    tickRunTimers(body);
+    // the call card's duration keeps counting while nobody speaks (the card repaints only on changes)
+    for (const time of body.querySelectorAll('.call-time[data-live]')) {
+      time.textContent = strings.call.card.duration((Date.now() - Number(time.dataset.start)) / 1000);
+    }
+  }, 1000);
 
   // Suggestions to start writing: a click fills the box (the person can edit before sending)
   const suggest = $('chat-suggest');
@@ -368,12 +404,18 @@ export function createChatView({ chatViewModel: vm, composerViewModel = null, co
   const applyMode = (mode) => {
     voice.dataset.mode = mode;
     voiceButtons.forEach((b) => b.setAttribute('aria-checked', String(b.dataset.mode === mode)));
-    input.placeholder = strings.chat.placeholders[mode];
+    placeholder();
     fillSuggestions(mode);
     for (const { el, msg } of rendered.values()) if (msg.run || msg.card) paint(el, msg); // agent and file cards switch voice too
   };
   if (modeModel) modeModel.store.subscribe(({ mode }) => applyMode(mode), { immediate: true });
   else fillSuggestions('vibe');
+  // During a call the box writes to Qubi: it says so, and the send button works even while the agent builds
+  callViewModel?.store.subscribe((state, prev) => {
+    if (state.status === prev?.status) return;
+    placeholder();
+    canSend();
+  });
   const updateSuggest = () => {
     const { welcome, typing, chips: next } = vm.store.state;
     // the agent's own next steps (chips) take the place of the generic suggestions

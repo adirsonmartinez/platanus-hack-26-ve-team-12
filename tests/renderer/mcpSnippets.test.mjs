@@ -4,7 +4,7 @@ import { mcpSnippet, EXTERNAL_AGENTS, maskUrl } from '../../renderer/models/mcpS
 
 const url = 'http://127.0.0.1:7811/mcp/abcdef0123';
 
-test('each editor or CLI gets its own config shape with the Platanus address', () => {
+test('each editor or CLI gets its own config shape with the Qubbot address', () => {
   assert.equal(mcpSnippet('claude', url), `claude mcp add --transport http platanus ${url}`);
   assert.deepEqual(JSON.parse(mcpSnippet('cursor', url)), { mcpServers: { platanus: { url } } });
   assert.deepEqual(JSON.parse(mcpSnippet('kimi', url)), { mcpServers: { platanus: { url } } });

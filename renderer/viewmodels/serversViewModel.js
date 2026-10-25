@@ -1,6 +1,6 @@
 // Screen state of the "Servidores" side view: refreshes the list every few seconds while it is on screen
 // and stops when it is hidden. Each row has one icon (stop, or resume when paused) and a ⋯ menu with the
-// rest (open with…, pause, stop, its output); stopped rows can be reactivated inside Platanus. Only one menu
+// rest (open with…, pause, stop, its output); stopped rows can be reactivated inside Qubbot. Only one menu
 // is open at a time, and a server busy with an action ignores new ones until it answers. Results are a notice.
 import { Observable } from '../core/observable.js';
 import { strings } from '../i18n/es.js';

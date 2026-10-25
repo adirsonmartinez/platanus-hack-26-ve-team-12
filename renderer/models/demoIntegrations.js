@@ -3,4 +3,6 @@
 // but something is wrong) or 'disconnected'. Real projects get theirs from projectModel's detection.
 export const DEMO_INTEGRATIONS = {
   platanus: { supabase: 'connected', vercel: 'connected', github: 'connected', clerk: 'incident', posthog: 'disconnected' },
+  // the product's new name (Qubbot); a demo folder with the old one keeps working
+  qubbot: { supabase: 'connected', vercel: 'connected', github: 'connected', clerk: 'incident', posthog: 'disconnected' },
 };

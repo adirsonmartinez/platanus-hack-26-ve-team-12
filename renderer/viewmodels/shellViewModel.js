@@ -103,9 +103,9 @@ export class ShellViewModel {
     const { open, name, tree, session } = this.#projectModel.store.state;
     const counts = { green: 0, yellow: 0, red: 0, grey: 0 };
     const withLevel = (node) => {
-      const { level, reason, reasonKey, by } = this.#securityModel.scoreOf(node.path);
+      const { level, reason, reasonKey, by, findings = [] } = this.#securityModel.scoreOf(node.path);
       counts[level] += 1;
-      return { path: node.path, name: baseName(node.path), level, reason, reasonKey, by };
+      return { path: node.path, name: baseName(node.path), level, reason, reasonKey, by, findings };
     };
     const rootFiles = tree.filter((n) => n.type === 'file').map(withLevel);
     const folders = tree

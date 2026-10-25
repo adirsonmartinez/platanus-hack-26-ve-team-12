@@ -1,0 +1,413 @@
+/* Call with Qubi (views/ui/callBarView.js): the call panel above Qubi on the map, the phone button in the
+   chat header, the call card and Qubi's team card in the chat, and the voice connection modal
+   (views/ui/voiceConnectView.js). Neutral glass on the chat's tokens (--lg-* from chat-glass.css); the only
+   color is the red hang-up, the green "on a call" and "connected", and the team's audit verdicts. */
+
+/* ---------- The call panel ----------
+   Above Qubi's head (data-place="anchor"): callBarView moves it with `transform` every frame, from the
+   stage's top-left corner. When Qubi is not on screen (data-place="dock") it sits at the bottom center. */
+#stage #call-bar {
+  position: absolute; z-index: 30; /* above the map's labels (2), the repair card (.qubi-layer, 8) and the floating editor (26) */
+  display: flex; flex-direction: column; gap: 8px;
+  width: 320px; max-width: calc(100% - 24px); box-sizing: border-box;
+  opacity: 0;
+  font: 13px/1.4 var(--lg-font); color: var(--lg-text); -webkit-font-smoothing: antialiased;
+}
+#stage #call-bar.in { opacity: 1; }
+#stage #call-bar[hidden], #stage #call-bar [hidden] { display: none; } /* beats the display: flex/grid below */
+body.no-project #stage #call-bar { display: none; }
+
+/* Following Qubi: no transform transition (it would trail behind him), only the fade */
+#stage #call-bar[data-place="anchor"] { left: 0; top: 0; transition: opacity .2s var(--lg-ease); will-change: transform; }
+
+/* Docked: bottom center, a short rise when it appears */
+#stage #call-bar:not([data-place="anchor"]) {
+  left: 50%; bottom: 14px;
+  transform: translate(-50%, 10px);
+  transition: opacity .2s var(--lg-ease), transform .28s var(--lg-ease);
+}
+#stage #call-bar:not([data-place="anchor"]).in { transform: translate(-50%, 0); }
+/* The floating chat covers the map's right side: docked, the panel centres in the free strip between the
+   map's controls (bottom left, about 280px) and the chat, so "Colgar" never goes under the chat */
+body:not(.chat-closed):not(.chat-min):not(.chat-docked) #stage #call-bar:not([data-place="anchor"]) {
+  left: calc(290px + (100% - 290px - var(--chat-w, 372px) - 24px) / 2);
+  max-width: calc(100% - 290px - var(--chat-w, 372px) - 36px);
+}
+/* Too narrow for that strip: it rises above the map's controls, from the left edge up to the chat */
+@media (max-width: 1240px) {
+  body:not(.chat-closed):not(.chat-min):not(.chat-docked) #stage #call-bar:not([data-place="anchor"]) {
+    left: 14px; bottom: 76px;
+    max-width: calc(100% - var(--chat-w, 372px) - 36px);
+    transform: translate(0, 10px);
+  }
+  body:not(.chat-closed):not(.chat-min):not(.chat-docked) #stage #call-bar:not([data-place="anchor"]).in { transform: none; }
+}
+
+/* Opaque on purpose: the map's labels behind it must not show through, and a backdrop blur on something
+   that moves every frame would be slow (lessons.md) */
+#call-bar .call-panel, #call-bar .call-error, #call-bar .call-pop {
+  position: relative; box-sizing: border-box;
+  background: #121212;
+  box-shadow: var(--lg-rim-strong), var(--lg-shadow);
+}
+/* The glass edge: the chat's gradient rim */
+#call-bar .call-panel::after, #call-bar .call-error::after, #call-bar .call-pop::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(150deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, .07) 28%, rgba(255, 255, 255, .02) 55%, rgba(255, 255, 255, .1));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+
+#call-bar .call-panel {
+  display: flex; flex-direction: column; gap: 10px; width: 100%;
+  padding: 12px; border-radius: 20px; container-type: inline-size;
+}
+
+/* The tail: points down at Qubi (only above him, and only when the panel could sit above him) */
+#call-bar .call-tail {
+  display: none; position: absolute; bottom: -6px; left: var(--tail-x, 50%); width: 12px; height: 12px;
+  transform: translateX(-50%) rotate(45deg); border-radius: 0 0 3px 0;
+  background: #121212; box-shadow: 1px 1px 0 rgba(255, 255, 255, .07);
+  pointer-events: none;
+}
+#call-bar[data-place="anchor"][data-tail="on"] .call-tail { display: block; }
+
+/* Face, title and wave */
+#call-bar .call-head { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; }
+
+/* Qubi's face: two eyes that blink and a mouth that opens with his voice (--talk 0..1 from the view) */
+#call-bar .call-face {
+  position: relative; flex: none; width: 36px; height: 36px; border-radius: 12px;
+  background: linear-gradient(180deg, #2b2e34, #17191d); box-shadow: var(--lg-rim);
+}
+#call-bar .call-eye {
+  position: absolute; top: 12px; width: 6px; height: 8px; border-radius: 3px; background: #eef4ff;
+  box-shadow: 0 0 6px rgba(200, 225, 255, .45);
+  animation: call-blink 4.2s infinite;
+}
+#call-bar .call-eye:first-child { left: 10px; }
+#call-bar .call-eye:nth-child(2) { right: 10px; animation-delay: .04s; }
+#call-bar .call-mouth {
+  position: absolute; left: 50%; bottom: 8px; width: 10px; border-radius: 3px;
+  height: calc(2px + var(--talk, 0) * 6px); transform: translateX(-50%);
+  background: rgba(238, 244, 255, .85); transition: height .08s linear;
+}
+@keyframes call-blink { 0%, 95%, 100% { transform: scaleY(1); } 97% { transform: scaleY(.12); } }
+
+#call-bar .call-info { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+#call-bar .call-title-row { display: flex; align-items: center; gap: 8px; min-width: 0; }
+/* the timer never gets cut: the tag gives way first */
+#call-bar .call-title {
+  flex: none; white-space: nowrap;
+  font: 600 14px/1.3 var(--lg-font); font-variant-numeric: tabular-nums; color: var(--lg-text);
+}
+/* On a call: a small green dot before «En vivo» */
+#call-bar[data-status="live"] .call-title::before {
+  content: ""; display: inline-block; width: 7px; height: 7px; margin: 0 7px 1px 0; border-radius: 50%; vertical-align: middle;
+  background: var(--ok, #3ddc97); box-shadow: 0 0 0 3px rgba(61, 220, 151, .16);
+}
+#call-bar .call-tag {
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; padding: 1px 7px; border-radius: 999px;
+  font: 500 10.5px/1.4 var(--lg-font); color: var(--lg-muted); background: var(--lg-chip); white-space: nowrap;
+}
+#call-bar .call-status { font: 12px/1.35 var(--lg-font); color: var(--lg-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* The wave: fixed size; must beat `#stage canvas { width: 100% !important }` (the 3D canvas rule) */
+#stage #call-bar canvas.call-wave {
+  position: static; inset: auto; z-index: auto; flex: none;
+  width: 64px !important; height: 28px !important;
+}
+@container (max-width: 270px) { #stage #call-bar canvas.call-wave { display: none; } }
+
+/* What Qubi said last: two lines at most (the whole conversation is in the chat card) */
+/* What was said: the call's log, scrollable, newest at the bottom */
+#call-bar .call-line {
+  display: flex; flex-direction: column; gap: 6px; max-height: 168px; overflow-y: auto; overscroll-behavior: contain;
+  margin: 0; padding: 8px 10px; border-radius: 12px; background: rgba(255, 255, 255, .045);
+  color: var(--lg-text-2); font: 13px/1.4 var(--lg-font); overflow-wrap: anywhere;
+}
+#call-bar .call-line[hidden] { display: none; }
+#call-bar .call-line-row { margin: 0; }
+#call-bar .call-line-row b { margin-right: 6px; font-weight: 600; color: var(--lg-muted); }
+#call-bar .call-line-row.qubi b { color: var(--lg-text); }
+#call-bar .call-min { width: 28px; height: 28px; flex: none; }
+
+
+/* A permission Qubi asks for */
+#call-bar .call-perm {
+  display: flex; flex-direction: column; gap: 8px; padding: 10px; border-radius: 14px;
+  background: rgba(255, 255, 255, .08); box-shadow: var(--lg-rim);
+}
+#call-bar .call-perm-text { margin: 0; font: 500 13px/1.4 var(--lg-font); color: var(--lg-text); overflow-wrap: anywhere; }
+#call-bar .call-perm-actions { display: flex; gap: 6px; }
+#call-bar .call-perm-btn {
+  flex: 1; height: 32px; padding: 0 12px; border: 0; border-radius: 999px; cursor: pointer;
+  font: 600 13px/1 var(--lg-font); color: var(--lg-text); background: var(--lg-chip); box-shadow: var(--lg-rim);
+  transition: background .2s var(--lg-ease);
+}
+#call-bar .call-perm-btn:hover { background: var(--lg-chip-hover); }
+#call-bar .call-perm-btn.allow { color: #121212; background: rgba(255, 255, 255, .92); }
+#call-bar .call-perm-btn.allow:hover { background: #fff; }
+#call-bar .call-perm-btn:focus-visible { outline: 2px solid rgba(255, 255, 255, .55); outline-offset: 2px; }
+#call-bar .call-perm-always { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 12px; color: var(--lg-text-2); }
+#call-bar .call-perm-always input { width: 14px; height: 14px; margin: 0; accent-color: #ededed; }
+#call-bar .call-perm-hint { font-size: 11px; color: var(--lg-muted); }
+
+/* ---------- Round buttons ---------- */
+#call-bar .call-actions { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
+#call-bar .call-actions-side { display: flex; align-items: center; gap: 4px; }
+#call-bar .call-btn {
+  flex: none; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%;
+  display: grid; place-items: center; cursor: pointer;
+  color: var(--lg-icon); background: var(--lg-chip); box-shadow: var(--lg-rim);
+  transition: background .2s var(--lg-ease), color .2s var(--lg-ease), transform .2s var(--lg-ease);
+}
+#call-bar .call-btn svg { width: 18px; height: 18px; }
+#call-bar .call-btn:hover { background: var(--lg-chip-hover); }
+#call-bar .call-btn:active { background: var(--lg-chip-press); transform: scale(.94); }
+#call-bar .call-btn:focus-visible { outline: 2px solid rgba(255, 255, 255, .55); outline-offset: 2px; }
+#call-bar .call-btn:disabled { cursor: default; opacity: .4; transform: none; }
+#call-bar .call-btn.active { background: var(--lg-chip-hover); }
+/* Muted: the mic turns light so it is clear at a glance that Qubi does not hear you */
+#call-bar .call-mic[aria-pressed="true"] { color: #121212; background: rgba(255, 255, 255, .88); }
+/* Hang up: the only red, a little wider so it is found at once */
+#call-bar .call-end { width: 48px; border-radius: 999px; }
+#call-bar .call-end, #call-bar .call-close { color: #fff; background: #e5484d; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25); }
+#call-bar .call-end:hover, #call-bar .call-close:hover { background: #f2555a; }
+
+/* ---------- Settings popover: above the panel, below it near the top of the map ---------- */
+#call-bar .call-pop {
+  position: absolute; right: 0; bottom: calc(100% + 10px); width: 264px; max-width: 100%; z-index: 1;
+  display: flex; flex-direction: column; gap: 12px; padding: 14px;
+  border-radius: var(--lg-r-block);
+}
+#call-bar .call-pop.below { bottom: auto; top: calc(100% + 10px); }
+#call-bar .call-pop-title { font: 600 13px/1.3 var(--lg-font); color: var(--lg-text); }
+#call-bar .call-pop-row, #call-bar .call-pop-field { display: flex; flex-direction: column; gap: 4px; }
+#call-bar .call-pop-label { font: 11px/1.3 var(--lg-font); color: var(--lg-muted); }
+#call-bar .call-pop-value { font: 500 13px/1.3 var(--lg-font); color: var(--lg-text); }
+#call-bar .call-pop-hint { font: 11px/1.35 var(--lg-font); color: var(--lg-muted); }
+#call-bar .call-pop-select {
+  height: 32px; padding: 0 10px; border: 0; border-radius: 10px;
+  font: 13px var(--lg-font); color: var(--lg-text); background: var(--lg-chip); box-shadow: var(--lg-rim);
+  color-scheme: dark; cursor: pointer;
+}
+#call-bar .call-pop-select:disabled { opacity: .5; cursor: default; }
+#call-bar .call-pop-select:focus-visible, #call-bar .call-pop-link:focus-visible { outline: 2px solid rgba(255, 255, 255, .55); outline-offset: 2px; }
+#call-bar .call-pop-link {
+  align-self: flex-start; padding: 0; border: 0; background: none; cursor: pointer;
+  font: 500 13px/1.3 var(--lg-font); color: var(--lg-text); text-decoration: underline; text-underline-offset: 3px;
+  text-decoration-color: rgba(255, 255, 255, .35);
+}
+#call-bar .call-pop-link:disabled { opacity: .45; cursor: default; }
+#call-bar .call-pop-check { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--lg-text-2); }
+#call-bar .call-pop-check input { width: 15px; height: 15px; margin: 0; accent-color: #ededed; }
+
+/* ---------- Errors: the reason, try again, close ---------- */
+#call-bar .call-error { display: flex; align-items: center; gap: 8px; padding: 8px 8px 8px 14px; border-radius: 20px; }
+#call-bar .call-error-text { flex: 1; min-width: 0; color: var(--lg-text-2); font-size: 13px; }
+
+/* ---------- The phone in the chat header ---------- */
+#chat .chat-call svg { fill: none; stroke: currentColor; }
+#chat .chat-call.active { color: var(--ok, #3ddc97); background: rgba(61, 220, 151, .1); box-shadow: var(--lg-rim); }
+
+/* ---------- The call card in the chat ---------- */
+#chat .card-badge.call { display: grid; place-items: center; color: var(--lg-icon); background: var(--lg-chip); }
+#chat .card-badge.call.live, #chat .card-badge.call.connecting { color: var(--ok, #3ddc97); background: rgba(61, 220, 151, .1); }
+#chat .msg.card-msg.call .card-title { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+#chat .call-sim-tag {
+  align-self: flex-start; flex: none; padding: 3px 9px; border-radius: 999px;
+  font: 500 11px/1.4 var(--lg-font); color: var(--lg-muted); background: var(--lg-chip); box-shadow: var(--lg-rim);
+}
+#chat .call-lines {
+  display: flex; flex-direction: column; gap: 6px; margin: 12px 0 0; padding: 10px 12px;
+  border-radius: var(--lg-r-block); background: var(--lg-stage); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .03);
+}
+#chat .call-line { margin: 0; color: var(--lg-text-2); font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; }
+#chat .call-line b { margin-right: 6px; font-weight: 600; color: var(--lg-muted); }
+#chat .call-line.qubi b { color: var(--lg-text); }
+#chat .call-task {
+  display: flex; flex-direction: column; gap: 2px; margin-top: 10px; padding: 10px 12px;
+  border-radius: var(--lg-r-block); background: var(--lg-chip); box-shadow: var(--lg-rim);
+}
+#chat .call-task-kind { color: var(--lg-muted); font: 11px/1.3 var(--lg-font); }
+#chat .call-task-pedido { margin: 0; color: var(--lg-text); font-size: 13px; overflow-wrap: anywhere; }
+#chat .call-task-state { color: var(--lg-muted); font-size: 12px; }
+#chat .call-task.error .call-task-state { color: var(--danger, #ff5a6a); }
+
+/* ---------- Qubi's team card in the chat (chatCardsView.js teamCard) ----------
+   Compact rows on the card's stage block; status and audit as small pills. Color only for the verdict:
+   approved green, "Revisar" amber, a failed run red (the traffic-light tokens from chat.css). */
+#chat .card-badge.team { display: grid; place-items: center; color: var(--lg-icon); background: var(--lg-chip); }
+#chat .card-badge.team[data-phase="done"] { color: var(--ok, #3ddc97); background: var(--tint-ok, rgba(61, 220, 151, .1)); }
+#chat .msg.card-msg.team .card-title { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+#chat .team-workers {
+  display: flex; flex-direction: column; gap: 2px; margin: 12px 0 0; padding: 4px; list-style: none;
+  border-radius: var(--lg-r-block); background: var(--lg-stage); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .03);
+}
+#chat .team-worker { display: flex; align-items: flex-start; gap: 10px; padding: 8px; border-radius: var(--lg-r-sm); }
+#chat .team-worker + .team-worker { box-shadow: inset 0 1px 0 var(--lg-line); }
+#chat .team-num {
+  flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+  font: 600 11.5px/1 var(--lg-font); font-variant-numeric: tabular-nums;
+  color: var(--lg-text); background: var(--lg-chip); box-shadow: var(--lg-rim);
+}
+#chat .team-main { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+#chat .team-top { display: flex; align-items: baseline; gap: 8px; min-width: 0; }
+#chat .team-title { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 13px/1.35 var(--lg-font); color: var(--lg-text); }
+#chat .msg code.team-folder {
+  flex: 0 1 auto; min-width: 0; margin-left: auto; padding: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  background: none; box-shadow: none; color: var(--lg-muted); font: 11px/1.35 var(--lg-mono);
+}
+#chat .team-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; color: var(--lg-muted); font: 12px/1.3 var(--lg-font); }
+#chat .team-status, #chat .team-audit {
+  display: inline-flex; align-items: center; gap: 6px; min-height: 22px; box-sizing: border-box; padding: 1px 9px;
+  border-radius: 999px; background: rgba(255, 255, 255, .055); box-shadow: var(--lg-rim);
+}
+/* an orb inside a pill: the pill hugs it on the left */
+#chat .team-status:has(canvas.orb), #chat .team-audit:has(canvas.orb) { padding-left: 2px; }
+#chat .team-status canvas.orb, #chat .team-audit canvas.orb { flex: none; }
+#chat .team-worker[data-status="working"] .team-status, #chat .team-worker[data-status="waiting"] .team-status { color: var(--lg-text); }
+#chat .team-worker[data-status="waiting"] .team-status { color: var(--warn, #ffc24a); }
+#chat .team-worker[data-status="failed"] .team-status { color: var(--danger, #ff5a6a); background: var(--tint-danger, rgba(255, 90, 106, .1)); }
+#chat .team-worker[data-status="cancelled"] .team-status, #chat .team-worker[data-status="queued"] .team-status { color: var(--lg-faint); }
+#chat .team-audit svg { width: 13px; height: 13px; }
+#chat .team-audit[data-audit="approved"] { color: var(--ok, #3ddc97); background: var(--tint-ok, rgba(61, 220, 151, .1)); }
+#chat .team-audit[data-audit="flagged"] { color: var(--warn, #ffc24a); background: var(--tint-warn, rgba(255, 194, 74, .1)); }
+#chat .team-audit[data-audit="checking"] { color: var(--lg-text); }
+#chat .team-note { margin: 0; color: var(--lg-text-2); font-size: 12px; line-height: 1.45; overflow-wrap: anywhere; }
+#chat .team-worker[data-audit="flagged"] .team-note { color: #ffd98a; }
+#chat .team-worker[data-status="failed"] .team-note { color: #ffb3bb; }
+
+@media (prefers-reduced-motion: reduce) {
+  #stage #call-bar, #stage #call-bar:not([data-place="anchor"]) { transition: none; }
+  #stage #call-bar:not([data-place="anchor"]) { transform: translate(-50%, 0); }
+  #call-bar .call-btn, #call-bar .call-perm-btn, #call-bar .call-mouth { transition: none; }
+  #call-bar .call-btn:active { transform: none; }
+  #call-bar .call-eye { animation: none; }
+}
+
+/* ---------- Voice connection modal (views/ui/voiceConnectView.js) ----------
+   «Qubi está fuera de conexión»: a dark glass dialog over a dimmed app. Cards: sign in (recommended, on
+   top), the two keys side by side, the simulated call. Green only for «Conectado». */
+.voice-connect {
+  position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 16px;
+  font: 13px/1.45 var(--lg-font); color: var(--lg-text); -webkit-font-smoothing: antialiased;
+}
+.voice-connect[hidden], .voice-connect [hidden] { display: none !important; }
+.voice-connect .vc-backdrop {
+  position: absolute; inset: 0; background: rgba(0, 0, 0, .55); opacity: 0;
+  transition: opacity .18s var(--lg-ease);
+}
+.voice-connect .vc-dialog {
+  position: relative; box-sizing: border-box; width: min(640px, 100%); max-height: calc(100vh - 32px); overflow: auto;
+  display: flex; flex-direction: column; gap: 14px; padding: 22px;
+  border-radius: var(--lg-r-panel); background: rgba(20, 20, 20, .97);
+  box-shadow: var(--lg-rim-strong), 0 24px 80px rgba(0, 0, 0, .55);
+  opacity: 0; transform: translateY(8px) scale(.985);
+  transition: opacity .2s var(--lg-ease), transform .28s var(--lg-ease);
+  outline: none;
+}
+.voice-connect.in .vc-backdrop { opacity: 1; }
+.voice-connect.in .vc-dialog { opacity: 1; transform: none; }
+
+.voice-connect .vc-head { display: flex; align-items: center; gap: 12px; }
+.voice-connect .vc-mark {
+  flex: none; width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center;
+  color: var(--lg-icon); background: var(--lg-chip); box-shadow: var(--lg-rim);
+}
+.voice-connect[data-ready="true"] .vc-mark { color: var(--ok, #3ddc97); background: var(--tint-ok, rgba(61, 220, 151, .1)); }
+.voice-connect .vc-title { flex: 1; min-width: 0; margin: 0; font: 600 17px/1.3 var(--lg-font); letter-spacing: -.01em; }
+.voice-connect .vc-intro { margin: -4px 0 0; color: var(--lg-text-2); }
+
+/* Buttons */
+.voice-connect button { font: inherit; cursor: pointer; }
+.voice-connect button:disabled { cursor: default; opacity: .45; }
+.voice-connect button:focus-visible, .voice-connect .vc-input:focus-visible { outline: 2px solid rgba(255, 255, 255, .55); outline-offset: 2px; }
+.voice-connect .vc-close {
+  flex: none; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 50%; display: grid; place-items: center;
+  color: var(--lg-icon); background: var(--lg-chip); box-shadow: var(--lg-rim);
+}
+.voice-connect .vc-close:hover { background: var(--lg-chip-hover); }
+.voice-connect .vc-primary, .voice-connect .vc-secondary {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px; height: 36px; padding: 0 16px;
+  border: 0; border-radius: 999px; font-weight: 600; white-space: nowrap;
+  transition: background .2s var(--lg-ease);
+}
+.voice-connect .vc-primary { color: #121212; background: rgba(255, 255, 255, .92); }
+.voice-connect .vc-primary:hover:not(:disabled) { background: #fff; }
+.voice-connect .vc-secondary { color: var(--lg-text); background: var(--lg-chip); box-shadow: var(--lg-rim); }
+.voice-connect .vc-secondary:hover:not(:disabled) { background: var(--lg-chip-hover); }
+.voice-connect .vc-primary svg, .voice-connect .vc-secondary svg { width: 16px; height: 16px; }
+.voice-connect .vc-call { width: 100%; height: 40px; }
+.voice-connect .vc-link, .voice-connect .vc-text-btn {
+  display: inline-flex; align-items: center; gap: 6px; align-self: flex-start; padding: 0; border: 0; background: none;
+  color: var(--lg-muted); font-size: 12px;
+}
+.voice-connect .vc-link:hover:not(:disabled), .voice-connect .vc-text-btn:hover:not(:disabled) { color: var(--lg-text); }
+.voice-connect .vc-link svg { width: 14px; height: 14px; }
+.voice-connect .vc-text-btn { text-decoration: underline; text-underline-offset: 3px; text-decoration-color: rgba(255, 255, 255, .25); }
+
+/* Cards */
+.voice-connect .vc-cards { display: flex; flex-direction: column; gap: 12px; }
+.voice-connect .vc-keys { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 620px) { .voice-connect .vc-keys { grid-template-columns: 1fr; } }
+.voice-connect .vc-card {
+  display: flex; flex-direction: column; gap: 10px; min-width: 0; padding: 14px;
+  border-radius: 18px; background: var(--lg-card); box-shadow: var(--lg-rim);
+}
+.voice-connect .vc-login { background: rgba(255, 255, 255, .075); }
+.voice-connect .vc-card-head { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 10px; }
+.voice-connect .vc-card-icon {
+  flex: none; width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center;
+  color: var(--lg-icon); background: var(--lg-chip); box-shadow: var(--lg-rim);
+}
+.voice-connect .vc-card-title { margin: 0; font: 600 14px/1.3 var(--lg-font); }
+.voice-connect .vc-chip {
+  padding: 2px 8px; border-radius: 999px; font: 500 11px/1.4 var(--lg-font);
+  color: var(--lg-text); background: rgba(255, 255, 255, .12);
+}
+.voice-connect .vc-state { display: flex; align-items: center; gap: 10px; margin-left: auto; font-size: 12px; color: var(--lg-muted); }
+.voice-connect .vc-state[data-ready="true"] .vc-state-text { color: var(--ok, #3ddc97); }
+.voice-connect .vc-state[data-ready="true"] .vc-state-text::before {
+  content: ""; display: inline-block; width: 6px; height: 6px; margin: 0 6px 1px 0; border-radius: 50%; background: currentColor; vertical-align: middle;
+}
+.voice-connect .vc-desc { margin: 0; color: var(--lg-text-2); }
+.voice-connect .vc-note { margin: 0; font-size: 12px; color: var(--lg-muted); }
+.voice-connect .vc-row { display: flex; align-items: center; gap: 10px; }
+.voice-connect .vc-wait-text { flex: 1; min-width: 0; color: var(--lg-text-2); }
+.voice-connect .vc-wait canvas.orb { flex: none; }
+
+/* Key fields: a password field, never shown again once saved */
+.voice-connect .vc-form { display: flex; flex-direction: column; gap: 6px; margin: 0; }
+.voice-connect .vc-label { font-size: 12px; color: var(--lg-muted); }
+.voice-connect .vc-key-row { gap: 8px; }
+.voice-connect .vc-input {
+  flex: 1; min-width: 0; height: 34px; box-sizing: border-box; padding: 0 12px;
+  border: 1px solid var(--lg-line); border-radius: 10px; background: rgba(0, 0, 0, .3);
+  font: 12px var(--lg-mono); color: var(--lg-text);
+}
+.voice-connect .vc-input::placeholder { font-family: var(--lg-font); color: var(--lg-faint); }
+.voice-connect .vc-input:disabled { opacity: .5; }
+.voice-connect .vc-save { height: 34px; padding: 0 14px; }
+
+/* Messages under a card */
+.voice-connect .vc-msg { margin: 0; font-size: 12px; color: var(--lg-text-2); }
+.voice-connect .vc-msg[data-kind="ok"] { color: var(--ok, #3ddc97); }
+.voice-connect .vc-msg[data-kind="warn"] { color: var(--warn, #ffc24a); }
+.voice-connect .vc-msg[data-kind="error"] { color: var(--danger, #ff5a6a); }
+
+/* The simulated call: one row on a wide screen */
+.voice-connect .vc-sim { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; }
+.voice-connect .vc-sim .vc-card-head { grid-column: 1; }
+.voice-connect .vc-sim .vc-desc { grid-column: 1; }
+.voice-connect .vc-sim > .vc-secondary { grid-column: 2; grid-row: 1 / span 2; }
+@media (max-width: 520px) {
+  .voice-connect .vc-sim { display: flex; }
+  .voice-connect .vc-sim > .vc-secondary { align-self: flex-start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-connect .vc-backdrop, .voice-connect .vc-dialog { transition: none; }
+  .voice-connect .vc-dialog { transform: none; }
+}

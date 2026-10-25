@@ -1,12 +1,13 @@
 import './setup.mjs';
 import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
+import { strings } from '../../renderer/i18n/es.js';
 import { RepairViewModel } from '../../renderer/viewmodels/repairViewModel.js';
 import { RepairHistoryModel } from '../../renderer/models/repairHistoryModel.js';
 import { SecurityModel } from '../../renderer/models/securityModel.js';
 import { createEventBus, EVENTS } from '../../renderer/core/eventBus.js';
 
-function setup({ live = false, answer = { text: '- Paso uno\n- Paso dos' }, writes = [], scores = [], hold = false } = {}) {
+function setup({ live = false, answer = { text: '- Paso uno\n- Paso dos' }, writes = [], scores = [], hold = false, audit = null } = {}) {
   const security = new SecurityModel();
   const history = new RepairHistoryModel();
   history.load(`p-${Math.random()}`);
@@ -20,7 +21,7 @@ function setup({ live = false, answer = { text: '- Paso uno\n- Paso dos' }, writ
     store: { state: { agents: [{ id: 'claude', label: 'Claude' }], selected: live ? 'claude' : null } },
     // hold: the run stays open until the test calls asks[i].finish()
     ask: (_p, _s, { signal, onStart } = {}) => new Promise((resolve) => {
-      const entry = { signal, finish: () => resolve(answer), aborted: false };
+      const entry = { prompt: _p, signal, finish: () => resolve(answer), aborted: false };
       asks.push(entry);
       signal?.addEventListener('abort', () => { entry.aborted = true; resolve({ text: '', error: 'cancelled' }); });
       onStart?.(String(asks.length));
@@ -33,7 +34,7 @@ function setup({ live = false, answer = { text: '- Paso uno\n- Paso dos' }, writ
     securityModel: security,
     mapViewModel: { locateFile: () => ({ folder: 'electron', x: 0, z: 0, height: 1, radius: 2.5 }) },
     cameraViewModel: { azimuth: 0, flyTo() {} },
-    connection, history, agentService, bus,
+    connection, history, agentService, bus, audit: audit?.(security),
   });
   const events = [];
   for (const name of ['repairStarted', 'repairFinished', 'repairChanged']) bus.on(EVENTS[name], (p) => events.push([name, p]));
@@ -123,12 +124,26 @@ test('a change made outside this job (chat, editor) is not credited to the repai
   mock.timers.enable({ apis: ['setTimeout'] });
   try {
     const { vm, history, change } = setup({ live: true, hold: true });
-    change({ path: 'other.js', reason: 'from the chat', backup: { id: 'z' }, at: 'before' }); // before Remi starts
+    change({ path: 'other.js', reason: 'from the chat', backup: { id: 'z' }, at: 'before' }); // before Qubi starts
     vm.start('a.js');
     await runAll();
     const [entry] = history.store.state.entries;
     assert.equal(entry.status, 'working'); // still waiting for the agent
     assert.equal(vm.store.state.job.step, 2);
+  } finally { mock.timers.reset(); }
+});
+
+test("a write of Qubi's team while a repair runs is not credited to the repair", async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const team = { path: 'apps/web/index.html', reason: 'parte 1', created: true, backup: { id: 'w' }, at: 'w', worker: 'w1-abcd12' };
+    const { vm, history, events } = setup({ live: true, writes: [team] });
+    vm.start('electron/main.js');
+    await runAll();
+    const [entry] = history.store.state.entries;
+    assert.notEqual(entry.status, 'fixed');
+    assert.deepEqual(entry.changes ?? [], []);
+    assert.ok(!events.some(([name]) => name === 'repairChanged'));
   } finally { mock.timers.reset(); }
 });
 
@@ -205,4 +220,87 @@ test('a repair cancelled midway says so (repairFinished, failed), so the chat ca
     assert.equal(finished.length, 1);
     assert.equal(finished[0][1].entry.status, 'failed');
   } finally { mock.timers.reset(); }
+});
+
+// A stand-in for AuditViewModel: each audit applies the next state of the disk to the security model
+function fakeAudit(states) {
+  return (security) => {
+    const calls = [];
+    const apply = (cause) => {
+      const files = states.length > 1 ? states.shift() : states[0];
+      security.applyAudit({ at: 'now', files, score: 100 - Object.values(files).filter((f) => f.level === 'red').length * 15, counts: {}, history: [] });
+      calls.push(cause);
+    };
+    apply('open');
+    return { available: true, calls, auditNow: async (cause) => apply(cause), check: async (_p, cause) => apply(cause) };
+  };
+}
+const SQL = { level: 'red', findings: [{ rule: 'sqlInjection', level: 'red', line: 12 }] };
+const CLEAN = { level: 'green', findings: [] };
+
+test('with the audit: the agent is told the rule and line, and only a new audit says it is fixed', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const change = { path: 'api/orders.ts', reason: 'Usa parámetros', created: false, backup: { id: 'b1', root: '/p' }, at: 't1' };
+    const t = setup({ live: true, writes: [change], audit: fakeAudit([{ 'api/orders.ts': SQL }, { 'api/orders.ts': CLEAN }]) });
+    t.vm.start('api/orders.ts');
+    await runAll();
+    const [entry] = t.history.store.state.entries;
+    assert.equal(entry.status, 'verified', 'the audit found nothing: verified, no extra click');
+    assert.equal(entry.verifiedBy, 'audit');
+    assert.equal(entry.audit.score, 100);
+    assert.equal(t.vm.store.state.job.outcome, 'fixed');
+    assert.equal(t.security.scoreOf('api/orders.ts').level, 'green');
+    assert.match(t.asks[0].prompt, /Línea 12: sqlInjection/, 'the agent fixes exactly what the audit found');
+  } finally { mock.timers.reset(); }
+});
+
+test('with the audit: a change that does not remove the finding is "partial", and stays red', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const change = { path: 'api/orders.ts', reason: 'Comentario', created: false, backup: { id: 'b1', root: '/p' }, at: 't1' };
+    const t = setup({ live: true, writes: [change], scores: [['api/orders.ts', 'green', 'Ya está bien']], audit: fakeAudit([{ 'api/orders.ts': SQL }]) });
+    t.vm.start('api/orders.ts');
+    await runAll();
+    const [entry] = t.history.store.state.entries;
+    assert.equal(t.vm.store.state.job.outcome, 'partial');
+    assert.equal(entry.status, 'fixed');
+    assert.match(entry.stillRisky, /^Línea 12:/);
+    assert.equal(t.security.scoreOf('api/orders.ts').level, 'red', 'the agent saying green does not hide it');
+    assert.equal(await t.vm.markFixed(entry.id), false, '"Volver a auditar" while it is still there');
+    assert.equal(t.history.get(entry.id).status, 'fixed');
+  } finally { mock.timers.reset(); }
+});
+
+test('with the audit: the person applies the plan; "Ya lo apliqué" audits and verifies', async () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const t = setup({ audit: fakeAudit([{ Dockerfile: { level: 'yellow', findings: [{ rule: 'dockerRoot', level: 'yellow', line: 1 }] } }, { Dockerfile: { level: 'yellow', findings: [{ rule: 'dockerRoot', level: 'yellow', line: 1 }] } }, { Dockerfile: CLEAN }]) });
+    t.vm.start('Dockerfile');
+    await runAll();
+    const [entry] = t.history.store.state.entries;
+    assert.equal(entry.status, 'planned');
+    assert.deepEqual(entry.plan, ['Añadir un usuario sin permisos de administrador (USER node)', 'Volver a auditar'], 'the plan of the rule the audit found');
+    assert.equal(await t.vm.markFixed(entry.id), true);
+    assert.equal(t.history.get(entry.id).status, 'verified');
+  } finally { mock.timers.reset(); }
+});
+
+test('repairGuide: Qubi walks, looks, thinks, works on the exact file and shows what was found', async () => {
+  const { repairGuide } = await import('../../renderer/viewmodels/repairViewModel.js');
+  const job = { path: 'apps/api/src/routes/orders.ts', reason: 'Línea 12: consulta SQL insegura', source: 'agent', agentLabel: 'Claude', step: 0, outcome: null, hammering: false };
+  const walk = repairGuide(job);
+  assert.deepEqual([walk.pose, walk.look, walk.gesture], ['idle', 'center', null]);
+  assert.equal(walk.title, `${strings.repair.name} · orders.ts`);
+  assert.match(walk.text, /Línea 12: consulta SQL insegura/);
+  assert.ok(repairGuide(job, { tech: true }).title.endsWith('apps/api/src/routes/orders.ts'));
+  assert.equal(repairGuide({ ...job, step: 1 }).pose, 'scan');
+  assert.equal(repairGuide({ ...job, step: 2 }).gesture, 'pensar');
+  assert.match(repairGuide({ ...job, step: 2 }).text, /Claude está reparando/);
+  assert.equal(repairGuide({ ...job, step: 3, hammering: true }).pose, 'drop');
+  const done = repairGuide({ ...job, step: 4, outcome: 'fixed' });
+  assert.deepEqual([done.pose, done.look, done.gesture], ['wave', 'camera', 'celebrar']);
+  const partial = repairGuide({ ...job, step: 4, outcome: 'partial', stillRisky: 'Línea 12: consulta SQL insegura' });
+  assert.equal(partial.gesture, 'encoger');
+  assert.match(partial.text, /sigue el riesgo\. Línea 12/);
 });

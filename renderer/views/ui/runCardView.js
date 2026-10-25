@@ -1,5 +1,5 @@
 // A live "run" card for an answer of the user's own agent: header (agent, model, effort, timer), the
-// steps it takes (Platanus tools and subagents, nested, each with its status and time), its reasoning
+// steps it takes (Qubbot tools and subagents, nested, each with its status and time), its reasoning
 // folded, the answer as Markdown, and time/turns/tokens at the end.
 // Rebuilt on every update, but what the person opened or closed stays as it was.
 // Modo Vibe (`plain`) tells the same run in plain words instead: what it is doing now, what it did
@@ -47,7 +47,7 @@ export function delayedOrb(state, startedAt, size = 20, key = '') {
 const sweepOrbs = () => { for (const [key, canvas] of liveOrbs) if (!canvas.isConnected) liveOrbs.delete(key); };
 
 // Which activity the agent is doing in this message: a STEP_ORB key (its orb state and its label in
-// strings.chat.orbLabels). Run cards, activity rows (Remi, tools) or an answer being written.
+// strings.chat.orbLabels). Run cards, activity rows (Qubi, tools) or an answer being written.
 export function orbKeyOf(message) {
   if (message?.run?.awaiting) return 'approval';
   if (message?.step?.status === 'running') return message.step.tool ?? 'repair';
@@ -279,7 +279,7 @@ function renderPlainRunCard(el0, message) {
 // The icon that closes a repair, by its outcome
 export const RESULT_ICON = { fixed: 'ok', planned: 'step', failed: 'danger', verified: 'shieldOk', clear: 'shieldOk' };
 
-// A repair (Remi + the agent) as one card, like a run: what it is doing now, its steps folded into a
+// A repair (Qubi + the agent) as one card, like a run: what it is doing now, its steps folded into a
 // recap when it ends, the agent's explanation and the result at the foot
 function renderRepairCard(el0, message) {
   const { run, text } = message;

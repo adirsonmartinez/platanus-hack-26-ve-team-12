@@ -12,7 +12,8 @@ export function createSupabaseView({ sceneView, labels, supabaseViewModel, supab
   node.group.rotation.y = INTEGRATIONS.rotation;
   sceneView.layers.map.add(node.group);
 
-  const schema = buildSchema(sceneView.renderer, supabaseModel.tables, integrationToWorld(node.trunkStart), integrationToWorld(SCHEMA_CENTER));
+  // the example tables only in the web demo: on the desktop Qubbot has not read the project's database
+  const schema = buildSchema(sceneView.renderer, supabaseViewModel.store.state.demo ? supabaseModel.tables : [], integrationToWorld(node.trunkStart), integrationToWorld(SCHEMA_CENTER));
   sceneView.layers.map.add(schema.group);
 
   const label = labels.add({
@@ -28,8 +29,8 @@ export function createSupabaseView({ sceneView, labels, supabaseViewModel, supab
     node.group.visible = state.visible;
     label.el.hidden = !state.visible;
     label.el.classList.toggle('vuln', state.vulnerable);
-    labelText.textContent = state.vulnerable ? strings.supabase.vulnerable : strings.supabase.connected;
-    labelStatus.textContent = state.vulnerable ? strings.supabase.critical : strings.supabase.latency(state.latencyMs);
+    labelText.textContent = state.vulnerable ? strings.supabase.vulnerable : state.demo ? strings.supabase.connected : strings.supabase.state[state.status] ?? strings.supabase.state.unknown;
+    labelStatus.textContent = state.vulnerable ? strings.supabase.critical : state.latencyMs == null ? '' : strings.supabase.latency(state.latencyMs);
     if (!previous || state.vulnerable !== previous.vulnerable) node.setVulnerable(state.vulnerable);
     if (!previous || state.tables !== previous.tables) schema.setTables(state.tables);
     if (!previous || state.schemaOpen !== previous.schemaOpen) schema.setOpen(state.schemaOpen);

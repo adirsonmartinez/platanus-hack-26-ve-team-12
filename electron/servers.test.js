@@ -37,7 +37,7 @@ Conexiones activas
 const TASKLIST = [
   '"System Idle Process","0","Services","0","8 K"',
   '"node.exe","4120","Console","1","80.120 K"',
-  '"Platanus.exe","2200","Console","1","120.000 K"',
+  '"Qubbot.exe","2200","Console","1","120.000 K"',
   '"node.exe","5150","Console","1","60.000 K"',
 ].join('\r\n');
 
@@ -63,7 +63,7 @@ test('B1: netstat keeps only listening TCP sockets, whatever the language', () =
 test('B1: tasklist gives the process name of each pid', () => {
   const names = parseTasklist(TASKLIST);
   assert.equal(names.get(4120), 'node.exe');
-  assert.equal(names.get(2200), 'Platanus.exe');
+  assert.equal(names.get(2200), 'Qubbot.exe');
   assert.equal(names.get(9999), undefined);
 });
 
@@ -94,7 +94,7 @@ test('B16: a paused process is marked as paused in the list', () => {
   assert.equal(servers.find((s) => s.port === 5173).paused, false);
 });
 
-test('B19: a server started by Platanus is marked as managed', () => {
+test('B19: a server started by Qubbot is marked as managed', () => {
   const servers = toServers(parseLsof(LSOF), new Set(), new Set([501]));
   assert.equal(servers.find((s) => s.port === 5173).managed, true);
   assert.equal(servers.find((s) => s.port === 8000).managed, false);
@@ -131,7 +131,7 @@ test('B1: on Windows it joins netstat with the process names from tasklist', asy
   assert.deepEqual(servers, [
     { port: 3000, process: 'node.exe', address: '0.0.0.0', exposed: true, paused: false, managed: false },
     { port: 5173, process: 'node.exe', address: '::1', exposed: false, paused: false, managed: false },
-    { port: 7811, process: 'Platanus.exe', address: '127.0.0.1', exposed: false, paused: false, managed: false },
+    { port: 7811, process: 'Qubbot.exe', address: '127.0.0.1', exposed: false, paused: false, managed: false },
   ]);
 });
 
@@ -276,7 +276,7 @@ test('B13: if the person says no, nothing is stopped', async () => {
   assert.deepEqual(deps.calls.kill, []);
 });
 
-test('B14: Platanus itself and system processes are never stopped', async () => {
+test('B14: Qubbot itself and system processes are never stopped', async () => {
   for (const pid of [9999, 0, 1, 4]) {
     const deps = stopDeps({ entries: [{ pid, process: 'x', address: '127.0.0.1', port: 7811 }] });
     await assert.rejects(stopServer(7811, deps), { code: 'protected' }, String(pid));
@@ -337,7 +337,7 @@ test('B16: pausing freezes every process on that port and remembers it; no dialo
   assert.deepEqual(result, { port: 8000, processes: ['Python'] });
 });
 
-test('B16: Platanus, system processes, unknown ports and refused signals are not paused', async () => {
+test('B16: Qubbot, system processes, unknown ports and refused signals are not paused', async () => {
   for (const pid of [9999, 0, 1, 4]) {
     const deps = pauseDeps({ entries: [{ pid, process: 'x', address: '127.0.0.1', port: 7811 }] });
     await assert.rejects(pauseServer(7811, deps), { code: 'protected' });
@@ -350,11 +350,11 @@ test('B16: Platanus, system processes, unknown ports and refused signals are not
   assert.equal(refused.paused.size, 0);
 });
 
-test('B17: resuming continues only the processes Platanus paused on that port', async () => {
+test('B17: resuming continues only the processes Qubbot paused on that port', async () => {
   const paused = new Map([[502, { port: 8000 }]]);
   const deps = pauseDeps({ entries: [PY_8000, { pid: 600, process: 'node', address: '*', port: 8000 }], paused });
   await resumeServer(8000, deps);
-  assert.deepEqual(deps.calls.signal, [[502, 'resume']]); // 600 was never paused by Platanus
+  assert.deepEqual(deps.calls.signal, [[502, 'resume']]); // 600 was never paused by Qubbot
   assert.equal(paused.size, 0);
   await assert.rejects(resumeServer(8000, deps), { code: 'notPaused' });
 });
@@ -370,7 +370,7 @@ test('B13/B16: stopping a paused process also lets it continue, so the stop sign
   assert.deepEqual(plain, [[600, 'SIGTERM']]);
 });
 
-// --- Stop and reactivate inside Platanus (macOS): no Terminal window, the server runs as a child of the app ---
+// --- Stop and reactivate inside Qubbot (macOS): no Terminal window, the server runs as a child of the app ---
 
 test('B18: before stopping, the command and folder are read so the server can be reactivated', async () => {
   const order = [];
@@ -470,7 +470,7 @@ test('B19: a managed server that dies on its own is reported with its code; a fa
   assert.match(exits[1].output, /ENOENT/);
 });
 
-test('B19: when Platanus quits, every server it started is stopped', () => {
+test('B19: when Qubbot quits, every server it started is stopped', () => {
   const { spawn } = fakeSpawn();
   const sent = [];
   const managed = createManagedServers({ spawn, onExit: () => {} });
@@ -513,7 +513,7 @@ function restartDeps({ answer = true, entry, busy = false } = {}) {
   };
 }
 
-test('B18: reactivating asks first, then starts it inside Platanus; the row waits as "starting"', async () => {
+test('B18: reactivating asks first, then starts it inside Qubbot; the row waits as "starting"', async () => {
   const deps = restartDeps();
   const result = await restartServer('b000000000000001', deps);
   assert.equal(deps.calls.confirm[0].command, 'python3 -m http.server 8000');

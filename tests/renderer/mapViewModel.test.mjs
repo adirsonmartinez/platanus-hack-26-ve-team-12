@@ -287,7 +287,7 @@ test('integrations sit in the band, in a row to the right of Supabase', () => {
   const { state, projectModel } = setup();
   projectModel.store.set({ integrations: ['supabase', 'vercel', 'github', 'clerk', 'posthog'], usesSupabase: true, integrationStatus: { clerk: 'incident' } });
   const { integrations, band } = state();
-  assert.deepEqual(integrations.map((i) => i.status), ['connected', 'connected', 'incident', 'connected']);
+  assert.deepEqual(integrations.map((i) => i.status), ['unknown', 'unknown', 'incident', 'unknown'], 'never "connected" without a check');
   assert.deepEqual(integrations.map((i) => i.key), ['vercel', 'github', 'clerk', 'posthog']); // Supabase draws itself
   const c = screenOf(band.x, band.z);
   integrations.forEach((i) => {
@@ -405,4 +405,12 @@ test('clicking the live Supabase node opens its panel (an integration pick), not
   projectModel.store.set({ integrations: ['supabase'], usesSupabase: true, integrationStatus: { supabase: 'connected' } });
   vm.handlePick({ type: 'supabase' });
   assert.deepEqual(events.filter(([name]) => name === 'integrationPicked').at(-1), ['integrationPicked', { key: 'supabase', status: 'connected' }]);
+});
+
+test('locating a file that does not fit on the map points at its folder, never at the plaza', () => {
+  const { vm, state } = setup([dir('big', Array.from({ length: 60 }, (_, i) => file(`big/f${String(i).padStart(2, '0')}.js`)))]);
+  const spot = vm.locateFile('big/f59.js');
+  assert.equal(state().opened.files.some((f) => f.path === 'big/f59.js'), false, 'only the first 48 are drawn');
+  assert.deepEqual([spot.x, spot.z], [state().opened.x, state().opened.z]);
+  assert.notDeepEqual([spot.x, spot.z], [0, 0]);
 });

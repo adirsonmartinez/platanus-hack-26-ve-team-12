@@ -1,4 +1,4 @@
-# Platanus — conventions
+# Qubbot — conventions
 
 Visual IDE for Platanus Hack 26 (AI Security track): the project is an isometric map, files get a security traffic light, and an AI agent creates and fixes code with user approval for risky actions.
 
@@ -28,7 +28,9 @@ renderer/
   services/       bridges to Electron (no logic): workspaceService (disk), agentService (agents + MCP),
                   mcpBridge (answers the MCP tools that need the window), serverService (listening servers),
                   handTrackingService (camera -> up to two hands' landmarks with MediaPipe, local model in assets/hands/;
-                  GPU or CPU, one hand when the CPU is too slow)
+                  GPU or CPU, one hand when the CPU is too slow),
+                  voiceService (Qubi's call: ElevenLabs / Grok credentials, providers, sign-in, keys; never a key back),
+                  runService (the project's own dev/start script, by id; docs/features/llamada/)
   models/         data and rules; no DOM, no three.js, no UI state
     projectModel (tree + detected integrations), fileTree, securityModel (traffic light), supabaseModel, demoProject,
     demoIntegrations (demo projects shown as connected to every integration)
@@ -41,37 +43,44 @@ renderer/
     repairHistoryModel (task list of repairs, per project, in localStorage),
     answerFormat (the agent's ```sugerencias block -> next steps),
     serversModel (servers listening on this computer: exposed = yellow), demoServers (web demo),
-    handGesture (pinch -> drag; two pinches, one holding and the other moving: up/down -> zoom, sideways -> turn;
-    open hand -> cursor; holding still -> select;
-    thresholds relative to the hand's size, with hysteresis)
+    handGesture (pinch -> drag; two pinches, one holding and the other moving: up/down -> zoom; thumb + middle
+    finger moving sideways -> turn; open hand -> cursor; holding still or a quick pinch -> select;
+    thresholds relative to the hand's size, with hysteresis; One Euro filter in oneEuroFilter.js),
+    callSession / grokSession (the call's voice session: ElevenLabs SDK or Grok's realtime socket; simulated),
+    projectMemoryModel (what Qubi remembers of each project)
   viewmodels/     screen state + actions; no DOM, no three.js (layout.js = world geometry)
     camera, map (the whole project; problems glow), supabase, git (branches), app (which 3D view),
     shell (sidebar, stage tabs, explorer guide/tree, risks), chat,
     database (the Supabase side panel: connection and numbers from fixed read-only queries), connect ("Conectar mi cuenta" modal),
-    repair (Remi's job: walk, agent repair, outcome, queue), servers (polls every 3 s while its side view is open),
-    handControl (camera on/off, pinch and move pans the map; one hand holds and the other moves: up or down zooms
-    around the holding hand, sideways turns; an open hand moves a cursor that selects by holding still ~800 ms; fps; spec/003),
+    repair (Qubi's job: walk, agent repair, outcome, queue), servers (polls every 3 s while its side view is open),
+    handControl (camera on/off, pinch and move pans the map; two hands, one holding and the other moving up or down,
+    zoom around the holding hand; thumb + middle finger moved sideways turns; an open hand moves a cursor that selects
+    by holding still ~800 ms or with a quick pinch; fps; spec/003),
     tour ("Recorrido": analyze, play the stops, agent narration; tourPlaces = where each stop is),
     robot (the map's robot companion: grab, drag or throw it onto a folder, it asks what to do there),
     build (building live: the robot carries each file an agent saves to its folder),
-    editor (files clicked on the map as tabs: edit, save with the read mtime, disk changes reload or mark stale)
-  views/scene/    three.js: sceneView, mapView, gitView, supabaseView, remiView, robotView (tour guide, builder and
+    editor (files clicked on the map as tabs: edit, save with the read mtime, disk changes reload or mark stale),
+    call (the voice call with Qubi: ring, permissions, ir_a / volver, settings; docs/features/llamada/),
+    team (Qubi's workers and their audit), services (the project's external services and the connect modal;
+    docs/features/servicios/)
+  views/scene/    three.js: sceneView, mapView, gitView, supabaseView, qubiView, robotView (tour guide, builder and
                   companion, on guideRobot), welcomeRobotView (the welcome interview's robot and bubble), tourView (tour ghost places and ring), buildSiteView
-                  (folders being built), inputController,
-                  builders/ (block, glassFolder, folderIcon, fileIcon, plaza, folder, git, schema, supabase, integration, remi, remiModelLoader, robot)
+                  (folders being built), teamView (the workers' mini robots), inputController,
+                  builders/ (block, glassFolder, folderIcon, fileIcon, plaza, folder, git, schema, supabase, integration, qubi, qubiModelLoader, robot)
   views/ui/       HTML: shell, chat (+ runCard: live agent runs, markdown: safe Markdown with answer cards and
                   file links, chatCards: folder / file cards), icons (DOM helper over views/icons.js), thinkingOrb
                   (libraries.dev orbs over the package engine), agentPicker
                   (+ effortSlider), chatMenu, agentConnect, devTree, hoverCard, hud,
-                  repairPanel, remiJump, editor (floating file editor with tabs, CodeMirror with syntax colors; secrets open flagged), panels (breadcrumb, schema, git), controls, handControl (hand button + camera preview + "?" with the gestures),
+                  callBar (the call panel above Qubi) + ringTone, voiceConnect (voice connection modal), serviceConnect,
+                  repairPanel, qubiJump, editor (floating file editor with tabs, CodeMirror with syntax colors; secrets open flagged), panels (breadcrumb, schema, git), controls, handControl (hand button + camera preview + "?" with the gestures),
                   handCursor (white cursor + hold-still ring; holding still or a quick pinch selects like a click), handTargets (what the cursor may
                   select: 3D picks, and in panels anything clickable except data-gesture="never"), labels
                   floating layout: iconBar (reorderable icons), draggable (the file editor by
                   header), chatDock (pinned chat column),
                   floatingMenu (⋯ menus: one layer above the app, anchored to its button, flips up, keyboard)
   views/icons.js  icon('name') / <i data-icon> from icons/hugeicons.js (generated, see Visual style)
-  views/remiSprite.js  Remi's pixel art (card and jump)
-  assets/remi/    optional 3D model for Remi (see its README for source and license)
+  views/qubiSprite.js  Qubi's pixel art (card and jump)
+  assets/qubi/    optional 3D model for Qubi (see its README for source and license)
   styles/         main.css (scene overlays, dark tokens), shell.css (glass IDE; floating layout at the end),
                   sidebar.css (motion), devtree.css, agents.css, chat.css (answer cards, chips, orbs, beam),
                   chat-glass.css (the chat's neutral liquid glass, `--lg-*` tokens), start.css (start screen in that glass),
@@ -85,7 +94,7 @@ electron/
   git.js          read-only git history (execFile, no shell)
   servers.js      list of listening TCP servers (lsof on macOS, netstat + tasklist on Windows; execFile, absolute
                   paths, no shell); open http://localhost:<port> in the default, an installed (by id) or a picked
-                  browser; stop a server (pid found from the port, native confirmation, re-checked, never Platanus
+                  browser; stop a server (pid found from the port, native confirmation, re-checked, never Qubbot
                   or system pids); pause / resume (SIGSTOP/SIGCONT, Windows NtSuspendProcess; all resumed on quit);
                   reactivate a server it stopped inside the app (asks first; login shell runs `exec "$@"` with the
                   words as arguments; no Terminal window; output kept in main; "starting" until the port listens;
@@ -95,7 +104,7 @@ electron/
                   registration, loopback 127.0.0.1:45789); fixed calls; supabaseLink.js (pure, tested) writes .env.local;
                   secretStore.js keeps the tokens encrypted (safeStorage). trust.js: trusted folders (see Agents)
   mcpServer.js    local MCP server (127.0.0.1, rejects browser Origin), tool list, secret blocklist
-  agents.js       the user's CLIs (Claude Code, Grok, Codex) with minimal context and only Platanus' tools
+  agents.js       the user's CLIs (Claude Code, Grok, Codex) with minimal context and only Qubbot' tools
   agentEvents.js  CLI output -> chat events (text, reasoning, tools, subagents, result); tested
   agentVoice.js   the chat agent's system prompt from agent/ (Vibe / Dev, adapts to how the person writes); tested
 agent/            voice.json + skills/modo-vibe, skills/modo-dev (see agent/README.md)
@@ -108,7 +117,7 @@ spec/             feature specs (TEMPLATE.md, 001-running-servers.md, 003-hand-g
 docs/             one README per feature (docs/features/<name>/README.md, in Spanish) and an index (docs/README.md)
 ```
 
-- **Models** expose an `Observable` `store` and methods. Example: `securityModel.scoreOf(path)` -> `{ level, reason | reasonKey, by: 'demo' | 'agent' | 'remi' }`.
+- **Models** expose an `Observable` `store` and methods. Example: `securityModel.scoreOf(path)` -> `{ level, reason | reasonKey, by: 'demo' | 'agent' | 'qubi' }`.
 - **ViewModels** subscribe to models, expose their own `store` and actions (`mapViewModel.enterFolder(path)`, `gitViewModel.focusLane(name)`, `repairViewModel.start(path)`). They talk to each other through the event bus (`core/eventBus.js`, names in `EVENTS`).
 - **Views** subscribe to ViewModels and draw; user input only calls ViewModel actions. Clickable 3D objects carry `userData.pick = { type, ...ids }` and `MapViewModel.handlePick()` routes them.
 - Change state only through `store.set(patch)`. Bump `version` when a view has to rebuild.
@@ -120,10 +129,10 @@ docs/             one README per feature (docs/features/<name>/README.md, in Spa
 - The agent only acts through the local MCP tools. `platanus_write_file` asks per the permission mode (`electron/approval.js`: manual, auto, bypass) unless the open folder is trusted (`electron/trust.js`, like VS Code: asked in a native dialog each time a project is created or opened, the list lives in main as `userData/trusted-folders.json`, the window can only ask; `models/trustModel.js` mirrors it, the chat ⋯ menu can revoke it), and always backs up the previous version to `~/.platanus/backups/` (undo from the repair history). Secrets (`.env*`, keys, `.git/`, `.ssh/`, `.npmrc`…) are refused on the normalized and the real path.
 - A tour run (session `tour`) gets the read-only MCP address (`/mcp/<token>/ro`: only get_project, list_risks, read_file); the window also stops it if it tries to write. Its answer only narrates the analyzer's facts (`tourSpec.parseTour` keeps known stop ids and real, non-secret paths).
 - Grok runs with its terminal, edit and media tools removed (`--disallowed-tools`); Claude with `--tools ""`; Codex read-only, without the user's config and with its shell, browser, computer use, plugins and subagents disabled (`CODEX_DISABLED`). Do not loosen these flags.
-- The window only gets the camera (video only, never the microphone) and clipboard writes, and only for the app's page (`allowPermission` in `electron/main.js`); every other permission is denied. Hand tracking runs locally (`docs/features/hand-gestures/`).
+- The window only gets the camera, the microphone and clipboard writes, and only for the app's page (`allowPermission` in `electron/main.js`); every other permission is denied. The microphone is allowed only during a call with Qubi (right after a successful `voice:start`, ElevenLabs or Grok; `docs/features/llamada/`); voice keys stay in main (`electron/keyStore.js`, `electron/voiceCall.js`), the window only sees their last 4 characters. Hand tracking runs locally (`docs/features/hand-gestures/`).
 - "Conectar mi cuenta" (Supabase) is done by the main process, never by an agent: the window only sends the picked organization or project id (checked against what Supabase listed), main asks in a native dialog, and the public key goes straight to `.env.local` (never the `service_role`, never to the window). See `docs/features/connect-accounts/`.
 - Hand gestures select anything clickable in panels (`handTargets.js`), except what carries `data-gesture="never"` and everything inside it. Mark `never` on every action that runs without a confirmation dialog and changes code or security: repair, verify / mark fixed, undo an agent change, the approval mode, server actions (and `#server-menu`), the hand button. Actions that open a native `confirm()` (commit, revert, reset, switch, agent writes) are safe because, while a dialog is open, `electron/main.js` sends `dialog:state` and the hand selects nothing.
-- Remi never edits files himself; a repair ends as `planned` (plan only), `fixed` (agent changed files, yellow until the person verifies), `verified` or `failed`.
+- Qubi never edits files himself; a repair ends as `planned` (plan only), `fixed` (agent changed files, yellow until the person verifies), `verified` or `failed`.
 
 ## Visual style ("digital twin", dark)
 
@@ -136,7 +145,7 @@ docs/             one README per feature (docs/features/<name>/README.md, in Spa
 
 ## Map navigation
 
-The map shows the whole project as a tree that, from the default camera (`CAMERA.azimuth` 0, elevation 44°; the git view keeps its own diagonal angle), unfolds down and to the right (laid out in tree terms, `u` across and `v` down, with `toWorld` / `screenOf` and `treeBlock` in `layout.js`). At the top, a darker band holds the integrations (only when the project has any; with none there is no band and the trunk starts at the project's root): Supabase (its builders work along +x and are turned up the screen by `INTEGRATIONS.rotation`; its road drops straight onto the trunk) and, in a row to its right, Vercel, GitHub, Clerk and PostHog (`integrationBuilder.js`). `ProjectModel` detects them from the files (`vercel.json`, `.github/`, package.json dependencies); `models/demoIntegrations.js` gives a demo project ("Platanus") all five, as if it were connected. Each one has a state (`integrationStatus`): connected (green dot), with an incident (amber), disconnected (red) or pending ("por conectar": set up by the welcome robot and waiting for the person's account, `models/setupModel.js`; a hollow white dot, see-through still emblem, dashed outline, no lit way, never glows; a pending Supabase is drawn in the row, without the live schema); detected ones are connected. Each live one, Supabase included, lights its way to the folders over the roads (`integrationLines`: down to the integrations' road, along it, down the trunk), green (`glowLines.ok` in materials.js: unlit, so it glows the same from every angle) when connected and amber with an incident; a shared stretch is green if any integration on it is connected. No packets or other motion on these ways. A disconnected one stays dark: no lit line, no spin, light off. Below it (the root has no platform and no name card: one trunk runs from the integrations' road down to the first row of folders; the project's name is in the title bar), rows (8 per row, then wrapping) with every top-level folder (frosted glass folders, `glassFolderBuilder.js`: a dark back with its tab, white sheets peeking out, more sheets for more files, and a frosted front panel that shows them blurred), linked by comb-shaped roads, and, right after the last folder in the same rows, the root files as file icons as tall as the folders (`rootFiles`, up to 48, then "+N"). In an open branch, files likewise follow the subfolders. Safe things stay silver and calm; problems glow amber or red and come first (folders worst first, files riskiest first). Every file has a small label under its icon with its name and extension. Map labels carry no colored dot (the icon's color and the risk line say the level). Folder labels are always short: the folder's own name and its risk line. A project just created and still empty (`MapViewModel.welcome`) has a robot on its plaza that asks about the person's experience ("Ya programo": it steps aside, the chat opens in Dev), shows beginners technology cards with logos (`models/stackCatalog.js`: Next.js, Vercel, Supabase, with rules), hands the agent a base project and then coaches them while the project grows (`robotDialogViewModel.js` + `welcomeRobotView.js`; texts in `es.js` → `map.welcome`; see `docs/features/welcome-robot/`). Clicking a folder unfolds its direct subfolders and files (the same size as the top-level row, at every depth) in a block right below it (up to 48, then "+N"); the rows of top-level folders under it move down to make room (they slide there) and the block stays right of the rows' spine; clicking one of those subfolders unfolds one more level further down. One path at a time: opening another folder folds the rest, and clicking an open folder again closes it (with everything open inside it). Esc goes up one level; the breadcrumb jumps to any level. "Centrar vista" (map controls) flies back to the initial view (`MapViewModel.home()`: default angle, integrations down to the top-level rows), leaving folders open. A fixed file turns silver and stays. `MapViewModel.path` is the open folder at any depth (`''` = none); `branches` holds one block per level of the open path (`opened` is the last one), `links` the roads and `band` the integrations band. `BUILDING_STYLE` in `mapView.js` switches the folders between frosted glass folders (`glass`, the default), cubes as tall as their file count (`blocks`), isometric folders and buildings. The robot has more jobs on the map (one robot, in this order): the tour ("Recorrido", `docs/features/recorrido/README.md`) walks it stop by stop; building live (`buildViewModel.js`, `docs/features/robot/README.md`) has it carry each file an agent saves to its folder as a sheet; while the welcome robot's dialog is on, it steps aside (and the welcome robot steps aside during a tour or a build, so there is one robot at a time); otherwise it waits as a companion that the person drags or throws onto a folder (`robotViewModel.js`; `grabber` in `inputController.js`), which makes it ask in the chat what to do there. A folder the map does not show yet (just created by the agent) gets a temporary ghost place in a row under the tree (`ghostSlots` in `layout.js`), dashed and never glowing, gone when the tour or the work ends.
+The map shows the whole project as a tree that, from the default camera (`CAMERA.azimuth` 0, elevation 44°; the git view keeps its own diagonal angle), unfolds down and to the right (laid out in tree terms, `u` across and `v` down, with `toWorld` / `screenOf` and `treeBlock` in `layout.js`). At the top, a darker band holds the integrations (only when the project has any; with none there is no band and the trunk starts at the project's root): Supabase (its builders work along +x and are turned up the screen by `INTEGRATIONS.rotation`; its road drops straight onto the trunk) and, in a row to its right, Vercel, GitHub, Clerk and PostHog (`integrationBuilder.js`). `ProjectModel` gets them from main on the desktop (which services the project uses and whether the agent can use each one, `docs/features/servicios/`), or from the files (`vercel.json`, `.github/`, package.json dependencies); in the web version `models/demoIntegrations.js` gives a demo project ("Qubbot") all five, as if it were connected. Each one has a state (`integrationStatus`): connected (green dot), with an incident (amber), disconnected (red), could not be checked (`unknown`, drawn as disconnected) or pending ("por conectar": set up by the welcome robot and waiting for the person's account, `models/setupModel.js`; a hollow white dot, see-through still emblem, dashed outline, no lit way, never glows; a pending Supabase is drawn in the row, without the live schema); detected ones are connected. Each live one, Supabase included, lights its way to the folders over the roads (`integrationLines`: down to the integrations' road, along it, down the trunk), green (`glowLines.ok` in materials.js: unlit, so it glows the same from every angle) when connected and amber with an incident; a shared stretch is green if any integration on it is connected. No packets or other motion on these ways. A disconnected one stays dark: no lit line, no spin, light off. Below it (the root has no platform and no name card: one trunk runs from the integrations' road down to the first row of folders; the project's name is in the title bar), rows (8 per row, then wrapping) with every top-level folder (frosted glass folders, `glassFolderBuilder.js`: a dark back with its tab, white sheets peeking out, more sheets for more files, and a frosted front panel that shows them blurred), linked by comb-shaped roads, and, right after the last folder in the same rows, the root files as file icons as tall as the folders (`rootFiles`, up to 48, then "+N"). In an open branch, files likewise follow the subfolders. Safe things stay silver and calm; problems glow amber or red and come first (folders worst first, files riskiest first). Every file has a small label under its icon with its name and extension. Map labels carry no colored dot (the icon's color and the risk line say the level). Folder labels are always short: the folder's own name and its risk line. A project just created and still empty (`MapViewModel.welcome`) has a robot on its plaza that asks about the person's experience ("Ya programo": it steps aside, the chat opens in Dev), shows beginners technology cards with logos (`models/stackCatalog.js`: Next.js, Vercel, Supabase, with rules), hands the agent a base project and then coaches them while the project grows (`robotDialogViewModel.js` + `welcomeRobotView.js`; texts in `es.js` → `map.welcome`; see `docs/features/welcome-robot/`). Clicking a folder unfolds its direct subfolders and files (the same size as the top-level row, at every depth) in a block right below it (up to 48, then "+N"); the rows of top-level folders under it move down to make room (they slide there) and the block stays right of the rows' spine; clicking one of those subfolders unfolds one more level further down. One path at a time: opening another folder folds the rest, and clicking an open folder again closes it (with everything open inside it). Esc goes up one level; the breadcrumb jumps to any level. "Centrar vista" (map controls) flies back to the initial view (`MapViewModel.home()`: default angle, integrations down to the top-level rows), leaving folders open. A fixed file turns silver and stays. `MapViewModel.path` is the open folder at any depth (`''` = none); `branches` holds one block per level of the open path (`opened` is the last one), `links` the roads and `band` the integrations band. `BUILDING_STYLE` in `mapView.js` switches the folders between frosted glass folders (`glass`, the default), cubes as tall as their file count (`blocks`), isometric folders and buildings. The robot has more jobs on the map (one robot, in this order): the tour ("Recorrido", `docs/features/recorrido/README.md`) walks it stop by stop; building live (`buildViewModel.js`, `docs/features/robot/README.md`) has it carry each file an agent saves to its folder as a sheet; while the welcome robot's dialog is on, it steps aside (and the welcome robot steps aside during a tour or a build, so there is one robot at a time); otherwise it waits as a companion that the person drags or throws onto a folder (`robotViewModel.js`; `grabber` in `inputController.js`), which makes it ask in the chat what to do there. A folder the map does not show yet (just created by the agent) gets a temporary ghost place in a row under the tree (`ghostSlots` in `layout.js`), dashed and never glowing, gone when the tour or the work ends.
 
 ## Views
 

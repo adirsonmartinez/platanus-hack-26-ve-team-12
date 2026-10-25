@@ -1,7 +1,7 @@
 // What a chat answer carries besides its Markdown (the format is taught to the agent in agent/voice.json):
 // a ```sugerencias block at the end with the next steps the person can click.
 //   - una pregunta          -> { kind: 'ask', text }            (sent as a message)
-//   - reparar: ruta         -> { kind: 'repair', path, text }   (Remi + the agent repair it)
+//   - reparar: ruta         -> { kind: 'repair', path, text }   (Qubi + the agent repair it)
 //   - auditar: ruta         -> { kind: 'audit', path, text }    (the agent checks whether the risk is real)
 //   - ver: ruta / mapa: ruta -> { kind: 'locate', path, text }  (shows it on the map)
 //   - abrir: ruta           -> { kind: 'open', path, text }     (opens its card in the chat; a page can open in the browser)

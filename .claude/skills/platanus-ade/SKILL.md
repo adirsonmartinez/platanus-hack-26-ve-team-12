@@ -1,9 +1,9 @@
 ---
 name: platanus-ade
-description: How to work on Platanus (this repo), the visual ADE with a 3D security map and an agentic chat for non-developers. Use at the start of any task in this repo (read MEMORY.md first), when adding or changing a feature (chat, run cards, tour/"Recorrido", the map robot, agents and MCP tools, icons/logos), when checking a change in the real Electron app (CDP, simulator, demo mode), when recording or rendering the product video (scripts/demo, video/), and at the end of every task to update MEMORY.md and this skill with what was learned.
+description: How to work on Qubbot (this repo), the visual ADE with a 3D security map and an agentic chat for non-developers. Use at the start of any task in this repo (read MEMORY.md first), when adding or changing a feature (chat, run cards, tour/"Recorrido", the map robot, agents and MCP tools, icons/logos), when checking a change in the real Electron app (CDP, simulator, demo mode), when recording or rendering the product video (scripts/demo, video/), and at the end of every task to update MEMORY.md and this skill with what was learned.
 ---
 
-# Platanus ADE
+# Qubbot ADE
 
 `CLAUDE.md` has the stable rules (MVVM, strings in `es.js`, security). This skill covers how to work here and keeps the hard-won lessons. `MEMORY.md` (repo root) is the live state: branches, features, pending work.
 

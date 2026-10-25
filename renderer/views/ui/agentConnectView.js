@@ -4,6 +4,7 @@ import { strings } from '../../i18n/es.js';
 import { CATALOG, modelLabel } from '../../models/agentConnectionModel.js';
 import { mcpSnippet, maskUrl } from '../../models/mcpSnippets.js';
 import { thinkingOrb, STEP_ORB } from './thinkingOrb.js';
+import { icon } from '../icons.js';
 
 const C = strings.connect;
 const H = strings.hub;
@@ -33,74 +34,67 @@ const el = (tag, className, text) => {
   return node;
 };
 
-const brandColors = { claude: '#d97757', grok: '#e7e7ea', codex: '#10a37f' };
+// A row per agent: its real logo, its name, one status line and one action. Details (stats, last error,
+// path) stay in the tooltip and in Dev mode, so the list reads at a glance.
+const LOGOS = new Set(['claude', 'codex', 'grok', 'opencode', 'gemini', 'kimi', 'qwen']);
+const shortName = (label) => label.split(' (')[0];
+const button = (className, text, onClick) => {
+  const b = el('button', className, text);
+  b.type = 'button';
+  if (onClick) b.addEventListener('click', onClick);
+  return b;
+};
 
 export function createAgentConnectView({ container, connection, modeModel }) {
-  // One card per agent; agent = null is the scripted demo
-  function agentCard(agent, state) {
-    const selected = agent ? state.selected === agent.id : !state.selected;
-    const card = el('div', `hub-agent${selected ? ' hub-agent-selected' : ''}${agent ? '' : ' hub-agent-demo'}`);
-    const label = agent ? agent.label : C.scripted;
-    const avatar = el('div', 'hub-avatar', label.charAt(0).toUpperCase());
-    avatar.style.setProperty('--c', agent ? brandColors[agent.id] ?? '#8b83ff' : '#8b83ff');
-    card.appendChild(avatar);
+  function agentRow(agent, state) {
+    const selected = state.selected === agent.id;
+    const row = el('div', `hub-row${selected ? ' selected' : ''}${agent.loggedIn === false ? ' off' : ''}`);
+    const logo = el('span', 'hub-logo');
+    logo.innerHTML = icon(LOGOS.has(agent.id) ? agent.id : 'bot');
+    const info = el('div', 'hub-row-info');
+    const name = el('div', 'hub-row-name', shortName(agent.label));
+    const kind = agent.label.match(/\(([^)]+)\)/)?.[1];
+    if (kind) name.appendChild(el('span', 'hub-row-kind', kind));
+    const session = agent.loggedIn === true ? ['on', C.loggedIn] : agent.loggedIn === false ? ['off', C.loggedOut] : ['unknown', C.unknownLogin];
+    const meta = el('div', `hub-row-meta ${session[0]}`, selected ? H.current(modelLabel(agent.id, state.model) ?? C.planDefault, C.efforts[state.effort] ?? '') : session[1]);
+    info.append(name, meta);
+    // the rest, on hover: version, use and the last error
+    const stats = state.stats?.[agent.id];
+    row.title = [session[1], agent.version && H.version(agent.version), stats?.runs ? H.stats(stats) : H.never, stats?.lastError && `${H.lastError}: ${stats.lastError}`].filter(Boolean).join(' · ');
+    if (modeModel.tech && agent.path) info.appendChild(el('div', 'hub-row-dev', agent.path));
 
-    const info = el('div', 'hub-agent-info');
-    info.appendChild(el('div', 'hub-agent-name', label));
-    if (agent) {
-      const session = agent.loggedIn === true ? ['on', C.loggedIn] : agent.loggedIn === false ? ['off', C.loggedOut] : ['unknown', C.unknownLogin];
-      const status = el('span', `hub-status ${session[0]}`, session[1]);
-      if (agent.version) status.textContent += ` · ${H.version(agent.version)}`;
-      info.appendChild(status);
-      if (selected) info.appendChild(el('div', 'hub-current', H.current(modelLabel(agent.id, state.model) ?? C.planDefault, C.efforts[state.effort] ?? '')));
-      const stats = state.stats?.[agent.id];
-      info.appendChild(el('div', 'hub-stats', stats?.runs ? H.stats(stats) : H.never));
-      if (stats?.lastError) info.appendChild(el('div', 'hub-error', `${H.lastError}: ${stats.lastError}`));
-      if (modeModel.tech && agent.path) info.appendChild(el('div', 'hub-dev-row', `${H.path}: ${agent.path}`));
-    }
-    card.appendChild(info);
-
-    const actions = el('div', 'hub-actions');
-    const use = el('button', `hub-btn hub-btn-use${selected ? ' active' : ''}`, selected ? C.inUse : C.use);
-    use.type = 'button';
-    use.disabled = agent?.loggedIn === false;
-    use.addEventListener('click', () => connection.select(agent ? agent.id : null));
-    actions.appendChild(use);
-    if (agent?.loggedIn === false) {
-      const login = el('button', 'hub-btn hub-btn-login', C.login);
-      login.type = 'button';
-      login.addEventListener('click', () => connection.login(agent.id).then(() => setTimeout(() => connection.refresh(), 4000)));
-      actions.appendChild(login);
-    }
-    if (agent && agent.loggedIn !== false) {
+    const actions = el('div', 'hub-row-actions');
+    if (agent.loggedIn !== false) {
       const running = state.testing?.[agent.id] === 'running';
-      const test = el('button', `hub-btn hub-btn-test${running ? ' disabled' : ''}`, running ? null : H.test);
-      if (running) test.append(thinkingOrb(STEP_ORB.connect, { size: 20 }), document.createTextNode(H.testing)); // connecting to the agent
-      test.type = 'button';
-      test.disabled = running;
-      test.title = H.testHint;
-      test.addEventListener('click', () => connection.testAgent(agent.id, H.testPrompt));
-      actions.appendChild(test);
       const result = state.testResult?.[agent.id];
-      if (result && !running) {
-        const line = el('span', `hub-test-result ${state.testing[agent.id] === 'ok' ? 'hub-test-ok' : 'hub-test-error'}`,
-          state.testing[agent.id] === 'ok' ? H.testOk(result.ms) : H.testFailed);
-        if (result.error) line.title = result.error;
-        actions.appendChild(line);
-      }
+      const test = button(`hub-row-test${running ? ' running' : ''}`, null, () => connection.testAgent(agent.id, H.testPrompt));
+      if (running) test.appendChild(thinkingOrb(STEP_ORB.connect, { size: 20 }));
+      else test.textContent = result ? (state.testing[agent.id] === 'ok' ? H.testOk(result.ms) : H.testFailed) : H.test;
+      if (result && !running) test.classList.add(state.testing[agent.id] === 'ok' ? 'ok' : 'error');
+      test.disabled = running;
+      test.title = result?.error ?? H.testHint;
+      actions.appendChild(test);
     }
-    card.appendChild(actions);
-    return card;
+    if (agent.loggedIn === false) {
+      actions.appendChild(button('hub-row-main', C.login, () => connection.login(agent.id).then(() => setTimeout(() => connection.refresh(), 4000))));
+    } else {
+      const use = button(`hub-row-main${selected ? ' active' : ''}`, selected ? C.inUse : C.use, () => connection.select(agent.id));
+      use.setAttribute('aria-pressed', String(selected));
+      actions.appendChild(use);
+    }
+    row.append(logo, info, actions);
+    return row;
   }
 
   function agentsSection(state) {
     const parts = [el('p', 'hub-intro', C.intro)]; // the sidebar header already says "Conecta tu agente"
     if (!state.isDesktop) return [...parts, el('p', 'hub-empty', C.desktopOnly)];
-    const grid = el('div', 'hub-agents');
-    grid.appendChild(agentCard(null, state));
-    state.agents.forEach((a) => grid.appendChild(agentCard(a, state)));
-    if (!state.agents.length) grid.appendChild(el('p', 'hub-empty', C.none));
-    parts.push(el('h2', 'hub-section', H.agents), grid);
+    const list = el('div', 'hub-rows');
+    state.agents.forEach((a) => list.appendChild(agentRow(a, state)));
+    if (!state.agents.length) list.appendChild(el('p', 'hub-empty', C.none));
+    // the scripted demo: a quiet choice under the list, not a card like a real agent
+    const demo = button(`hub-demo${state.selected ? '' : ' active'}`, state.selected ? `${C.use}: ${C.scripted}` : `${C.inUse}: ${C.scripted}`, () => connection.select(null));
+    parts.push(el('h2', 'hub-section', H.agents), list, demo);
     return parts;
   }
 

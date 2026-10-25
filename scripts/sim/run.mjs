@@ -27,7 +27,7 @@ const SCENARIOS = [
   { name: 'cambio', title: 'Cambio aplicado en vivo (Dev, permisos en Auto)', send: '[sim:cambio] Actualiza la nota de prueba', fixture: true, mode: 'tech', approval: 'auto' },
   { name: 'largo', title: 'Respuesta larga con código', send: '[sim:largo] ¿Cómo agrego una lista de sitios permitidos?' },
   { name: 'caida', title: 'El agente se cae a mitad de camino', send: '[sim:caida] Revisa todo' },
-  { name: 'reparacion', title: 'Reparación con Remi (falsa alarma)', button: 'Reparar lo más grave' },
+  { name: 'reparacion', title: 'Reparación con Qubi (falsa alarma)', button: 'Reparar lo más grave' },
   { name: 'mejorar', title: 'Mejorar mi mensaje', improve: 'arregla vercel.json para que sea mas seguro' },
 ];
 

@@ -17,6 +17,7 @@ const MAX_THROW = 18;
 const MAX_REACH = 30;     // never lands farther than this from the plaza
 const FOLDER_REACH = FOLDER.platform / 2 + 2.2; // forgiving: near a folder counts as on it
 const R = strings.robot;
+export const SAY_MS = 20_000; // a line of the app (say) leaves the bubble by itself after this
 
 export class RobotViewModel {
   #project;
@@ -25,6 +26,7 @@ export class RobotViewModel {
   #build;
   #bus;
   #timer = null;
+  #sayTimer = null;
 
   // mode: 'idle' | 'held' | 'flying' | 'here' (landed on a place, asking)
   // flight: { from, to, ms } while flying; place: { path, kind, name, center } where it landed (center:
@@ -137,7 +139,22 @@ export class RobotViewModel {
 
   // The person answered (or moved on): the bubble goes, the robot stays where it is
   quiet() {
-    if (this.store.state.mode === 'here') this.store.set({ bubble: null });
+    if (this.store.state.mode === 'here' || this.store.state.bubble?.said) this.store.set({ bubble: null });
+  }
+
+  // A short line of the app in the robot's bubble, with buttons (servicesViewModel: «Este proyecto usa
+  // Stripe… ¿Lo conectamos?» + «Conectar»). Only while it waits: never over the question it asks where it
+  // landed, nor in the person's hand. It goes by itself after SAY_MS, or when a button is pressed.
+  // actions: [{ kind, label, run }] (the chat's chips shape)
+  say(text, actions = []) {
+    const said = String(text ?? '').trim();
+    if (!said || this.store.state.mode !== 'idle') return false;
+    clearTimeout(this.#sayTimer);
+    const buttons = (Array.isArray(actions) ? actions : []).filter((a) => a && typeof a.run === 'function' && a.label);
+    this.store.set({ bubble: { title: '', text: said, actions: buttons, said: true } });
+    this.#sayTimer = setTimeout(() => { if (this.store.state.bubble?.said) this.store.set({ bubble: null }); }, SAY_MS);
+    this.#sayTimer.unref?.(); // never keeps the test runner alive
+    return true;
   }
 
   #home() {

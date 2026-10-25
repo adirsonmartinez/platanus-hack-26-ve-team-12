@@ -18,7 +18,7 @@
 
 /* Brand: a white tile with a dark P, like the chat's white pill */
 #titlebar .brand { gap: 9px; }
-#titlebar .brand-mark { width: 24px; height: 24px; border-radius: 8px; background: #fff; color: #121212; font: 800 12px var(--lg-font); box-shadow: 0 1px 2px rgba(0, 0, 0, .3); }
+#titlebar .brand-mark { width: 24px; height: 24px; border-radius: 7px; object-fit: cover; box-shadow: 0 1px 2px rgba(0, 0, 0, .3); }
 #titlebar .brand-name { font: 600 13.5px var(--lg-font); letter-spacing: -.01em; color: var(--lg-text); }
 
 /* The open project: a glass pill; its dot keeps the traffic light */

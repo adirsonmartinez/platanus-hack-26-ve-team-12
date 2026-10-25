@@ -21,7 +21,7 @@ test('no path: the sentence still reads well; errors and helpers too', () => {
   assert.equal(stepLine(step({ status: 'running' })).text, 'Leyendo un archivo…');
   assert.equal(stepLine(step({ name: 'show_folder', target: '' })).text, 'Te mostré tu proyecto en el mapa');
   assert.equal(stepLine(step({ status: 'error', target: 'a.js' })).text, 'No pude terminar: leer a.js');
-  assert.equal(stepLine(step({ name: 'unknown_tool' })).text, 'Usé una herramienta de Platanus');
+  assert.equal(stepLine(step({ name: 'unknown_tool' })).text, 'Usé una herramienta de Qubbot');
   assert.equal(stepLine({ id: 'h', kind: 'subagent', description: 'Revisar pagos', status: 'running' }).text, 'Un ayudante: Revisar pagos');
 });
 
@@ -63,4 +63,11 @@ test('a new file is told as created, not as a fix; the recap counts both and sta
   assert.equal(runRecap([created, { ...created, target: 'src/a.js' }]), 'Creé 2 archivos');
   assert.equal(runRecap([created, edited]), 'Creé 1 archivo · guardé 1 arreglo');
   assert.equal(runRecap([edited]), 'Guardé 1 arreglo');
+});
+
+test('a command is told as itself (not as a file), and a deletion says there is a copy', () => {
+  const run = stepLine(step({ name: 'run_command', target: 'npm install @elevenlabs/cli', status: 'running' }));
+  assert.deepEqual([run.text, run.path], ['Ejecutando «npm install @elevenlabs/cli»…', '']);
+  assert.equal(stepLine(step({ name: 'run_command', target: 'npm test' })).text, 'Ejecuté «npm test»');
+  assert.equal(stepLine(step({ name: 'delete_file', target: 'src/old.js' })).text, 'Borré old.js (hay copia)');
 });

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // A simulated agent CLI for development: it speaks Claude Code's stream JSON (`-p … --output-format
-// stream-json --verbose`) and really calls the Platanus tools through the MCP server given in
+// stream-json --verbose`) and really calls the Qubbot tools through the MCP server given in
 // --mcp-config, so the whole chat runs as with a real agent (events, the map, approvals) without a
 // subscription. Scenarios: scripts/sim/scenarios.js. Started by electron/agents.js only when
 // PLATANUS_SIM=1 ("Simulador" in the agent picker). PLATANUS_SIM_SPEED: pause multiplier (0 = none).
@@ -21,7 +21,7 @@ try { mcpUrl = JSON.parse(fs.readFileSync(arg('--mcp-config'), 'utf8')).mcpServe
 let seq = 0;
 const nextId = (p) => `${p}_${Date.now().toString(36)}_${++seq}`;
 
-// One Platanus tool through the real MCP server -> { text, isError }
+// One Qubbot tool through the real MCP server -> { text, isError }
 async function callTool(name, input) {
   if (!mcpUrl) return { text: 'Sin servidor de herramientas', isError: true };
   const res = await fetch(mcpUrl, {
