@@ -1,4 +1,4 @@
-// The hand cursor (spec/003-hand-gestures.md): a purple dot that follows the hand over the whole window,
+// The hand cursor (spec/003-hand-gestures.md): a white dot that follows the hand over the whole window,
 // with a ring that fills while it holds still on something selectable. It never takes the mouse's place:
 // the layer lets every click through (pointer-events: none).
 // createHandTargets is the screen side the view model asks for (as `actions`): what is under a point,

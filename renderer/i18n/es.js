@@ -28,7 +28,7 @@ export const strings = {
     },
     // spec/003-hand-gestures.md: zoom with two hands, a cursor, selecting by holding still
     zoom: { zoom: 'Zoom: sube o baja la mano', zoomIn: 'Acercando', zoomOut: 'Alejando' },
-    pointing: 'Señalando: deja la mano quieta sobre algo para elegirlo',
+    pointing: 'Señalando: pellizca rápido o deja la mano quieta sobre algo para elegirlo',
     holding: 'Quieta… eligiendo',
     selected: (name) => `Seleccionado: ${name}`,
     waitRelease: 'Suelta la mano para volver a agarrar',
@@ -40,7 +40,7 @@ export const strings = {
       'Pellizca (pulgar e índice) y mueve la mano: mueves el mapa.',
       'Zoom: pellizca con las dos manos, deja una quieta y sube la otra para acercar o bájala para alejar.',
       'Girar: junta pulgar y dedo medio, y mueve la mano a la derecha o a la izquierda.',
-      'Mano abierta: aparece el cursor. Déjalo quieto ~1 segundo sobre algo para elegirlo.',
+      'Mano abierta: aparece el cursor. Para elegir algo, haz un pellizco rápido (pulgar e índice) o deja el cursor quieto ~1 segundo encima.',
       'Se puede elegir todo lo que se elige con un clic, salvo reparar, verificar, deshacer, los permisos del agente y los servidores.',
     ],
     errors: {

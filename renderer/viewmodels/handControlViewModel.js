@@ -24,6 +24,8 @@ const FPS_WINDOW_MS = 1000;
 const SECOND_HAND_GRACE_MS = 300;
 // During a two-hand gesture, a hand the tracker loses (or a pinch that opens) for less than this is a blink
 const TWO_KEEP_MS = 180;
+// A pinch released within this time, without dragging, clicks what was under the cursor (like a mouse click)
+export const TAP_MS = 300;
 // A pinch with one hand only drags: turning is the two-hand gesture now
 const onePinch = () => new PinchTracker({ rotate: false });
 
@@ -52,6 +54,8 @@ export class HandControlViewModel {
   #twoLostAt = null; // during a two-hand gesture: since when one hand is missing or open
   #cursorPalm = null;
   #target = null;
+  #lastCursor = null;
+  #tap = null; // while a single pinch could still be a click: { since, target, cursor, moved }
   #frames = [];
   #slowSince = null;
 
@@ -116,6 +120,8 @@ export class HandControlViewModel {
     this.#twoLostAt = null;
     this.#cursorPalm = null;
     this.#target = null;
+    this.#lastCursor = null;
+    this.#tap = null;
   }
 
   // hands: [landmarks, …] (or one hand's landmarks, or null: the older single-hand form)
@@ -134,6 +140,7 @@ export class HandControlViewModel {
     // Two hands pinching: one holds, the other moves (B5-B9). It wins over a drag the first hand had started
     if (twoHands && this.#pinched[0] && this.#pinched[1]) {
       this.#twoLostAt = null;
+      this.#tap = null; // two hands: not a click
       if (!this.#twoHand) {
         this.#twoHand = true;
         this.#tracker = onePinch(); // the drag stops here
@@ -172,6 +179,7 @@ export class HandControlViewModel {
     // Thumb + middle finger: that hand turns the map (moving sideways), with no drag or zoom
     const turning = this.#fingers.indexOf('middle');
     if (turning >= 0 && hands[turning]) {
+      this.#tap = null;
       if (!this.#turning) {
         this.#turning = true;
         this.#turn.reset();
@@ -192,6 +200,9 @@ export class HandControlViewModel {
     const grabbing = hands.length === 2 ? hands[this.#pinched[0] ? 0 : this.#pinched[1] ? 1 : hands.indexOf(cursorHand)] : hands[0] ?? null;
     const { pinching, mode, dx, dy } = this.#tracker.update(grabbing ?? null, now);
     if (pinching) {
+      // A pinch starts as a possible click on what the cursor was on; dragging makes it a grab
+      this.#tap ??= { since: now, target: this.#target, cursor: this.#lastCursor, moved: false };
+      if (mode) this.#tap.moved = true;
       // The other hand is in view and may pinch too: wait a moment before dragging (the moves of that
       // moment are not applied later, so nothing jumps)
       if (twoHands) this.#graceFrom ??= now;
@@ -202,6 +213,14 @@ export class HandControlViewModel {
       return this.#show({ hand: true, pinching: true, gesture: mode, cursor: null });
     }
     this.#graceFrom = null;
+    // Released quickly without dragging: a click
+    const tap = this.#tap;
+    this.#tap = null;
+    if (tap && !tap.moved && now - tap.since <= TAP_MS && tap.target?.selectable) {
+      this.#actions.select?.(tap.target);
+      if (tap.cursor) this.#dwell.markFired(tap.target.key, tap.cursor);
+      this.store.set({ selected: tap.target.label ?? null, selectedKey: tap.target.key });
+    }
     if (!cursorHand) return this.#show({ hand: false, pinching: false, gesture: null, cursor: null });
     this.#cursorPalm = palmOf(cursorHand);
     return this.#point(cursorHand, now);
@@ -210,6 +229,7 @@ export class HandControlViewModel {
   // The cursor and the hold-still selection (B10-B18)
   #point(landmarks, now) {
     const cursor = this.#pointer.update(landmarks, now);
+    this.#lastCursor = cursor;
     const target = this.#actions.targetAt?.(cursor.x, cursor.y) ?? null;
     if ((target?.key ?? null) !== (this.#target?.key ?? null)) this.#actions.hover?.(target, cursor.x, cursor.y);
     this.#target = target;

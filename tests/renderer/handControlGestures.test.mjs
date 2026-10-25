@@ -208,3 +208,41 @@ test('a hand lost for a frame or two (tracking blinks) does not end the gesture'
   for (let i = 7; i <= 12; i++) { now.t += 33; send(holdAndMove(0, -i * 0.02)); }
   assert.ok(camera.zoomGoal > before, 'and it goes on');
 });
+
+test('a quick pinch (and release) clicks what is under the cursor, once', async () => {
+  const { vm, calls, send, state, now } = setup();
+  await vm.toggle();
+  send([hand(0.5, 0.5, OPEN)]);
+  for (let i = 0; i < 3; i++) { now.t += 33; send([hand(0.5, 0.5, PINCHED)]); }
+  now.t += 33; send([hand(0.5, 0.5, OPEN)]);
+  assert.deepEqual(calls.selected, ['folder:src']);
+  assert.equal(state().selected, 'src');
+  // holding still afterwards does not click it again
+  for (let i = 0; i < 40; i++) { now.t += 33; send([hand(0.5, 0.5, OPEN)]); }
+  assert.deepEqual(calls.selected, ['folder:src']);
+});
+
+test('a long pinch or a pinch that drags is not a click', async () => {
+  const long = setup();
+  await long.vm.toggle();
+  long.send([hand(0.5, 0.5, OPEN)]);
+  for (let i = 0; i < 15; i++) { long.now.t += 33; long.send([hand(0.5, 0.5, PINCHED)]); } // ~0.5 s
+  long.now.t += 33; long.send([hand(0.5, 0.5, OPEN)]);
+  assert.deepEqual(long.calls.selected, []);
+
+  const drag = setup();
+  await drag.vm.toggle();
+  drag.send([hand(0.5, 0.5, OPEN)]);
+  for (let i = 1; i <= 6; i++) { drag.now.t += 33; drag.send([hand(0.5 - i * 0.03, 0.5, PINCHED)]); }
+  drag.now.t += 33; drag.send([hand(0.32, 0.5, OPEN)]);
+  assert.deepEqual(drag.calls.selected, []);
+});
+
+test('a quick pinch over something not selectable clicks nothing', async () => {
+  const { vm, calls, send, now } = setup({ target: { key: 'ui:repair', kind: 'ui', label: 'Reparar', selectable: false } });
+  await vm.toggle();
+  send([hand(0.5, 0.5, OPEN)]);
+  now.t += 33; send([hand(0.5, 0.5, PINCHED)]);
+  now.t += 33; send([hand(0.5, 0.5, OPEN)]);
+  assert.deepEqual(calls.selected, []);
+});

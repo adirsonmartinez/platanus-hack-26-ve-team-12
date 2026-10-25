@@ -277,6 +277,13 @@ export class DwellTimer {
     return { progress: 1, fire: true };
   }
 
+  // Something was selected another way (a quick pinch): it does not fire again until the cursor leaves it
+  markFired(key, point) {
+    this.#key = key;
+    this.#anchor = point;
+    this.#fired = true;
+  }
+
   reset() {
     this.#key = null;
     this.#anchor = null;

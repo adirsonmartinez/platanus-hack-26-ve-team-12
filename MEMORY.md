@@ -27,6 +27,7 @@ ADE de escritorio (Electron) para personas no técnicas: el proyecto se ve como 
 - **Esquema 3D de Supabase en el estilo nuevo:** tarjetas oscuras sin brillo (`CARD` en `schemaBuilder.js`, Inter/Roboto Mono, chips neutros, cuerpo `M.slab`, líneas `M.road`); solo RLS desactivado queda rojo. La tarjeta «esquema public» en vidrio (`database.css`). Siguen siendo las tablas de ejemplo, no las reales.
 - **Precisión de los gestos (2026-10-24):** filtro One Euro (`models/oneEuroFilter.js`, `HAND_FILTER`) en cursor, pellizco y dos manos; pellizco medido en 3D (`landmarks.world`, `pinchGap`); confianza del detector 0,6. Sin probar con la cámara real.
 - **Girar con pulgar + medio (2026-10-24):** `pinchFinger` (índice/medio con margen 0,7 y histéresis) y `SlideTurnTracker`; las dos manos quedaron solo para zoom. Fixtures con los otros dedos extendidos (`middlePinch`).
+- **Clic con pellizco rápido y cursor blanco (2026-10-24):** pellizco índice < 300 ms sin arrastrar = clic (`TAP_MS`, `#tap` en `handControlViewModel`); `DwellTimer.markFired` evita el doble clic.
 - **Carpetas de confianza (como VS Code)** (`electron/trust.js`, `models/trustModel.js`): al crear o abrir un proyecto, diálogo nativo «¿Confías…?»; confiada = el agente guarda sin preguntar (`trustedNow` en `platanus_write_file`, `approvedBy: 'trusted'`), secretos bloqueados y respaldo igual. «Sí» se recuerda (`userData/trusted-folders.json`), «No» vuelve a preguntar. Menú ⋯ del chat: confiar / dejar de confiar. **Sin probar en la app real todavía.**
 - **Espera de la obra inicial:** tras «¡Empecemos!» con agente, el globo muestra «Preparando tu proyecto…» con barra (`building` en `robotDialogViewModel`); `actions.askAgent` devuelve si el agente lo recibió.
 - **Sin tarjeta del proyecto en el mapa** (2026-10-24): se quitó la etiqueta con el nombre y «N archivos vigilados»; el nombre ya está en la barra de título y los riesgos en la tarjeta de seguridad.
@@ -68,6 +69,7 @@ ADE de escritorio (Electron) para personas no técnicas: el proyecto se ve como 
   - `PLATANUS_SIM_DEFAULT=feria`: escenario por defecto del Simulador;
   - `PLATANUS_DEMO=1`: cursor visible y `window.__platanus` con los viewmodels.
 - **Video:** `cd video && npm run take && npm run render`.
+- **DMG para compartir:** `npm run dist:mac` → `dist-electron/Platanus-0.1.0-mac-universal.dmg` (universal, ~234 MB, sin firmar: quien lo abra usa clic derecho → Abrir o `xattr -cr /Applications/Platanus.app`). Último build: 2026-10-25, con los gestos sin commitear.
 
 ## Mapa (develop, 2026-10-24)
 El equipo cambió el mapa: ya no es un radar, ahora es **un árbol de todo el proyecto**.

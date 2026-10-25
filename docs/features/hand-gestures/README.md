@@ -32,6 +32,8 @@ El gesto de dos manos tiene sus propias reglas:
 - **Reconoce cada mano**: aunque MediaPipe entregue las manos en otro orden, o pierda una un momento, cada una se reconoce por dónde estaba su palma.
 - **Al soltar una mano**: el gesto termina, y la otra no arrastra el mapa hasta que también suelte (la vista previa dice «Suelta la mano para volver a agarrar»).
 
+**Clic con pellizco rápido:** con la mano abierta sobre algo, juntar pulgar e índice y soltar en menos de 300 ms (`TAP_MS`), sin arrastrar, hace clic en lo que estaba bajo el cursor. Un pellizco largo o que arrastra sigue siendo agarrar el mapa. Después del clic, quedarse quieto no lo vuelve a elegir hasta que el cursor salga (`DwellTimer.markFired`). El cursor es un punto blanco con un borde oscuro fino (neutro, como el resto de la interfaz).
+
 El cursor cubre toda la ventana con la parte central de la imagen, así se llega a los bordes sin sacar la mano de la cámara. Con dos manos abiertas, sigue a la que ya lo tenía. Lo que se eligió no se vuelve a elegir hasta que el cursor salga y vuelva a entrar.
 
 ### Qué se puede elegir

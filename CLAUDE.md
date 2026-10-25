@@ -64,7 +64,7 @@ renderer/
                   (libraries.dev orbs over the package engine), agentPicker
                   (+ effortSlider), chatMenu, agentConnect, devTree, hoverCard, hud,
                   repairPanel, remiJump, editor (floating file editor with tabs, CodeMirror with syntax colors; secrets open flagged), panels (breadcrumb, schema, git), controls, handControl (hand button + camera preview + "?" with the gestures),
-                  handCursor (purple cursor + hold-still ring; selects like a click), handTargets (what the cursor may
+                  handCursor (white cursor + hold-still ring; holding still or a quick pinch selects like a click), handTargets (what the cursor may
                   select: 3D picks, and in panels anything clickable except data-gesture="never"), labels
                   floating layout: iconBar (reorderable icons), draggable (the file editor by
                   header), chatDock (pinned chat column),

@@ -66,8 +66,9 @@
 .hand-slow:empty { display: none; }
 .hand-fps { padding: 0 4px 2px; font: 10.5px var(--mono); color: var(--lg-faint); }
 
-/* ---------- The hand cursor: a purple dot over the whole window, and the ring that fills while it holds
-   still on something selectable. It lets every click through. ---------- */
+/* ---------- The hand cursor: a white dot over the whole window (neutral, like the rest of the UI; a thin
+   dark edge keeps it visible on light panels), and the ring that fills while it holds still on something
+   selectable. It lets every click through. ---------- */
 #hand-cursor {
   position: fixed; left: 0; top: 0; z-index: 2147483000; pointer-events: none;
   width: 0; height: 0; will-change: transform;
@@ -75,14 +76,16 @@
 #hand-cursor[hidden] { display: none; }
 #hand-cursor .hand-dot {
   position: absolute; left: -6px; top: -6px; width: 12px; height: 12px; border-radius: 50%;
-  background: var(--accent); box-shadow: 0 0 0 2px rgba(255, 255, 255, .85), 0 0 14px var(--accent);
+  background: #fff; box-shadow: 0 0 0 1.5px rgba(0, 0, 0, .55), 0 2px 8px rgba(0, 0, 0, .45);
 }
 #hand-cursor .hand-ring {
   position: absolute; left: -17px; top: -17px; width: 34px; height: 34px; border-radius: 50%; opacity: 0;
-  background: conic-gradient(var(--accent) calc(var(--progress, 0) * 1turn), rgba(255, 255, 255, .18) 0);
+  background: conic-gradient(#fff calc(var(--progress, 0) * 1turn), rgba(255, 255, 255, .18) 0);
   -webkit-mask: radial-gradient(circle, transparent 12px, #000 13px); mask: radial-gradient(circle, transparent 12px, #000 13px);
   transition: opacity .15s ease;
 }
+/* A thin dark shadow so the white ring also reads on a light panel (the ring's mask clips a box-shadow) */
+#hand-cursor { filter: drop-shadow(0 0 1px rgba(0, 0, 0, .7)); }
 #hand-cursor.holding .hand-ring { opacity: 1; }
 @media (prefers-reduced-motion: reduce) {
   #hand-cursor .hand-ring { transition: none; }
