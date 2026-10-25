@@ -8,7 +8,7 @@ Léelo **antes** de trabajar y actualízalo **al terminar** cada tarea. El proto
 ADE de escritorio (Electron) para personas no técnicas: el proyecto se ve como un mapa 3D (radar de seguridad), con un chat agéntico en español sencillo. Los agentes (Claude, Codex, Grok, OpenCode, Simulador) actúan **solo** con las herramientas MCP de Qubbot.
 
 ## Entrega (Platanus Hack, 2026-10-25)
-- Repo de jurado: `platanus-hack/platanus-hack-26-ve-team-12` (`main`), mismo historial que este. Formulario lleno en `platanus-hack-project.jsonc`, texto de votación en `project-description.md`, track 3D en el README.
+- Repo de jurado: `platanus-hack/platanus-hack-26-ve-team-12` (`main`), mismo historial que este. Formulario lleno en `platanus-hack-project.jsonc`, texto de votación en `project-description.md`, track 3D en el README (breve, con 🍌 tras cada palabra como pide la plantilla; la guía larga está en `docs/USO.md`).
 - `deploy-url` = landing en Render (https://qubbot-tka9.onrender.com); sus botones bajan el release `v0.2.0` (.dmg y .exe que arma `release.yml` al subir la etiqueta).
 - Landing estática en `landing/`, publicada en Render con `render.yaml` (Render no corre Electron; solo la página).
 
