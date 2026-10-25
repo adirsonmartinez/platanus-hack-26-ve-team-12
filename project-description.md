@@ -19,7 +19,7 @@ Crear software siempre fue escribir código que pocos entienden. Los asistentes 
 
 ## Hecho con
 
-Electron, three.js, Claude Code / Codex / Grok / OpenCode vía MCP, y voz con ElevenLabs o Grok Voice. Más de 860 pruebas automáticas.
+Electron, three.js, Claude Code / Codex / Grok / OpenCode vía MCP, y voz con ElevenLabs o Grok Voice.
 
 ## Equipo
 
