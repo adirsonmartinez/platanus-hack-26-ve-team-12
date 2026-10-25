@@ -199,7 +199,7 @@ test('the robot stays after the first file and coaches: first file, .gitignore, 
   assert.equal(vm.store.state.phase, 'off');
 });
 
-test('a risky file jumps ahead, opens the bubble and can be sent to Remi', () => {
+test('a risky file jumps ahead, opens the bubble and can be sent to Qubi', () => {
   const { vm, welcome, setTree, bubble, calls } = setup();
   welcome();
   vm.press('skip');
@@ -209,7 +209,7 @@ test('a risky file jumps ahead, opens the bubble and can be sent to Remi', () =>
   assert.equal(bubble().id, 'risk:.env:red');
   assert.equal(bubble().tone, 'danger');
   assert.equal(vm.store.state.collapsed, false);
-  pressLabelOf(vm, 'Remi');
+  pressLabelOf(vm, 'Qubi');
   assert.deepEqual(calls.at(-1), ['repair', '.env']);
 });
 

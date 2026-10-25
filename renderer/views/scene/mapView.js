@@ -48,7 +48,9 @@ const folderLabel = (f) => `<strong>${escapeHtml(f.name)}/</strong>${riskLine(f.
 // Files on the map are always direct children of what is shown (the root or the open folder): the name is enough
 const fileLabel = (f) => `<strong>${escapeHtml(f.name)}</strong>`;
 
-export function createMapView({ sceneView, labels, mapViewModel }) {
+// nameOf(key): a service's name (main's catalog knows more than strings.integrations.names), or null
+// onIntegration(key): a click on an integration node (the connect modal opens; main.js wires it)
+export function createMapView({ sceneView, labels, mapViewModel, nameOf = () => null, onIntegration = () => {} }) {
   let group = null;
   let ownLabels = [];
   let session = null;
@@ -138,11 +140,12 @@ export function createMapView({ sceneView, labels, mapViewModel }) {
       node.group.rotation.y = INTEGRATIONS.rotation;
       group.add(node.group);
       emblems.push(node);
-      const name = escapeHtml(strings.integrations.names[integration.key] ?? integration.key);
+      const name = escapeHtml(nameOf(integration.key) ?? strings.integrations.names[integration.key] ?? integration.key);
+      const status = strings.integrations.status[integration.status] ?? strings.integrations.status.unknown;
       ownLabels.push(labels.add({
-        html: `<span class="dot ${integration.status}"></span><span>${name} · ${strings.integrations.status[integration.status]}</span>`,
+        html: `<span class="dot ${integration.status}"></span><span>${name} · ${status}</span>`,
         anchor: { x: integration.x, y: node.labelY, z: integration.z },
-        className: 'sb-label',
+        className: integration.status === 'disconnected' || integration.status === 'unknown' ? 'sb-label unplugged' : 'sb-label',
       }));
     });
 
@@ -232,5 +235,12 @@ export function createMapView({ sceneView, labels, mapViewModel }) {
 
   return {
     pickTargets: () => (group ? [group] : []),
+    // A pick on an integration node is this view's (the connect modal); true when it took it, so main.js
+    // passes the rest on to mapViewModel.handlePick
+    handlePick(pick) {
+      if (pick?.type !== 'integration') return false;
+      onIntegration(pick.key);
+      return true;
+    },
   };
 }

@@ -294,11 +294,11 @@ test('during a repair its steps name the file and the color, and the map does no
   try {
     const bus = createEventBus();
     const vm = new ChatViewModel({ agentModel: { reply: async () => ({ text: '' }) }, bus });
-    bus.emit(EVENTS.folderOpened, { name: 'tests', files: 3, folders: 0, counts: { red: 1, yellow: 0, green: 2 } }); // Remi moves the map first…
+    bus.emit(EVENTS.folderOpened, { name: 'tests', files: 3, folders: 0, counts: { red: 1, yellow: 0, green: 2 } }); // Qubi moves the map first…
     bus.emit(EVENTS.repairStarted, { path: 'tests/a.js', agent: 'Claude' }); // …then the repair starts
     bus.emit(EVENTS.repairTool, { path: 'tests/a.js', name: 'read_file', target: 'tests/a.js' });
     bus.emit(EVENTS.repairTool, { path: 'tests/a.js', name: 'set_file_score', target: 'tests/a.js', level: 'green' });
-    bus.emit(EVENTS.folderOpened, { name: 'tests', files: 3, folders: 0, counts: { red: 1, yellow: 0, green: 2 } }); // Remi flew the camera there
+    bus.emit(EVENTS.folderOpened, { name: 'tests', files: 3, folders: 0, counts: { red: 1, yellow: 0, green: 2 } }); // Qubi flew the camera there
     mock.timers.tick(5000);
     const run = vm.store.state.messages.find((m) => m.run?.kind === 'repair').run;
     assert.deepEqual(run.steps.map((s) => [s.name, s.target, s.level]), [['read_file', 'tests/a.js', null], ['set_file_score', 'tests/a.js', 'green']]);

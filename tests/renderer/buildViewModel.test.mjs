@@ -260,3 +260,18 @@ test('once the person moves the camera, it stops following (and stays where they
     assert.equal(homes.length, 0);
   } finally { mock.timers.reset(); }
 });
+
+test('a worker of Qubi\'s team has its own animation: its card and its saves never move this robot', () => {
+  mock.timers.enable({ apis: ['setTimeout'] });
+  try {
+    const { vm, bus, run, write } = setup();
+    run([write('w1', 'apps/web/a.js')], { worker: 'w1-abc123' });
+    bus.emit(EVENTS.agentChanged, { path: 'apps/web/a.js', created: true, worker: 'w1-abc123', diff: { created: true } });
+    assert.equal(vm.store.state.active, false);
+    assert.deepEqual(vm.store.state.sites, []);
+    assert.equal(vm.store.state.guide, null);
+    run([write('w2', 'src/b.js')]); // the chat's own work still builds
+    assert.equal(vm.store.state.active, true);
+    assert.deepEqual(vm.store.state.sites.map((s) => s.folder), ['src']);
+  } finally { mock.timers.reset(); }
+});

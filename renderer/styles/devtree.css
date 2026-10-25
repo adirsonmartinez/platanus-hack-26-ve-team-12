@@ -181,7 +181,7 @@
   font-family: var(--mono);
 }
 
-/* Agent / Remi badge */
+/* Agent / Qubi badge */
 .devtree-badge {
   padding: 1px 6px;
   border-radius: 5px;
@@ -195,7 +195,7 @@
   white-space: nowrap;
 }
 .devtree-badge.agent { color: var(--accent); }
-.devtree-badge.remi { color: var(--warn); }
+.devtree-badge.qubi { color: var(--warn); }
 
 /* ---------- Action buttons (hover / focus) ---------- */
 .devtree-action-btn {

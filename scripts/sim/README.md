@@ -1,7 +1,7 @@
 # scripts/sim: simulador del chat
 
 Un agente falso que habla exactamente como Claude Code (stream JSON) y llama **de verdad** a las
-herramientas de Platanus, para probar el chat en distintos escenarios sin gastar una suscripción.
+herramientas de Qubbot, para probar el chat en distintos escenarios sin gastar una suscripción.
 
 | Archivo | Qué hace |
 |---|---|

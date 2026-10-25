@@ -1,4 +1,4 @@
-// OpenCode as a Platanus agent, locked to the Platanus tools (research and checks: docs/INTERFAZ.md).
+// OpenCode as a Qubbot agent, locked to the Qubbot tools (research and checks: docs/INTERFAZ.md).
 // - config: an agent "platanus" whose permissions deny everything but `platanus_*` (last match wins),
 //   repeated at the top level; OpenCode's own agents are turned off. Checked with `opencode debug agent
 //   platanus` (1.19.4): bash, read, glob, grep, edit, write, task, webfetch, websearch, skill… all false.

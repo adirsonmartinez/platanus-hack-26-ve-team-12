@@ -3,7 +3,7 @@
 export async function connect(port = 9223) {
   const targets = await (await fetch(`http://127.0.0.1:${port}/json`)).json();
   const page = targets.find((t) => t.type === 'page');
-  if (!page) throw new Error(`No hay una ventana de Platanus en el puerto ${port}`);
+  if (!page) throw new Error(`No hay una ventana de Qubbot en el puerto ${port}`);
   const ws = new WebSocket(page.webSocketDebuggerUrl);
   await new Promise((resolve, reject) => { ws.addEventListener('open', resolve, { once: true }); ws.addEventListener('error', reject, { once: true }); });
   let seq = 0;

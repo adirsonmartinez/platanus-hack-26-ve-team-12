@@ -77,7 +77,7 @@ export function thinkingOrb(state = 'working', { size = 20, label = '', classNam
   return canvas;
 }
 
-// What each Platanus activity looks like (the package's recipe: search -> searching, write -> composing,
+// What each Qubbot activity looks like (the package's recipe: search -> searching, write -> composing,
 // debugging/fixing -> solving, planning -> weaving…). Keys are orbKeyOf() keys (runCardView.js).
 export const STEP_ORB = {
   get_project: 'searching',
@@ -87,7 +87,7 @@ export const STEP_ORB = {
   set_file_score: 'solving',
   show_folder: 'searching', // finding the folder on the map
   subagent: 'weaving',
-  repair: 'solving', // Remi and the agent fixing a file
+  repair: 'solving', // Qubi and the agent fixing a file
   improve: 'shaping', // "Mejorar mi mensaje": gives the message its shape (a spec)
   connect: 'connecting', // testing an agent's connection
   approval: 'listening', // the agent waits for the person to approve a change

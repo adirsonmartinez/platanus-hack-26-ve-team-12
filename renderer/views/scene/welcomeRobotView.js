@@ -1,8 +1,10 @@
 // The welcome robot (RobotDialogViewModel): it hovers on the plaza of a new project and talks in one speech
 // bubble at its right, with the tail at its head. Each new message pops in: the robot hops (shakes its head for a risk), a few typing
 // dots, the text types itself (click to skip) and then the buttons slide in one by one. Minimized, the bubble
-// is a small pill that lights up when there is news. While the tour or a build moves the map's other robot
-// (robotView.js), this one steps aside, so there is never two robots on the map.
+// is a small pill that lights up when there is news. While the tour, a build or a call with Qubi moves the
+// map's other robot (robotView.js), this one steps aside, so there is never two robots on the map.
+// callViewModel (optional): only its store is read, to know when a call is on. teamViewModel (optional): the
+// same for Qubi's team, which can keep working after the call ends.
 import * as THREE from 'three';
 import { buildRobot } from './builders/robotBuilder.js';
 import { strings } from '../../i18n/es.js';
@@ -88,8 +90,10 @@ function pillHtml(unread) {
   return `<button type="button" class="rb-pill${unread ? ' unread' : ''}" data-press="expand" aria-label="${escapeHtml(UI.expand)}">${icon('bot')}<span>${escapeHtml(UI.pill)}</span></button>`;
 }
 
-export function createWelcomeRobotView({ sceneView, labels, mapViewModel, robotDialogViewModel: dialog, tourViewModel = null, buildViewModel = null }) {
-  const busy = () => Boolean(tourViewModel?.store.state.guide || buildViewModel?.store.state.guide);
+export function createWelcomeRobotView({ sceneView, labels, mapViewModel, robotDialogViewModel: dialog, tourViewModel = null, buildViewModel = null, callViewModel = null, teamViewModel = null }) {
+  const inCall = () => ['connecting', 'live'].includes(callViewModel?.store.state.status);
+  const teamOn = () => Boolean(teamViewModel && teamViewModel.store.state.phase !== 'idle');
+  const busy = () => Boolean(tourViewModel?.store.state.guide || buildViewModel?.store.state.guide || inCall() || teamOn());
   const robot = buildRobot();
   robot.root.position.set(SPOT.x, BASE_Y, SPOT.z);
   robot.root.rotation.y = CAMERA.azimuth; // faces the camera
@@ -188,6 +192,8 @@ export function createWelcomeRobotView({ sceneView, labels, mapViewModel, robotD
   dialog.store.subscribe(sync, { immediate: true });
   tourViewModel?.store.subscribe(sync);
   buildViewModel?.store.subscribe(sync);
+  callViewModel?.store.subscribe(sync);
+  teamViewModel?.store.subscribe(sync);
 
   sceneView.onFrame((_t, dt) => {
     if (!robot.root.visible) return;

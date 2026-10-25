@@ -1,4 +1,4 @@
-// "Remi, el reparador": original pixel-art character (16×18). Used by the repair card (2D canvas)
+// "Qubi, el reparador": original pixel-art character (16×18). Used by the repair card (2D canvas)
 // and by the map (as a texture with "nearest" filtering so the pixels stay crisp).
 export const SPRITE_W = 16;
 export const SPRITE_H = 18;

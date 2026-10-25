@@ -1,9 +1,9 @@
-// Remi on the map, in 3D: walks into the risky file's folder, looks at it, thinks
+// Qubi on the map, in 3D: walks into the risky file's folder, looks at it, thinks
 // (hand on chin), hammers with sparks and celebrates. A bubble above him says what he is doing.
 import * as THREE from 'three';
 import { box, materials as M } from './materials.js';
-import { buildRemi } from './builders/remiBuilder.js';
-import { loadRemiModel } from './builders/remiModelLoader.js';
+import { buildRemi } from './builders/qubiBuilder.js';
+import { loadRemiModel } from './builders/qubiModelLoader.js';
 import { strings } from '../../i18n/es.js';
 
 const GRAVITY = 14;
@@ -16,26 +16,26 @@ const damp = (current, goal, dt, speed = TURN_SPEED) => current + (goal - curren
 const angleTo = (from, to) => from + Math.atan2(Math.sin(to - from), Math.cos(to - from));
 
 export function createRemiView({ sceneView, labels, repairViewModel }) {
-  const remi = buildRemi();
-  remi.root.scale.setScalar(1.35); // reads well next to the buildings at the default zoom
-  remi.root.visible = false;
-  sceneView.scene.add(remi.root);
+  const qubi = buildRemi();
+  qubi.root.scale.setScalar(1.35); // reads well next to the buildings at the default zoom
+  qubi.root.visible = false;
+  sceneView.scene.add(qubi.root);
 
   const shadow = new THREE.Mesh(new THREE.CircleGeometry(0.6, 24), new THREE.MeshBasicMaterial({ color: 0x1b1a2e, transparent: true, opacity: 0.2 }));
   shadow.rotation.x = -Math.PI / 2;
   shadow.position.y = 0.02;
-  remi.root.add(shadow);
+  qubi.root.add(shadow);
 
-  const bubble = labels.add({ className: 'remi-bubble', hidden: true });
+  const bubble = labels.add({ className: 'qubi-bubble', hidden: true });
 
-  // The 3D character from renderer/assets/remi/ replaces the blocky one when it is there.
+  // The 3D character from renderer/assets/qubi/ replaces the blocky one when it is there.
   // It has no skeleton, so the whole model bobs, leans and rocks with the same poses.
   let skin = null;
   loadRemiModel().then((model) => {
     if (!model) return;
     skin = model;
-    remi.body.visible = false;
-    remi.root.add(skin);
+    qubi.body.visible = false;
+    qubi.root.add(skin);
   });
 
   const sparks = []; // { mesh, v, life }
@@ -53,7 +53,7 @@ export function createRemiView({ sceneView, labels, repairViewModel }) {
 
   repairViewModel.store.subscribe((state) => {
     const job = state.job;
-    remi.root.visible = Boolean(job);
+    qubi.root.visible = Boolean(job);
     bubble.el.hidden = !job;
     if (!job) { lastStep = -1; return; }
     if (job.step !== lastStep) {
@@ -69,16 +69,16 @@ export function createRemiView({ sceneView, labels, repairViewModel }) {
 
   // Pose: every joint eases toward its goal so steps blend into each other
   function pose(dt, { legs = 0, armL = 0, armLz = 0, armR = 0, armRz = 0, headX = 0, headY = 0, lean = 0, bob = 0 }) {
-    remi.legs[0].rotation.x = damp(remi.legs[0].rotation.x, legs, dt, 18);
-    remi.legs[1].rotation.x = damp(remi.legs[1].rotation.x, -legs, dt, 18);
-    remi.arms[0].rotation.x = damp(remi.arms[0].rotation.x, armL, dt, 18);
-    remi.arms[0].rotation.z = damp(remi.arms[0].rotation.z, armLz, dt);
-    remi.arms[1].rotation.x = damp(remi.arms[1].rotation.x, armR, dt, 22);
-    remi.arms[1].rotation.z = damp(remi.arms[1].rotation.z, armRz, dt);
-    remi.head.rotation.x = damp(remi.head.rotation.x, headX, dt);
-    remi.head.rotation.y = damp(remi.head.rotation.y, headY, dt);
-    remi.body.rotation.x = damp(remi.body.rotation.x, lean, dt);
-    remi.body.position.y = bob;
+    qubi.legs[0].rotation.x = damp(qubi.legs[0].rotation.x, legs, dt, 18);
+    qubi.legs[1].rotation.x = damp(qubi.legs[1].rotation.x, -legs, dt, 18);
+    qubi.arms[0].rotation.x = damp(qubi.arms[0].rotation.x, armL, dt, 18);
+    qubi.arms[0].rotation.z = damp(qubi.arms[0].rotation.z, armLz, dt);
+    qubi.arms[1].rotation.x = damp(qubi.arms[1].rotation.x, armR, dt, 22);
+    qubi.arms[1].rotation.z = damp(qubi.arms[1].rotation.z, armRz, dt);
+    qubi.head.rotation.x = damp(qubi.head.rotation.x, headX, dt);
+    qubi.head.rotation.y = damp(qubi.head.rotation.y, headY, dt);
+    qubi.body.rotation.x = damp(qubi.body.rotation.x, lean, dt);
+    qubi.body.position.y = bob;
   }
 
   sceneView.onFrame((_t, dt) => {
@@ -100,13 +100,13 @@ export function createRemiView({ sceneView, labels, repairViewModel }) {
     const k = job.step === 0 ? Math.min(e / (job.stepMs / 1000), 1) : 1;
     const x = job.from.x + (job.to.x - job.from.x) * k;
     const z = job.from.z + (job.to.z - job.from.z) * k;
-    remi.root.position.set(x, BASE_Y, z);
+    qubi.root.position.set(x, BASE_Y, z);
 
     // Facing: the way he walks, then the building
     const look = job.step === 0 ? Math.atan2(job.to.x - job.from.x, job.to.z - job.from.z) : Math.atan2(job.center.x - x, job.center.z - z);
-    remi.root.rotation.y = damp(remi.root.rotation.y, angleTo(remi.root.rotation.y, look), dt);
+    qubi.root.rotation.y = damp(qubi.root.rotation.y, angleTo(qubi.root.rotation.y, look), dt);
 
-    // While the agent is changing files (step 2), Remi hammers instead of thinking
+    // While the agent is changing files (step 2), Qubi hammers instead of thinking
     const pose3 = job.step === 2 && job.hammering ? 3 : job.step;
     switch (pose3) {
       case 0: { // walk
@@ -139,10 +139,10 @@ export function createRemiView({ sceneView, labels, repairViewModel }) {
 
     if (skin) {
       // Whole-body version of the pose: lean, bob, and a rocking strike while hammering
-      skin.position.y = remi.body.position.y;
-      skin.rotation.x = remi.body.rotation.x + (pose3 === 3 ? Math.max(0, -remi.arms[1].rotation.x - 1.6) * 0.12 : 0);
+      skin.position.y = qubi.body.position.y;
+      skin.rotation.x = qubi.body.rotation.x + (pose3 === 3 ? Math.max(0, -qubi.arms[1].rotation.x - 1.6) * 0.12 : 0);
       skin.rotation.z = pose3 === 0 ? Math.sin(e * 11) * 0.06 * a : 0;
-      skin.rotation.y = remi.head.rotation.y * 0.4;
+      skin.rotation.y = qubi.head.rotation.y * 0.4;
     }
     bubble.setAnchor(x, BASE_Y + 3.1, z);
   });

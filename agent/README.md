@@ -6,7 +6,7 @@ with no restart.
 
 | File | What it holds |
 |---|---|
-| `voice.json` | `base` rules (role, Platanus tools, secrets), the answer `format` (cards, file links, the `sugerencias` block), per-mode settings (`modes.vibe` / `modes.dev`: skill, max words, number of suggestions) and `adapt`: hints added when the person's recent messages are short, long, technical, confused, formal or use emojis. |
+| `voice.json` | `base` rules (role, Qubbot tools, secrets), the answer `format` (cards, file links, the `sugerencias` block), per-mode settings (`modes.vibe` / `modes.dev`: skill, max words, number of suggestions) and `adapt`: hints added when the person's recent messages are short, long, technical, confused, formal or use emojis. |
 | `voice.json` → `refine` | "Mejorar mi mensaje": rules to rewrite the person's draft as a test-first spec in JSON (`objective`, `problem`, `scope`, `constraints`, `tasks[{do, accept}]`, `test{red, green, refactor}`; gentle-shell ODD shape), plus one line per mode. Composed by `composeRefinePrompt` (electron/agentVoice.js), run in its own `refine` session, parsed by `renderer/models/promptSpec.js`. |
 | `voice.json` → `tour` | "Recorrido": rules to narrate the stops the analyzer chose (`renderer/models/projectAnalyzer.js`) as JSON (`summary`, `steps{id: {title, say, bubble}}`, `usecases[{candidate, title, say, flow}]`, `start{say, open, folder, ask}`, `skip`), plus one line per mode. Composed by `composeTourPrompt`, run in the `tour` session with the read-only MCP address, checked by `renderer/models/tourSpec.js`. |
 | `skills/modo-vibe/SKILL.md` | How to talk to people who do not code (plain words, everyday comparisons, no code), with an example. |
@@ -30,7 +30,7 @@ Una frase que responde directo.
 
 ```sugerencias
 - una pregunta corta           -> chip that sends it
-- reparar: src/db.js           -> "Reparar db.js" (Remi + the agent)
+- reparar: src/db.js           -> "Reparar db.js" (Qubi + the agent)
 - auditar: src/db.js           -> "Auditar db.js" (asks the agent to check it)
 - ver: src                     -> "Ver src en el mapa"
 ```

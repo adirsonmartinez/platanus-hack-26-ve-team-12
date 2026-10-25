@@ -5,7 +5,7 @@ const { parseAgentLine } = require('./agentEvents');
 
 const line = (o) => JSON.stringify(o);
 
-test('claude: session, reasoning, text and a Platanus tool with its path', () => {
+test('claude: session, reasoning, text and a Qubbot tool with its path', () => {
   assert.deepEqual(parseAgentLine('claude', line({ type: 'system', subtype: 'init', session_id: 's1' })), [{ type: 'session', id: 's1' }]);
   const events = parseAgentLine('claude', line({
     type: 'assistant',
@@ -88,7 +88,7 @@ test('opencode: session from the first line, text, reasoning, finished tools (wi
   assert.deepEqual(done, [{ type: 'tool', id: 'c1', name: 'set_file_score', target: 'db.js', level: 'red', parent: null }, { type: 'tool_done', id: 'c1', error: false }]);
   const failed = ev({ type: 'tool_use', sessionID: 'ses_1', part: { type: 'tool', callID: 'c2', tool: 'platanus_platanus_read_file', state: { status: 'error', input: { path: '.env' }, error: 'Refused' } } });
   assert.deepEqual(failed.at(-1), { type: 'tool_done', id: 'c2', error: true });
-  assert.deepEqual(ev({ type: 'tool_use', part: { type: 'tool', callID: 'c3', tool: 'bash', state: { status: 'completed', input: {} } } }), [], 'only Platanus tools are reported');
+  assert.deepEqual(ev({ type: 'tool_use', part: { type: 'tool', callID: 'c3', tool: 'bash', state: { status: 'completed', input: {} } } }), [], 'only Qubbot tools are reported');
   assert.deepEqual(ev({ type: 'error', sessionID: 'ses_1', error: { name: 'ProviderAuthError', data: { message: 'Sin credenciales' } } }), [{ type: 'error', message: 'Sin credenciales' }]);
   assert.deepEqual(ev({ type: 'step_finish', part: { type: 'step-finish' } }), []);
 });

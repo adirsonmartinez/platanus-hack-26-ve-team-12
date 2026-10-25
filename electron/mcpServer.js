@@ -1,5 +1,5 @@
 // Local MCP server (Streamable HTTP, JSON responses, stateless) so the user's own agent
-// (Claude Code, Cursor, Codex, Gemini CLI, or the CLIs launched from the chat) can work with Platanus.
+// (Claude Code, Cursor, Codex, Gemini CLI, or the CLIs launched from the chat) can work with Qubbot.
 // Only listens on 127.0.0.1 and rejects browser requests (Origin header), so a web page cannot use it.
 
 const http = require('node:http');
@@ -17,22 +17,59 @@ const BLOCKED_SEGMENT = /^(\.env(\..*)?|\.git|\.ssh|\.aws|\.gnupg|\.npmrc|\.netr
 const ALLOWED_ENV_TEMPLATE = /^\.env\.(example|sample|template)$/i;
 const MAX_READ_BYTES = 200 * 1024;
 
+// Qubi's team (docs/features/llamada/FASE2.md): each worker has its own address /mcp/<token>/w/<id>
+// and may only write inside its folders. The refusal is read by the coding agent, in plain Spanish
+// (strings.js belongs to the window texts; this one never reaches the person).
+const WORKER_ID = /^w[1-3]-[a-z0-9]{4,12}$/;
+const OUTSIDE_SCOPE = (folders) =>
+  `Rechazado: en esta tarea solo puedes escribir dentro de ${folders.map((f) => `${f}/`).join(' o ')}. ` +
+  'Usa una ruta relativa que empiece por esa carpeta, sin "..". Lo demás del proyecto lo hacen otros.';
+
 function isBlockedPath(rel) {
   const normalized = path.posix.normalize(String(rel).replace(/\\/g, '/'));
   return normalized.split('/').some((seg) => BLOCKED_SEGMENT.test(seg) && !ALLOWED_ENV_TEMPLATE.test(seg));
 }
 
-// Where an absolute path really lands inside `root` (symlinks resolved, also for a file that does not
-// exist yet: its nearest existing parent is resolved), checked against the same blocklist.
-async function isBlockedRealPath(root, abs) {
+// Where an absolute path really lands (symlinks resolved, also for a file that does not exist yet: its
+// nearest existing parent is resolved and the rest of the path added)
+async function realPathOf(abs) {
   let probe = abs;
   const rest = [];
   while (!fs.existsSync(probe) && path.dirname(probe) !== probe) {
     rest.unshift(path.basename(probe));
     probe = path.dirname(probe);
   }
-  const real = path.join(await fs.promises.realpath(probe).catch(() => probe), ...rest);
-  return isBlockedPath(path.relative(root, real).split(path.sep).join('/'));
+  return path.join(await fs.promises.realpath(probe).catch(() => probe), ...rest);
+}
+
+// Where an absolute path really lands inside `root`, checked against the same blocklist.
+async function isBlockedRealPath(root, abs) {
+  return isBlockedPath(path.relative(root, await realPathOf(abs)).split(path.sep).join('/'));
+}
+
+// A worker's write: a relative path with no "..", written inside one of its folders (exact case: a
+// different case could be another folder) and, when the project root is known, really landing inside
+// that folder too (a symlink inside the folder cannot lead out of it).
+async function isInScope(rel, { folders = [], root = null } = {}) {
+  const raw = String(rel ?? '').replace(/\\/g, '/');
+  if (!raw || raw.includes('\0') || raw.startsWith('/') || /^[a-zA-Z]:/.test(raw) || raw.endsWith('/')) return false;
+  if (raw.split('/').includes('..')) return false;
+  const target = path.posix.normalize(raw);
+  const clean = (f) => path.posix.normalize(String(f ?? '').replace(/\\/g, '/')).replace(/\/+$/, '');
+  const matches = (Array.isArray(folders) ? folders : [])
+    .map(clean)
+    .filter((f) => f && f !== '.' && !f.startsWith('/') && !f.split('/').includes('..'))
+    .filter((f) => target.startsWith(`${f}/`));
+  if (!matches.length) return false;
+  if (!root) return true;
+  const real = await realPathOf(path.join(root, target));
+  const inProject = path.relative(await realPathOf(root), real);
+  if (!inProject || inProject.startsWith('..') || path.isAbsolute(inProject)) return false; // a folder that is a link out
+  for (const folder of matches) {
+    const inside = path.relative(await realPathOf(path.join(root, folder)), real);
+    if (inside && !inside.startsWith('..') && !path.isAbsolute(inside)) return true;
+  }
+  return false;
 }
 
 const TOOLS = [
@@ -72,7 +109,7 @@ const TOOLS = [
   },
   {
     name: 'platanus_set_file_score',
-    description: "Sets a file's security traffic light on the map: green (safe), yellow (review) or red (risk), with a short reason in plain Spanish.",
+    description: "Flags a file on the map: yellow (review) or red (risk), with a short reason in plain Spanish. Qubbot' fixed security audit decides the lights: a flag can only raise a file's light, and green never hides a finding of the audit (fix the code instead; Qubbot audits it again after each change).",
     inputSchema: {
       type: 'object',
       properties: {
@@ -81,6 +118,33 @@ const TOOLS = [
         reason: { type: 'string', maxLength: 240 },
       },
       required: ['path', 'level', 'reason'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'platanus_run_command',
+    description: "Runs ONE command in the open project (no shell: no pipes, redirections, ; or &&) and returns its exit code and output (keys covered). Allowed: npm/pnpm/yarn/bun (install, add, remove, run <script>, test, audit…), npx <package>, node/python <a script of the project>, tsc/eslint/prettier/vitest/jest/playwright of the project, read-only git (status, diff, log, show) and `git rm --cached <file>` (take a committed key file out of the repository, keeping it on disk). Never global installs (-g): use npx instead. Commands that can change the project ask the user first unless they chose otherwise. Explain why in `reason` in plain Spanish.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        command: { type: 'string', maxLength: 500, description: 'The command, e.g. "npm install zod" or "npx @elevenlabs/cli --version"' },
+        folder: { type: 'string', description: 'Folder of the project to run it in, relative to the root (default: the root)' },
+        reason: { type: 'string', maxLength: 300, description: 'Why, in one plain sentence' },
+      },
+      required: ['command', 'reason'],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: 'platanus_delete_file',
+    description: 'Deletes a file of the project. The previous version is backed up so it can be undone; the user approves it unless they chose otherwise. Secrets are refused. Explain why in `reason` in plain Spanish.',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        path: { type: 'string', description: 'Path relative to the project root' },
+        reason: { type: 'string', maxLength: 300 },
+      },
+      required: ['path', 'reason'],
       additionalProperties: false,
     },
   },
@@ -104,14 +168,28 @@ const text = (value, isError = false) => ({
 // Tools a read-only run may use (the tour of a project: it explains, it never changes anything)
 const READ_ONLY_TOOLS = ['platanus_get_project', 'platanus_list_risks', 'platanus_read_file'];
 
-// `handlers` implement the tools (they live in main.js, next to the workspace and the window).
-// Every call is reported through `onCall({ tool, args, ok, error })` for the audit log.
+// `handlers` implement the tools (they live in main.js, next to the workspace and the window); each one
+// is called as handler(args, context), and context.worker says which of Qubi's workers asked.
+// Every call is reported through `onCall({ tool, args, ok, error, worker? })` for the audit log.
 // readOnly: only READ_ONLY_TOOLS are listed, and any other call is refused.
-function createMcpHandler({ handlers, onCall = () => {}, readOnly = false }) {
-  const tools = readOnly ? TOOLS.filter((t) => READ_ONLY_TOOLS.includes(t.name)) : TOOLS;
+// scope ({ folders, root? }): platanus_write_file only inside those folders (a worker's address).
+// A worker never sets the traffic light: Qubi's audit judges its files, and an override it set (green on
+// its own risky file, or on someone else's) would hide what the fixed checks found.
+const WORKER_REFUSED = ['platanus_set_file_score', 'platanus_run_command'];
+function createMcpHandler({ handlers, onCall: report = () => {}, readOnly = false, scope = null, context: given = {} }) {
+  const tools = readOnly ? TOOLS.filter((t) => READ_ONLY_TOOLS.includes(t.name))
+    : scope ? TOOLS.filter((t) => !WORKER_REFUSED.includes(t.name)) : TOOLS;
+  const context = Object.freeze({ ...given }); // shared by every call of this address: nobody may change it
+  const onCall = context.worker ? (c) => report({ ...c, worker: context.worker }) : report;
   async function callTool(name, args) {
     const tool = TOOLS.find((t) => t.name === name);
     if (!tool) throw { code: -32602, message: `Unknown tool: ${name}` };
+    if (!tools.includes(tool) && scope && !readOnly) {
+      onCall({ tool: name, args, ok: false, error: 'worker' });
+      return text(name === 'platanus_run_command'
+        ? 'Refused: a worker of the team does not run commands. Write your files; Qubi runs what is needed when the team finishes.'
+        : 'Refused: a worker does not set the traffic light. Qubi audits your files when you finish.', true);
+    }
     if (!tools.includes(tool)) {
       onCall({ tool: name, args, ok: false, error: 'read-only' });
       return text('Refused: this run is read-only (project tour). Explain, do not change anything.', true);
@@ -119,15 +197,19 @@ function createMcpHandler({ handlers, onCall = () => {}, readOnly = false }) {
     for (const key of tool.inputSchema.required ?? []) {
       if (typeof args?.[key] !== 'string') return text(`Missing "${key}".`, true);
     }
-    if ((name === 'platanus_read_file' || name === 'platanus_write_file') && isBlockedPath(args.path)) {
+    if (['platanus_read_file', 'platanus_write_file', 'platanus_delete_file'].includes(name) && isBlockedPath(args.path)) {
       onCall({ tool: name, args, ok: false, error: 'blocked' });
       return text('Refused: this file can contain secrets and is never shared with agents.', true);
+    }
+    if ((name === 'platanus_write_file' || name === 'platanus_delete_file') && scope && !(await isInScope(args.path, scope))) {
+      onCall({ tool: name, args, ok: false, error: 'outside-scope' });
+      return text(OUTSIDE_SCOPE(scope.folders), true);
     }
     if (name === 'platanus_set_file_score' && !['green', 'yellow', 'red'].includes(args.level)) {
       return text('level must be green, yellow or red.', true);
     }
     try {
-      const result = await handlers[name](args ?? {});
+      const result = await handlers[name](args ?? {}, context);
       onCall({ tool: name, args, ok: true });
       return text(result);
     } catch (err) {
@@ -144,7 +226,7 @@ function createMcpHandler({ handlers, onCall = () => {}, readOnly = false }) {
           capabilities: { tools: { listChanged: false } },
           serverInfo: { name: 'platanus', version: '0.1.0' },
           instructions:
-            'Platanus shows a project as an isometric map with a security traffic light per file. Explain risks in plain Spanish for non-developers.',
+            'Qubbot shows a project as an isometric map with a security traffic light per file. Explain risks in plain Spanish for non-developers.',
         };
       case 'ping':
         return {};
@@ -184,7 +266,10 @@ function isAllowedRequest(req, port) {
 
 // `token`: private key in the address (/mcp/<token>), so other programs or users on this computer
 // cannot use the server. Compared in constant time. /mcp/<token>/ro is the same server, read-only.
-function startMcpServer({ port = 7811, handlers, onCall, token }) {
+// /mcp/<token>/w/<workerId> is a worker's address: it exists only while scopeFor(workerId) returns
+// { folders, root? } (main registers it for the run), and its writes stay inside those folders.
+// The returned server has workerUrl(workerId) -> that address.
+function startMcpServer({ port = 7811, handlers, onCall, token, scopeFor = () => null }) {
   const full = createMcpHandler({ handlers, onCall });
   const readOnly = createMcpHandler({ handlers, onCall, readOnly: true });
   const same = (url, path) => {
@@ -192,8 +277,20 @@ function startMcpServer({ port = 7811, handlers, onCall, token }) {
     const expected = Buffer.from(path);
     return Boolean(token) && got.length === expected.length && crypto.timingSafeEqual(got, expected);
   };
+  // A worker's handler, built per request with its current scope; null when the address is not ours
+  const workerPrefix = `/mcp/${token ?? ''}/w/`;
+  const workerHandler = (url) => {
+    const u = String(url);
+    if (u.length <= workerPrefix.length || !same(u.slice(0, workerPrefix.length), workerPrefix)) return null;
+    const worker = u.slice(workerPrefix.length);
+    if (!WORKER_ID.test(worker)) return null;
+    let scope = null;
+    try { scope = scopeFor(worker); } catch { scope = null; }
+    if (!scope || !Array.isArray(scope.folders) || !scope.folders.length) return null;
+    return createMcpHandler({ handlers, onCall, scope, context: { worker } });
+  };
   // the handler for this address, or null when it is not ours
-  const handlerFor = (url) => (same(url, `/mcp/${token ?? ''}`) ? full : same(url, `/mcp/${token ?? ''}/ro`) ? readOnly : null);
+  const handlerFor = (url) => (same(url, `/mcp/${token ?? ''}`) ? full : same(url, `/mcp/${token ?? ''}/ro`) ? readOnly : workerHandler(url));
   const server = http.createServer((req, res) => {
     const actualPort = server.address()?.port;
     if (!isAllowedRequest(req, actualPort)) {
@@ -227,11 +324,13 @@ function startMcpServer({ port = 7811, handlers, onCall, token }) {
     });
   });
 
+  server.workerUrl = (worker) => `http://127.0.0.1:${server.address()?.port}/mcp/${token}/w/${worker}`;
+
   return new Promise((resolve) => {
-    // If the port is taken (another Platanus window, another app), let the OS pick a free one
+    // If the port is taken (another Qubbot window, another app), let the OS pick a free one
     server.once('error', () => server.listen(0, '127.0.0.1', () => resolve(server)));
     server.listen(port, '127.0.0.1', () => resolve(server));
   });
 }
 
-module.exports = { TOOLS, createMcpHandler, startMcpServer, isBlockedPath, isBlockedRealPath, isAllowedRequest, MAX_READ_BYTES };
+module.exports = { TOOLS, createMcpHandler, startMcpServer, isBlockedPath, isBlockedRealPath, isInScope, isAllowedRequest, MAX_READ_BYTES, WORKER_ID };

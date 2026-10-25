@@ -1,0 +1,138 @@
+/* Services the project uses (docs/features/servicios/README.md): the chat card, the "Fuera de conexión: X"
+   modal (views/ui/serviceConnectView.js), the unplugged look of an integration's map label, and the muted
+   system lines of the call card. The chat's clear glass and tokens (--lg-*, chat-glass.css); neutral,
+   only the state colors (ok, warn, danger) carry color. Loaded after chat-glass.css and call.css. */
+
+/* ---------- Map: an integration the agent cannot use yet ---------- */
+#map-labels .map-label.sb-label.unplugged { opacity: .78; }
+#map-labels .map-label.sb-label.unplugged span:last-child { color: var(--lg-muted); }
+
+/* ---------- Call card: a system note (a permission granted or denied), no speaker ---------- */
+#chat .call-line.system { color: var(--lg-faint); font-size: 12px; font-style: italic; }
+
+/* ---------- Chat card: one row per service ---------- */
+#chat .card-badge.services { display: grid; place-items: center; color: var(--lg-icon); background: var(--lg-chip); }
+#chat .msg.card-msg.services .card-title { display: flex; flex-direction: column; gap: 1px; min-width: 0; flex: 1; }
+#chat .msg.card-msg.services .card-title span { color: var(--lg-muted); font-size: 12px; }
+#chat .services-list { list-style: none; margin: 10px 0 0; padding: 4px; display: grid; gap: 2px; border-radius: var(--lg-r-block); background: var(--lg-stage); }
+#chat .services-row { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 4px 6px 4px 8px; border-radius: var(--lg-r-sm); }
+#chat .services-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 500 13px var(--lg-font); color: var(--lg-text); }
+#chat .services-row:not(.connected) .services-name { color: var(--lg-text-2); }
+#chat .services-pill, .svc-pill { flex: none; padding: 3px 9px; border-radius: 999px; font: 500 11px var(--lg-font); color: var(--lg-muted); background: var(--lg-chip); }
+#chat .services-pill.connected, .svc-pill.connected { color: var(--ok, #3ddc97); background: rgba(61, 220, 151, .1); }
+#chat .services-pill.disconnected, .svc-pill.disconnected { color: var(--danger, #ff5a6a); background: rgba(255, 90, 106, .1); }
+#chat .card-action.services-connect { flex: none; min-height: 28px; padding: 0 11px; font-size: 12px; }
+
+/* A service's logo (renderer/icons/brands.js) or its initial */
+.service-mark, .svc-logo, .svc-agent-logo {
+  flex: none; display: grid; place-items: center; overflow: hidden;
+  color: var(--lg-icon); background: var(--lg-chip); box-shadow: var(--lg-rim);
+}
+.service-mark { width: 26px; height: 26px; border-radius: 8px; }
+.service-mark.initial, .svc-logo.initial, .svc-agent-logo.initial { font: 600 12px var(--lg-font); }
+.service-mark svg.icon.agent-logo { width: 16px; height: 16px; }
+/* single-color logos take the text color (lessons.md) */
+.service-mark svg.icon.agent-logo[fill="currentColor"], .svc-logo svg.icon.agent-logo[fill="currentColor"], .svc-agent-logo svg.icon.agent-logo[fill="currentColor"] { fill: currentColor; stroke: none; }
+
+/* ---------- The modal ---------- */
+.svc-backdrop[hidden] { display: none; }
+.svc-backdrop {
+  position: fixed; inset: 0; z-index: 150; display: grid; place-items: center; padding: 24px;
+  background: rgba(8, 8, 10, .46);
+}
+.svc-modal {
+  position: relative; width: min(460px, 100%); max-height: calc(100vh - 48px); overflow: auto;
+  display: flex; flex-direction: column; gap: 12px; padding: 18px;
+  border-radius: var(--lg-r-card);
+  background: rgba(24, 24, 26, .9); /* opaque enough that the map behind never fights the text */
+  -webkit-backdrop-filter: url(#liquid-glass) blur(22px) saturate(175%) brightness(1.04);
+  backdrop-filter: url(#liquid-glass) blur(22px) saturate(175%) brightness(1.04);
+  box-shadow: var(--lg-rim-strong), var(--lg-shadow);
+  color: var(--lg-text); font: 13px/1.5 var(--lg-font); -webkit-font-smoothing: antialiased;
+  animation: svc-in .22s var(--lg-ease);
+}
+.svc-modal::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1px; pointer-events: none;
+  background: linear-gradient(150deg, rgba(255, 255, 255, .34), rgba(255, 255, 255, .07) 28%, rgba(255, 255, 255, .02) 55%, rgba(255, 255, 255, .1));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+@keyframes svc-in { from { opacity: 0; transform: translateY(6px) scale(.985); } }
+
+.svc-modal button {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 0 12px;
+  border: 0; border-radius: 999px; background: var(--lg-chip); color: var(--lg-text); box-shadow: var(--lg-rim);
+  font: 500 12.5px var(--lg-font); cursor: pointer;
+  transition: background .2s var(--lg-ease), transform .2s var(--lg-ease);
+}
+.svc-modal button:hover { background: var(--lg-chip-hover); }
+.svc-modal button:active { background: var(--lg-chip-press); transform: scale(.98); }
+.svc-modal button:focus-visible { outline: 2px solid rgba(255, 255, 255, .55); outline-offset: 2px; }
+.svc-modal button[disabled] { opacity: .6; cursor: default; transform: none; }
+.svc-modal button svg { color: var(--lg-icon-muted); }
+
+.svc-head { display: flex; align-items: center; gap: 12px; }
+.svc-logo { width: 40px; height: 40px; border-radius: 12px; }
+.svc-logo svg.icon.agent-logo { width: 22px; height: 22px; }
+.svc-logo.initial { font-size: 17px; }
+.svc-titles { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.svc-title { margin: 0; font: 600 16px/1.25 var(--lg-font); letter-spacing: -.01em; }
+.svc-modal .svc-close { width: 32px; padding: 0; align-self: flex-start; background: transparent; box-shadow: none; }
+.svc-modal .svc-close:hover { background: var(--lg-chip-hover); }
+.svc-intro { margin: 0; color: var(--lg-text-2); }
+.svc-evidence { margin: -4px 0 0; color: var(--lg-faint); font-size: 11.5px; overflow-wrap: anywhere; }
+
+/* Tabs: a segmented pill */
+.svc-tabs { display: flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--lg-stage); }
+.svc-modal .svc-tab { flex: 1; min-height: 30px; background: transparent; box-shadow: none; color: var(--lg-muted); }
+.svc-modal .svc-tab.on { background: var(--lg-chip-hover); color: var(--lg-text); box-shadow: var(--lg-rim); }
+
+.svc-panel { display: flex; flex-direction: column; align-items: flex-start; gap: 10px; }
+.svc-lead { margin: 0; color: var(--lg-text-2); }
+.svc-muted { margin: 0; color: var(--lg-muted); }
+.svc-steps { list-style: none; margin: 0; padding: 0; width: 100%; display: grid; gap: 10px; }
+.svc-step { display: flex; gap: 10px; }
+.svc-step-num {
+  flex: none; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%; display: grid; place-items: center;
+  font: 600 11px var(--lg-font); color: var(--lg-text); background: var(--lg-chip); box-shadow: var(--lg-rim);
+}
+.svc-step-body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.svc-step-body strong { font: 600 12.5px var(--lg-font); }
+
+/* A command: one line of code and its "Copiar" */
+.svc-command {
+  width: 100%; display: flex; align-items: center; gap: 8px; padding: 5px 5px 5px 11px;
+  border-radius: var(--lg-r-sm); background: var(--lg-code); box-shadow: inset 0 0 0 1px var(--lg-code-ring);
+}
+.svc-command code { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font: 12px var(--lg-mono); color: var(--lg-text); user-select: all; }
+.svc-modal .svc-copy { flex: none; min-height: 28px; padding: 0 10px; font-size: 12px; }
+.svc-modal .svc-copy.done { color: var(--ok, #3ddc97); }
+.svc-modal .svc-copy.done svg { color: currentColor; }
+.svc-modal .svc-link { background: transparent; box-shadow: none; padding: 0 6px; color: var(--lg-text-2); }
+.svc-modal .svc-link:hover { color: var(--lg-text); }
+
+/* The agent the MCP command is for */
+.svc-agents { display: flex; flex-wrap: wrap; gap: 6px; }
+.svc-modal .svc-agent { min-height: 30px; padding: 0 11px 0 5px; color: var(--lg-text-2); }
+.svc-modal .svc-agent.on { background: #fff; color: #141414; box-shadow: none; }
+.svc-modal .svc-agent.none:not(.on) { opacity: .6; }
+.svc-agent-logo { width: 22px; height: 22px; border-radius: 50%; }
+.svc-agent-logo svg.icon.agent-logo { width: 14px; height: 14px; }
+
+.svc-notice[hidden] { display: none; }
+.svc-notice { margin: 0; padding: 8px 11px; border-radius: var(--lg-r-sm); background: var(--lg-chip); color: var(--lg-text-2); font-size: 12.5px; }
+.svc-notice.warn { color: var(--warn, #ffc24a); background: rgba(255, 194, 74, .1); }
+.svc-notice.ok { color: var(--ok, #3ddc97); background: rgba(61, 220, 151, .1); }
+
+.svc-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding-top: 12px; border-top: 1px solid var(--lg-line); }
+.svc-spacer { flex: 1; }
+.svc-modal .svc-done { background: #fff; color: #141414; box-shadow: none; } /* the one primary button */
+.svc-modal .svc-done svg { color: #141414; }
+.svc-modal .svc-done:hover { background: #e8e8e8; }
+
+@media (prefers-reduced-transparency: reduce) {
+  .svc-modal { background: #18181a; -webkit-backdrop-filter: none; backdrop-filter: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .svc-modal { animation: none; }
+}

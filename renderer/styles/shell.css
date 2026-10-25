@@ -300,7 +300,7 @@ html.is-mac #menu { display: none; } /* macOS: the Project menu is in the system
 
 /* =====================================================================
    Iteration 3: tags, Vibe/Dev, hover cards, tabs with icons, project map,
-   Remi (card, jump, cracks on the map labels), chat composer, motion.
+   Qubi (card, jump, cracks on the map labels), chat composer, motion.
    ===================================================================== */
 
 /* ---------- Vibe / Dev toggle ---------- */
@@ -501,47 +501,47 @@ body.mode-tech .side-name { font-family: var(--mono); }
 /* ---------- Project map (stage) ---------- */
 .link { border: 0; background: none; color: var(--muted); font: 11px var(--font); text-decoration: underline; cursor: pointer; }
 
-/* ---------- Remi's card (brutalist, bottom-right of the stage) ---------- */
-.remi-layer { position: absolute; right: 14px; bottom: 14px; z-index: 8; }
-.remi-card {
+/* ---------- Qubi's card (brutalist, bottom-right of the stage) ---------- */
+.qubi-layer { position: absolute; right: 14px; bottom: 14px; z-index: 8; }
+.qubi-card {
   width: 330px; max-width: calc(100vw - 32px); border: 2px solid #000; background: #f4f1e8; color: #000;
-  box-shadow: 6px 6px 0 #f5c542; animation: remi-in .35s cubic-bezier(.2, 1.4, .4, 1) both;
+  box-shadow: 6px 6px 0 #f5c542; animation: qubi-in .35s cubic-bezier(.2, 1.4, .4, 1) both;
 }
-.remi-card[hidden] { display: none; }
-.remi-card.done { box-shadow: 6px 6px 0 #3ddc97; }
-.remi-head {
+.qubi-card[hidden] { display: none; }
+.qubi-card.done { box-shadow: 6px 6px 0 #3ddc97; }
+.qubi-head {
   display: flex; justify-content: space-between; padding: 5px 10px; background: #000; color: #f5c542;
   font: 700 10px var(--mono); text-transform: uppercase; letter-spacing: .14em;
 }
-.remi-progress { color: rgba(255, 255, 255, .7); }
-.remi-top { display: flex; gap: 12px; padding: 10px; }
-.remi-frame { display: grid; place-items: center; flex: none; width: 72px; height: 82px; border: 2px solid #000; background: #e6e1d3; }
-.remi-avatar { image-rendering: pixelated; }
-.remi-info { min-width: 0; }
-.remi-info p { margin: 0; }
-.remi-kicker { font: 700 10px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: rgba(0, 0, 0, .55); }
-.remi-title { font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
-.remi-step { margin-top: 4px !important; font-size: 12px; }
-.remi-step.ok { color: #0f7a4f; font-weight: 700; }
-.remi-reason { margin-top: 4px !important; font: 10.5px/1.4 var(--mono); color: rgba(0, 0, 0, .65); }
-.remi-plan { padding: 8px 10px; border-top: 2px solid #000; }
-.remi-plan ol { margin: 6px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
-.remi-plan li { display: flex; gap: 7px; font-size: 12px; line-height: 1.35; animation: rise .3s ease both; }
-.remi-plan li.ok span:last-child { color: rgba(0, 0, 0, .55); text-decoration: line-through; text-decoration-color: rgba(0, 0, 0, .3); }
-.remi-check { display: grid; place-items: center; flex: none; width: 16px; height: 16px; border: 2px solid #000; background: #fff; font: 700 9px var(--mono); }
-.remi-plan li.ok .remi-check { background: #000; color: #3ddc97; }
-.remi-honest { margin: 0; padding: 6px 10px; border-top: 2px solid #000; font-size: 11px; color: rgba(0, 0, 0, .7); }
-.remi-actions { display: flex; gap: 8px; padding: 8px 10px; border-top: 2px solid #000; }
-.remi-btn { padding: 5px 12px; border: 2px solid #000; background: #fff; color: #000; font: 700 12px var(--font); cursor: pointer; box-shadow: 2px 2px 0 #000; }
-.remi-btn:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #000; }
-.remi-btn.primary { background: #3ddc97; }
-.remi-strip { display: flex; margin: 0; padding: 0; list-style: none; border-top: 2px solid #000; }
-.remi-strip li { flex: 1; height: 8px; background: #fff; border-right: 2px solid #000; transition: background .3s; }
-.remi-strip li:last-child { border-right: 0; }
-.remi-strip li.past { background: #000; }
-.remi-strip li.now { background: #f5c542; animation: blink-strip 1s steps(2) infinite; }
-.remi-card.done .remi-strip li.now { background: #3ddc97; animation: none; }
-.remi-jumper { position: fixed; left: 0; top: 0; z-index: 200; pointer-events: none; image-rendering: pixelated; filter: drop-shadow(2px 3px 0 rgba(0, 0, 0, .35)); }
+.qubi-progress { color: rgba(255, 255, 255, .7); }
+.qubi-top { display: flex; gap: 12px; padding: 10px; }
+.qubi-frame { display: grid; place-items: center; flex: none; width: 72px; height: 82px; border: 2px solid #000; background: #e6e1d3; }
+.qubi-avatar { image-rendering: pixelated; }
+.qubi-info { min-width: 0; }
+.qubi-info p { margin: 0; }
+.qubi-kicker { font: 700 10px var(--mono); text-transform: uppercase; letter-spacing: .08em; color: rgba(0, 0, 0, .55); }
+.qubi-title { font-size: 13px; font-weight: 700; overflow-wrap: anywhere; }
+.qubi-step { margin-top: 4px !important; font-size: 12px; }
+.qubi-step.ok { color: #0f7a4f; font-weight: 700; }
+.qubi-reason { margin-top: 4px !important; font: 10.5px/1.4 var(--mono); color: rgba(0, 0, 0, .65); }
+.qubi-plan { padding: 8px 10px; border-top: 2px solid #000; }
+.qubi-plan ol { margin: 6px 0 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 4px; }
+.qubi-plan li { display: flex; gap: 7px; font-size: 12px; line-height: 1.35; animation: rise .3s ease both; }
+.qubi-plan li.ok span:last-child { color: rgba(0, 0, 0, .55); text-decoration: line-through; text-decoration-color: rgba(0, 0, 0, .3); }
+.qubi-check { display: grid; place-items: center; flex: none; width: 16px; height: 16px; border: 2px solid #000; background: #fff; font: 700 9px var(--mono); }
+.qubi-plan li.ok .qubi-check { background: #000; color: #3ddc97; }
+.qubi-honest { margin: 0; padding: 6px 10px; border-top: 2px solid #000; font-size: 11px; color: rgba(0, 0, 0, .7); }
+.qubi-actions { display: flex; gap: 8px; padding: 8px 10px; border-top: 2px solid #000; }
+.qubi-btn { padding: 5px 12px; border: 2px solid #000; background: #fff; color: #000; font: 700 12px var(--font); cursor: pointer; box-shadow: 2px 2px 0 #000; }
+.qubi-btn:hover { transform: translate(-1px, -1px); box-shadow: 3px 3px 0 #000; }
+.qubi-btn.primary { background: #3ddc97; }
+.qubi-strip { display: flex; margin: 0; padding: 0; list-style: none; border-top: 2px solid #000; }
+.qubi-strip li { flex: 1; height: 8px; background: #fff; border-right: 2px solid #000; transition: background .3s; }
+.qubi-strip li:last-child { border-right: 0; }
+.qubi-strip li.past { background: #000; }
+.qubi-strip li.now { background: #f5c542; animation: blink-strip 1s steps(2) infinite; }
+.qubi-card.done .qubi-strip li.now { background: #3ddc97; animation: none; }
+.qubi-jumper { position: fixed; left: 0; top: 0; z-index: 200; pointer-events: none; image-rendering: pixelated; filter: drop-shadow(2px 3px 0 rgba(0, 0, 0, .35)); }
 
 /* ---------- Chat composer (as in Obra) ---------- */
 #chat .chat-input.composer { flex-direction: column; align-items: stretch; padding: 6px; gap: 2px; }
@@ -589,13 +589,13 @@ body.mode-tech .side-name { font-family: var(--mono); }
 .picker-more:hover { color: var(--ink); }
 
 /* ---------- Status bar extras ---------- */
-#statusbar .status-remi { color: #f5c542; }
+#statusbar .status-qubi { color: #f5c542; }
 #statusbar .status-mode { margin-left: auto; }
 
 /* ---------- Motion ---------- */
 @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 @keyframes pop-in { from { opacity: 0; transform: scale(.97); } to { opacity: 1; transform: none; } }
-@keyframes remi-in { from { opacity: 0; transform: translate(20px, 20px) rotate(2deg); } to { opacity: 1; transform: none; } }
+@keyframes qubi-in { from { opacity: 0; transform: translate(20px, 20px) rotate(2deg); } to { opacity: 1; transform: none; } }
 @keyframes blink-strip { 50% { opacity: .45; } }
 @keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
 .sidebar-body.enter > * { animation: rise .28s ease both; }
@@ -614,19 +614,19 @@ body.mode-tech .side-name { font-family: var(--mono); }
 .risk-card:hover { transform: translateY(-1px); }
 
 @media (prefers-reduced-motion: reduce) {
-  .sidebar-body.enter > *, #chat .msg, .remi-card, .remi-plan li, .hover-card,
-  .remi-strip li.now, #chat .msg.tool::before { animation: none !important; }
+  .sidebar-body.enter > *, #chat .msg, .qubi-card, .qubi-plan li, .hover-card,
+  .qubi-strip li.now, #chat .msg.tool::before { animation: none !important; }
 }
 
 /* Panels on the map start below the stage tabs; thin dark scrollbars everywhere */
 #stage #folder-panel, #stage #schema-panel { top: 62px; }
 .sidebar-body, #chat .chat-body { scrollbar-width: thin; scrollbar-color: rgba(255, 255, 255, .14) transparent; }
-/* The stage sizes every canvas to fill it (the 3D map); Remi's avatar is a small exception */
-#stage canvas.remi-avatar { position: static; inset: auto; width: 64px !important; height: 72px !important; }
-.risk-card, .guide-card, .remi-card, .hover-card { box-sizing: border-box; }
-/* Remi's speech bubble on the map */
-.map-label.remi-bubble { z-index: 3; padding: 4px 9px; border: 2px solid #000; border-radius: 10px; background: #fff7d6; color: #1b1a2e; font: 700 11px var(--font); box-shadow: 3px 3px 0 #f5c542; white-space: nowrap; }
-.map-label.remi-bubble.done { background: #dcfce9; box-shadow: 3px 3px 0 #3ddc97; }
+/* The stage sizes every canvas to fill it (the 3D map); Qubi's avatar is a small exception */
+#stage canvas.qubi-avatar { position: static; inset: auto; width: 64px !important; height: 72px !important; }
+.risk-card, .guide-card, .qubi-card, .hover-card { box-sizing: border-box; }
+/* Qubi's speech bubble on the map */
+.map-label.qubi-bubble { z-index: 3; padding: 4px 9px; border: 2px solid #000; border-radius: 10px; background: #fff7d6; color: #1b1a2e; font: 700 11px var(--font); box-shadow: 3px 3px 0 #f5c542; white-space: nowrap; }
+.map-label.qubi-bubble.done { background: #dcfce9; box-shadow: 3px 3px 0 #3ddc97; }
 
 /* ---------- Repair history (task list) ---------- */
 .rail-badge {
@@ -665,7 +665,7 @@ body.mode-tech .side-name { font-family: var(--mono); }
 .task-summary p { margin: 6px 0 0; white-space: pre-wrap; color: var(--ink); font-size: 12px; line-height: 1.5; }
 .task-error { margin: 8px 0 0; color: var(--danger); font-size: 11.5px; }
 .task-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-.remi-step.failed { color: #b4232f !important; }
+.qubi-step.failed { color: #b4232f !important; }
 @media (prefers-reduced-motion: reduce) { .task-body, .task-status.working::before { animation: none; } }
 
 /* ---------- Risk cards: tinted surface + level icon, no outline ---------- */
@@ -985,7 +985,7 @@ body.chat-closed #workspace > #chat.card, body.no-project #workspace > #chat.car
   transition: transform .22s ease, opacity .18s ease, visibility 0s linear .22s;
 }
 /* What sat on the map's right edge moves left of the chat while it is open */
-body:not(.chat-closed):not(.chat-min) .remi-layer { right: 402px; }
+body:not(.chat-closed):not(.chat-min) .qubi-layer { right: 402px; }
 body.chat-closed .chat-launcher { display: block; }
 
 /* Floating bar groups */
@@ -1006,7 +1006,7 @@ body.chat-closed .chat-launcher { display: block; }
 @media (prefers-reduced-motion: reduce) {
   #workspace > #chat.card, body.chat-closed #workspace > #chat.card { transition: none; }
 }
-.remi-layer { transition: right .28s cubic-bezier(.2, .8, .2, 1); }
+.qubi-layer { transition: right .28s cubic-bezier(.2, .8, .2, 1); }
 
 /* ---------- Icon-only floating bar, drag to reorder ---------- */
 #stage .stage-tabs.icon-bar { gap: 2px; padding: 4px; }
@@ -1167,3 +1167,25 @@ body:not(.chat-closed):not(.chat-min) #stage .editor:not(.moved) { right: 402px;
 .editor-code .tok-emphasis { font-style: italic; }
 .editor-code .tok-strikethrough { text-decoration: line-through; }
 .editor-code .tok-invalid { text-decoration: underline wavy var(--muted); }
+
+/* The security audit at the top of the risks panel: score, when, "Auditar de nuevo" and its history */
+.audit-head { margin: 2px 6px 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--panel-2); }
+.audit-top { display: grid; grid-template-columns: auto 1fr auto; grid-template-rows: auto auto; column-gap: 10px; align-items: center; }
+.audit-score { grid-row: 1 / 3; font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.audit-score.red { color: var(--red, #f87171); }
+.audit-score.yellow { color: var(--yellow, #fbbf24); }
+.audit-score.green { color: var(--green, #4ade80); }
+.audit-label { font-size: 12px; font-weight: 600; }
+.audit-when { grid-column: 2; grid-row: 2; color: var(--muted); font-size: 11px; }
+.audit-top .pill { grid-column: 3; grid-row: 1 / 3; }
+.audit-head .side-summary { margin: 8px 0 0; }
+.audit-history { margin-top: 8px; font-size: 12px; }
+.audit-history summary { cursor: pointer; color: var(--muted); }
+.audit-history ol { list-style: none; margin: 6px 0 0; padding: 0; display: grid; gap: 4px; }
+.audit-history li { display: grid; grid-template-columns: 40px 32px 1fr auto; gap: 6px; align-items: baseline; }
+.audit-history li small { color: var(--muted); }
+.audit-history li.up .audit-delta { color: var(--green, #4ade80); }
+.audit-history li.down .audit-delta { color: var(--red, #f87171); }
+.risk-findings { margin: 6px 0 0; padding-left: 16px; font-size: 11px; color: var(--muted); display: grid; gap: 2px; }
+.risk-findings li.red { color: var(--red, #f87171); }
+.risk-card > .pill { margin-top: 8px; align-self: flex-start; }

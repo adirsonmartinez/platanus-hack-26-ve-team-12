@@ -122,7 +122,7 @@
 #chat .run-icon, #chat .run-icon.done { width: 24px; height: 24px; border-radius: 8px; color: var(--lg-icon); background: var(--lg-chip); box-shadow: var(--lg-rim); }
 #chat .run-icon .run-check { box-shadow: 0 0 0 2px #151515; }
 #chat .run-steps-nested, #chat .story-nested { border-left: 1px solid var(--lg-line); }
-#chat .run-avatar.remi { color: var(--warn); background: rgba(255, 194, 74, .12); }
+#chat .run-avatar.qubi { color: var(--warn); background: rgba(255, 194, 74, .12); }
 #chat .run-result, #chat .msg.result { color: var(--lg-text-2); font-size: 13px; }
 #chat .run-result { border-top: 1px solid var(--lg-line); }
 

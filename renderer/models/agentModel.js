@@ -47,7 +47,7 @@ export class AgentModel {
   }
 
   // With a connected agent (the user's own subscription) the real model answers and works through
-  // the Platanus MCP tools; otherwise the scripted demo answers. Same reply shape either way.
+  // the Qubbot MCP tools; otherwise the scripted demo answers. Same reply shape either way.
   // agent: ask another agent than the selected one (compare answers)
   // recent: the person's last messages (the agent adapts to how they write; see agent/voice.json)
   // onStart: called when the agent really starts (a question can wait in line behind a repair)
@@ -110,7 +110,10 @@ export class AgentModel {
     }
   }
 
+  // The scripted demo answers (made-up scans, logs and fixes) are the web version's only. On the desktop,
+  // with no agent connected, nothing is invented: the chat says so and offers to connect one.
   #scripted(text) {
+    if (this.#workspace.isDesktop) return { text: AGENT.noAgent, connect: true };
     const list = words(text);
     const vuln = AGENT.vulnerability;
 

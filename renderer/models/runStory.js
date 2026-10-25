@@ -15,8 +15,10 @@ export function stepLine(step) {
   if (step.kind === 'subagent') {
     return { text: S.helper(step.description || S.unknown.what), name: '', path: '', level: null, status };
   }
-  const path = step.target || '';
-  const name = baseName(path) || (step.name === 'show_folder' ? S.theProject : S.aFile);
+  // a command is told as itself, and it is not a file to open
+  const command = step.name === 'run_command';
+  const path = command ? '' : step.target || '';
+  const name = command ? `«${step.target || ''}»` : baseName(path) || (step.name === 'show_folder' ? S.theProject : S.aFile);
   const known = step.name in S.done;
   const level = step.level ?? null;
   let text;

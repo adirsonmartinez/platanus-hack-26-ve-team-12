@@ -1,8 +1,8 @@
 # Video del producto (Remotion)
 
-Video de unos 55 segundos que muestra Platanus.
+Video de unos 55 segundos que muestra Qubbot.
 
-1. **Intro 3D**: las pantallas de la app sobre una mesa cálida. El robot de Platanus salta entre ellas y la cámara entra en la del centro.
+1. **Intro 3D**: las pantallas de la app sobre una mesa cálida. El robot de Qubbot salta entre ellas y la cámara entra en la del centro.
 2. **La app real**: el recorrido de un proyecto desconocido, paso a paso.
 3. **El agente trabajando**: revisa un archivo y el mapa reacciona.
 4. **Cierre 3D**: el robot saluda y aparece el nombre.

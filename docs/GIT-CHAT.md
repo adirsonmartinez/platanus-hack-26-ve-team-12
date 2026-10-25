@@ -2,7 +2,7 @@
 
 Rama: `feature/chat-git-commands`
 
-El chat "Agente Platanus" ejecuta acciones de git (commit, rollback, reset, ramas) a partir de frases normales en español, con o sin tildes, y está pensado para funcionar igual con **voz** más adelante. No hace falta memorizar una sintaxis.
+El chat "Agente Qubbot" ejecuta acciones de git (commit, rollback, reset, ramas) a partir de frases normales en español, con o sin tildes, y está pensado para funcionar igual con **voz** más adelante. No hace falta memorizar una sintaxis.
 
 ## Dónde está el código
 

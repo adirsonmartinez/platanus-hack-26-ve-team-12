@@ -26,7 +26,7 @@ const DEMO_CONTENT = {
   'src/lib/auth.ts': "export function verify(token: string) {\n  // TODO: check the signature\n  return token.length > 0;\n}\n",
   'src/lib/db.ts': "import { createClient } from '@supabase/supabase-js';\n\nexport const db = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!);\n",
   'package.json': '{\n  "name": "platanus-demo",\n  "version": "0.1.0",\n  "private": true\n}\n',
-  'README.md': '# Platanus demo\n\nProyecto de ejemplo para la demo web.\n',
+  'README.md': '# Qubbot demo\n\nProyecto de ejemplo para la demo web.\n',
   'tsconfig.json': '{\n  "compilerOptions": { "strict": true, "target": "ES2022" }\n}\n',
   'supabase/migrations/001_init.sql': 'create table users (\n  id uuid primary key,\n  email text not null\n);\n',
 };

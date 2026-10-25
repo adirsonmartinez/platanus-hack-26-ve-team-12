@@ -2,8 +2,12 @@
 // Right or middle drag, or Shift + drag: orbit (sideways rotates, up/down tilts).
 // Wheel / pinch: zoom toward the cursor. Arrows or WASD: pan. Q / E: quarter turns. Click: pick.
 // G switches between the map and the git view; Esc closes whatever is open in the active view.
-// grabber(): something of the scene that is dragged itself instead of the map (the robot):
-//   { hit(x, y), hover(on), start(x, y), move(x, y), end(x, y) } in screen pixels, or null
+// grabber(): the robots, tested before the map (the robot wins over the folder under it). One grabber or a
+// list of them, in order (Qubi first, then his team's mini robots), or null. Each one is
+//   { hit(x, y), hover(on), start?(x, y), move?(x, y), end?(x, y) } in screen pixels.
+// With start it is dragged itself instead of the map (Qubi); without it, it can only be pointed at (a mini
+// robot shows its task): a drag there still moves the map, but a click never picks the folder behind it.
+// While the pointer is on a robot the folder's hover card does not show.
 // Returns { pickAtScreen, zoomAt } so hand gestures pick and zoom with this same code (no second raycaster).
 const CLICK_TOLERANCE_PX = 6;
 const ROTATE_SPEED = 0.008;
@@ -18,7 +22,13 @@ export function createInputController({ sceneView, cameraViewModel: camera, pick
   let downAt = null;
   let holding = null; // the grabber while the person drags it
   let over = null;    // the grabber under the cursor (hover)
+  let downOnRobot = false; // the press began on a robot that is only pointed at: no folder click
   const setOver = (g) => { if (over !== g) { over?.hover(false); over = g; g?.hover(true); } };
+  // The first robot under the pointer, in the grabbers' order, or null
+  const robotAt = (x, y) => {
+    const list = [grabber()].flat().filter(Boolean);
+    return list.find((g) => g.hit(x, y)) ?? null;
+  };
 
   const pickAt = (x, y) => {
     const active = picker();
@@ -26,8 +36,9 @@ export function createInputController({ sceneView, cameraViewModel: camera, pick
   };
 
   canvas.addEventListener('pointerdown', (e) => {
-    const g = e.button === 0 && !e.shiftKey ? grabber() : null;
-    if (g?.hit(e.clientX, e.clientY)) {
+    const g = e.button === 0 && !e.shiftKey ? robotAt(e.clientX, e.clientY) : null;
+    downOnRobot = Boolean(g && !g.start);
+    if (g?.start) {
       holding = g;
       g.start(e.clientX, e.clientY);
       onHover(null);
@@ -56,11 +67,11 @@ export function createInputController({ sceneView, cameraViewModel: camera, pick
       return;
     }
     if (!grabPoint) {
-      const g = e.pointerType === 'mouse' ? grabber() : null;
-      const onGrabber = Boolean(g?.hit(e.clientX, e.clientY));
-      setOver(onGrabber ? g : null);
-      const pick = !onGrabber && e.pointerType === 'mouse' ? pickAt(e.clientX, e.clientY) : null;
-      canvas.style.cursor = onGrabber ? 'grab' : pick ? 'pointer' : '';
+      // robots first; the folder under one gets no hover while the pointer is on the robot
+      const g = e.pointerType === 'mouse' ? robotAt(e.clientX, e.clientY) : null;
+      setOver(g);
+      const pick = !g && e.pointerType === 'mouse' ? pickAt(e.clientX, e.clientY) : null;
+      canvas.style.cursor = g?.start ? 'grab' : pick ? 'pointer' : '';
       onHover(pick, e.clientX, e.clientY);
       return;
     }
@@ -85,9 +96,10 @@ export function createInputController({ sceneView, cameraViewModel: camera, pick
       if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
       return;
     }
-    const wasClick = downAt && downAt.button === 0 && !e.shiftKey &&
+    const wasClick = downAt && downAt.button === 0 && !e.shiftKey && !downOnRobot &&
       Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) < CLICK_TOLERANCE_PX;
     downAt = null;
+    downOnRobot = false;
     endDrag(e);
     if (!wasClick) return;
     const pick = pickAt(e.clientX, e.clientY);

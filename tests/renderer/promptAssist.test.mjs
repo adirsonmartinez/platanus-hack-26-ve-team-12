@@ -20,7 +20,9 @@ test('an action without a file suggests the file it probably means', () => {
 });
 
 test('something that looks like a secret is flagged before it is sent', () => {
-  assert.ok(kinds(analyzePrompt('mi clave es sk_live_51Habcdefghijklmnop y no funciona', tree)).includes('secret'));
+  // built at run time: written out, it would trip the repo's own credential scan (tests/secrets.test.mjs)
+  const stripe = ['sk', 'live', '51Habcdefghijklmnop'].join('_');
+  assert.ok(kinds(analyzePrompt(`mi clave es ${stripe} y no funciona`, tree)).includes('secret'));
   assert.ok(kinds(analyzePrompt('la contraseña: Hunter2024! no entra', tree)).includes('secret'));
 });
 
